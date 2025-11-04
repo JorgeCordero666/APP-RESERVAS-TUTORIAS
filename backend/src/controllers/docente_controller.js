@@ -5,67 +5,97 @@ import fs from "fs-extra";
 import mongoose from "mongoose";
 import { crearTokenJWT } from "../middlewares/JWT.js";
 
-// ========== REGISTRO DE DOCENTE (POR ADMINISTRADOR) ==========
+// ===========================================================
+// ✅ REGISTRAR DOCENTE (ACTUALIZADO CON NUEVA CORRECCIÓN)
+// ===========================================================
 const registrarDocente = async (req, res) => {
   try {
     const { emailDocente, fechaNacimientoDocente } = req.body;
     
-    if (Object.values(req.body).includes(""))
-      return res.status(400).json({ msg: "Lo sentimos, debes llenar todos los campos" });
+    // ✅ VALIDAR CAMPOS VACÍOS
+    const camposRequeridos = [
+      'nombreDocente', 
+      'cedulaDocente', 
+      'emailDocente', 
+      'celularDocente', 
+      'oficinaDocente', 
+      'emailAlternativoDocente',
+      'fechaNacimientoDocente',
+      'fechaIngresoDocente'
+    ];
 
-    const verificarEmailBDD = await Docente.findOne({ emailDocente });
-    if (verificarEmailBDD)
-      return res.status(400).json({ msg: "Lo sentimos, el email ya se encuentra registrado" });
+    const camposFaltantes = camposRequeridos.filter(campo => !req.body[campo]);
+    
+    if (camposFaltantes.length > 0) {
+      return res.status(400).json({ 
+        msg: `Los siguientes campos son obligatorios: ${camposFaltantes.join(', ')}` 
+      });
+    }
 
-    // ⭐ VALIDAR FECHA DE NACIMIENTO
+    // ✅ NORMALIZAR EMAILS ANTES DE VALIDAR
+    const emailNormalizado = emailDocente.trim().toLowerCase();
+    const emailAltNormalizado = req.body.emailAlternativoDocente.trim().toLowerCase();
+
+    // ✅ VERIFICAR EMAIL DUPLICADO (CORRECTAMENTE)
+    const emailExistente = await Docente.findOne({ emailDocente: emailNormalizado });
+    if (emailExistente) {
+      return res.status(400).json({ msg: 'El email institucional ya está registrado por otro docente' });
+    }
+
+    // ✅ VERIFICAR EMAIL ALTERNATIVO DUPLICADO
+    const emailAltExistente = await Docente.findOne({ emailAlternativoDocente: emailAltNormalizado });
+    if (emailAltExistente) {
+      return res.status(400).json({ msg: 'El email alternativo ya está registrado por otro docente' });
+    }
+
+    // ✅ VERIFICAR CÉDULA DUPLICADA
+    const cedulaExistente = await Docente.findOne({ cedulaDocente: req.body.cedulaDocente });
+    if (cedulaExistente) {
+      return res.status(400).json({ msg: 'La cédula ya está registrada' });
+    }
+
+    // ✅ VALIDAR FECHA DE NACIMIENTO
     if (fechaNacimientoDocente) {
       const fechaNac = new Date(fechaNacimientoDocente);
       const hoy = new Date();
-      
-      // Validar año mínimo 1960
+
       if (fechaNac.getFullYear() < 1960) {
-        return res.status(400).json({
-          msg: "El año de nacimiento debe ser 1960 o posterior"
-        });
+        return res.status(400).json({ msg: "El año de nacimiento debe ser 1960 o posterior" });
       }
-      
-      // Calcular edad
+
       let edad = hoy.getFullYear() - fechaNac.getFullYear();
       const mesActual = hoy.getMonth();
       const mesNac = fechaNac.getMonth();
-      
-      if (mesActual < mesNac || 
-          (mesActual === mesNac && hoy.getDate() < fechaNac.getDate())) {
+
+      if (mesActual < mesNac || (mesActual === mesNac && hoy.getDate() < fechaNac.getDate())) {
         edad--;
       }
-      
-      // Validar edad mínima 18 años
+
       if (edad < 18) {
-        return res.status(400).json({
-          msg: "El docente debe tener al menos 18 años"
-        });
+        return res.status(400).json({ msg: "El docente debe tener al menos 18 años" });
       }
     }
 
-    let asignaturas = req.body.asignaturas;
-    if (typeof asignaturas === "string") {
-      try {
-        asignaturas = JSON.parse(asignaturas);
-      } catch {
-        return res.status(400).json({ msg: "Formato inválido en asignaturas" });
-      }
-    }
-
+    // ✅ GENERAR CONTRASEÑA TEMPORAL
     const password = Math.random().toString(36).toUpperCase().slice(2, 5);
 
+    // ✅ CREAR NUEVO DOCENTE CON EMAILS NORMALIZADOS
     const nuevoDocente = new Docente({
-      ...req.body,
-      asignaturas,
+      nombreDocente: req.body.nombreDocente,
+      cedulaDocente: req.body.cedulaDocente,
+      emailDocente: emailNormalizado,
+      emailAlternativoDocente: emailAltNormalizado,
+      celularDocente: req.body.celularDocente,
+      oficinaDocente: req.body.oficinaDocente,
+      fechaNacimientoDocente: req.body.fechaNacimientoDocente,
+      fechaIngresoDocente: req.body.fechaIngresoDocente,
       passwordDocente: await Docente.prototype.encrypPassword("ESFOT" + password),
       administrador: req.administradorBDD._id,
-      requiresPasswordChange: true // Obligado a cambiar contraseña en primer login 
+      requiresPasswordChange: true,
+      confirmEmail: true // ✅ Docentes creados por admin ya están confirmados
     });
 
+    // ✅ SUBIR IMAGEN SI EXISTE
     if (req.files?.imagen) {
       const { secure_url, public_id } = await cloudinary.uploader.upload(
         req.files.imagen.tempFilePath,
@@ -77,20 +107,31 @@ const registrarDocente = async (req, res) => {
     }
 
     await nuevoDocente.save();
+
+    // ✅ ENVIAR EMAIL CON CONTRASEÑA
     await sendMailToOwner(emailDocente, "ESFOT" + password);
+    console.log(`✅ Docente registrado: ${emailNormalizado}`);
 
     res.status(201).json({ 
-      msg: "Registro exitoso! El correo ha sido enviado con éxito al docente creado." 
+      msg: "Docente registrado exitosamente. Se envió un correo con las credenciales." 
     });
   } catch (error) {
-    console.error("Error en registrarDocente:", error);
+    console.error("❌ Error en registrarDocente:", error);
+
+    // ✅ MANEJAR ERROR DE DUPLICADO DE MONGODB
+    if (error.code === 11000) {
+      const campo = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({ 
+        msg: `El ${campo} ya está registrado en el sistema` 
+      });
+    }
+
     res.status(500).json({ 
       msg: "Error interno del servidor", 
       error: error.message 
     });
   }
 };
-
 // ========== CAMBIO DE CONTRASEÑA OBLIGATORIO ==========
 const cambiarPasswordObligatorio = async (req, res) => {
   try {
@@ -331,43 +372,49 @@ const crearNuevoPasswordDocente = async (req, res) => {
   }
 };
 
-// ========== LISTAR DOCENTES ==========
+// ===========================================================
+// ✅ LISTAR DOCENTES (INCLUYE INACTIVOS PARA ADMIN)
+// ===========================================================
 const listarDocentes = async (req, res) => {
   try {
-    let docentes = [];
-    
+    let filtro = {};
+
     if (req.administradorBDD) {
-      docentes = await Docente.find({ 
-        estadoDocente: true, 
-        administrador: req.administradorBDD._id 
-      }).select("-salida -createdAt -updatedAt -__v");
+      // Admin ve TODOS los docentes (activos e inactivos)
+      filtro.administrador = req.administradorBDD._id;
     } else if (req.estudianteBDD) {
-      docentes = await Docente.find({ 
-        estadoDocente: true 
-      }).select("-salida -createdAt -updatedAt -__v");
+      // Estudiantes solo ven docentes activos
+      filtro.estadoDocente = true;
     } else {
-      return res.status(403).json({ 
-        msg: "No autorizado para ver docentes" 
-      });
+      return res.status(403).json({ msg: "No autorizado para ver docentes" });
     }
 
-    // Asegurar que asignaturas sea siempre un array
-    docentes = docentes.map(doc => {
-      if (typeof doc.asignaturas === "string") {
+    const docentes = await Docente.find(filtro)
+      .select("-salida -createdAt -updatedAt -__v -passwordDocente -token")
+      .sort({ estadoDocente: -1, nombreDocente: 1 }); // Activos primero
+
+    // ✅ Asegurar que asignaturas sea siempre un array
+    const docentesFormateados = docentes.map(doc => {
+      const docenteObj = doc.toObject();
+      if (typeof docenteObj.asignaturas === "string") {
         try {
-          doc.asignaturas = JSON.parse(doc.asignaturas);
+          docenteObj.asignaturas = JSON.parse(docenteObj.asignaturas);
         } catch {
-          doc.asignaturas = [];
+          docenteObj.asignaturas = [];
         }
       }
-      return doc;
+      return docenteObj;
     });
 
-    return res.status(200).json({ docentes });
+    return res.status(200).json({ 
+      total: docentesFormateados.length,
+      docentes: docentesFormateados 
+    });
   } catch (error) {
+    console.error("Error al listar docentes:", error);
     return res.status(500).json({ 
       msg: "Error al listar docentes", 
-      error 
+      error: error.message 
     });
   }
 };

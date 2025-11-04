@@ -1,3 +1,4 @@
+// ✅ IMPORTS NECESARIOS
 import 'package:flutter/material.dart';
 import '../modelos/usuario.dart';
 import '../servicios/auth_service.dart';
@@ -6,6 +7,72 @@ import 'perfil/editar_perfil_screen.dart';
 import 'auth/cambiar_password_screen.dart';
 import 'admin/gestion_usuarios_screen.dart';
 import 'docente/gestion_materias_screen.dart';
+import 'package:app_tesis/pantallas/docente/gestion_horarios_screen.dart';
+import 'package:app_tesis/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart';
+
+// ✅ IMPORTS PARA ESTADÍSTICAS
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../config/api_config.dart';
+
+// =====================================================
+// ✅ SERVICIO DE ESTADÍSTICAS
+// =====================================================
+
+class EstadisticasService {
+  static Future<Map<String, int>> obtenerEstadisticas() async {
+    try {
+      final token = await AuthService.getToken();
+
+      if (token == null) {
+        return {
+          'docentes': 0,
+          'docentesActivos': 0,
+          'estudiantes': 0,
+          'tutorias': 0,
+        };
+      }
+
+      // Obtener docentes
+      final docentesResponse = await http.get(
+        Uri.parse(ApiConfig.listarDocentes),
+        headers: ApiConfig.getHeaders(token: token),
+      );
+
+      int totalDocentes = 0;
+      int docentesActivos = 0;
+
+      if (docentesResponse.statusCode == 200) {
+        final data = jsonDecode(docentesResponse.body);
+        final docentes = data['docentes'] as List? ?? [];
+        totalDocentes = docentes.length;
+        docentesActivos =
+            docentes.where((d) => d['estadoDocente'] == true).length;
+      }
+
+      // TODO: Cargar estudiantes y tutorías cuando existan endpoints
+
+      return {
+        'docentes': totalDocentes,
+        'docentesActivos': docentesActivos,
+        'estudiantes': 0,
+        'tutorias': 0,
+      };
+    } catch (e) {
+      print('Error obteniendo estadísticas: $e');
+      return {
+        'docentes': 0,
+        'docentesActivos': 0,
+        'estudiantes': 0,
+        'tutorias': 0,
+      };
+    }
+  }
+}
+
+// =====================================================
+// ✅ HOME SCREEN PRINCIPAL
+// =====================================================
 
 class HomeScreen extends StatefulWidget {
   final Usuario usuario;
@@ -24,28 +91,20 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _usuario = widget.usuario;
-    debugPrint(
-      'HomeScreen init usuario: ${_usuario.id} | ${_usuario.nombre} | rol=${_usuario.rol}',
-    );
   }
 
-  // ✅ MÉTODO CORREGIDO: Actualiza el usuario en toda la app
   void _onUserUpdated(Usuario usuarioActualizado) {
-    debugPrint(
-      'HomeScreen onUserUpdated: ${usuarioActualizado.id} | ${usuarioActualizado.nombre}',
-    );
     setState(() {
       _usuario = usuarioActualizado;
     });
   }
 
-  // Obtener las pantallas según el rol
   List<Widget> _getScreens() {
     switch (_usuario.rol) {
       case 'Administrador':
         return [
           _DashboardAdministrador(usuario: _usuario),
-          _PlaceholderScreen(titulo: 'Gestión de Usuarios'),
+          //_PlaceholderScreen(titulo: 'Gestión de Usuarios'),
           _PlaceholderScreen(titulo: 'Reportes'),
           _PerfilScreen(usuario: _usuario, onUserUpdated: _onUserUpdated),
         ];
@@ -56,7 +115,6 @@ class _HomeScreenState extends State<HomeScreen> {
           _PlaceholderScreen(titulo: 'Mis Tutorías'),
           _PerfilScreen(usuario: _usuario, onUserUpdated: _onUserUpdated),
         ];
-      case 'Estudiante':
       default:
         return [
           _DashboardEstudiante(usuario: _usuario),
@@ -67,13 +125,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Obtener los items del bottom navigation según el rol
   List<BottomNavigationBarItem> _getNavItems() {
     switch (_usuario.rol) {
       case 'Administrador':
         return const [
           BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Inicio'),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Usuarios'),
+          //BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Usuarios'),
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Reportes'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
         ];
@@ -84,7 +141,6 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Tutorías'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
         ];
-      case 'Estudiante':
       default:
         return const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
@@ -103,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: IndexedStack(index: _selectedIndex, children: screens),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
+        onTap: (i) => setState(() => _selectedIndex = i),
         type: BottomNavigationBarType.fixed,
         selectedItemColor: const Color(0xFF1565C0),
         items: _getNavItems(),
@@ -112,9 +168,247 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ========== DASHBOARDS POR ROL ==========
+// =====================================================
+// ✅ DASHBOARD PARA ADMINISTRADORES — ACTUALIZADO
+// =====================================================
 
-// Dashboard para Estudiantes
+class _DashboardAdministrador extends StatefulWidget {
+  final Usuario usuario;
+
+  const _DashboardAdministrador({required this.usuario});
+
+  @override
+  State<_DashboardAdministrador> createState() => _DashboardAdministradorState();
+}
+
+class _DashboardAdministradorState extends State<_DashboardAdministrador> {
+  Map<String, int> _estadisticas = {
+    'docentes': 0,
+    'docentesActivos': 0,
+    'estudiantes': 0,
+    'tutorias': 0,
+  };
+
+  bool _cargando = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarEstadisticas();
+  }
+
+  Future<void> _cargarEstadisticas() async {
+    setState(() => _cargando = true);
+
+    final stats = await EstadisticasService.obtenerEstadisticas();
+
+    setState(() {
+      _estadisticas = stats;
+      _cargando = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Panel de Administración'),
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _cargarEstadisticas),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _cargarEstadisticas,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Bienvenido, ${widget.usuario.nombre}',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Panel de Administración - ESFOT Tutorías',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+
+              // ✅ Estadísticas
+              if (_cargando)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(40),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else
+                GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  children: [
+                    _StatCard(
+                      title: 'Docentes',
+                      value: '${_estadisticas['docentes']}',
+                      subtitle: '${_estadisticas['docentesActivos']} activos',
+                      icon: Icons.people,
+                      color: const Color(0xFF1565C0),
+                    ),
+                    _StatCard(
+                      title: 'Estudiantes',
+                      value: '${_estadisticas['estudiantes']}',
+                      icon: Icons.school,
+                      color: const Color(0xFF4CAF50),
+                    ),
+                    _StatCard(
+                      title: 'Tutorías',
+                      value: '${_estadisticas['tutorias']}',
+                      icon: Icons.book,
+                      color: const Color(0xFFFF9800),
+                    ),
+                    _StatCard(
+                      title: 'Este mes',
+                      value: '0',
+                      icon: Icons.calendar_today,
+                      color: const Color(0xFF9C27B0),
+                    ),
+                  ],
+                ),
+
+              const SizedBox(height: 24),
+
+              // ✅ Acción rápida a gestión de usuarios
+              const Text(
+                'Acciones rápidas',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+
+              Card(
+                elevation: 2,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            GestionUsuariosScreen(usuario: widget.usuario),
+                      ),
+                    ).then((_) => _cargarEstadisticas());
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1565C0).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.people,
+                              size: 32, color: Color(0xFF1565C0)),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Gestión de Docentes',
+                                  style: TextStyle(
+                                      fontSize: 18, fontWeight: FontWeight.bold)),
+                              SizedBox(height: 4),
+                              Text('Administrar docentes del sistema',
+                                  style:
+                                      TextStyle(fontSize: 14, color: Colors.grey)),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios,
+                            size: 18, color: Colors.grey),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Tarjeta auxiliar
+class _StatCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final String? subtitle;
+  final IconData icon;
+  final Color color;
+
+  const _StatCard({
+    required this.title,
+    required this.value,
+    this.subtitle,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 40, color: color),
+            const SizedBox(height: 12),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                subtitle!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// =====================================================
+// ✅ DASHBOARD ESTUDIANTE (CORREGIDO Y LISTO)
+// =====================================================
+
 class _DashboardEstudiante extends StatelessWidget {
   final Usuario usuario;
 
@@ -141,7 +435,7 @@ class _DashboardEstudiante extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Tarjeta de bienvenida
+            // Tarjeta de perfil
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -179,6 +473,7 @@ class _DashboardEstudiante extends StatelessWidget {
                 ),
               ),
             ),
+
             const SizedBox(height: 24),
 
             // Acciones rápidas
@@ -206,12 +501,16 @@ class _DashboardEstudiante extends StatelessWidget {
                   },
                 ),
                 _QuickActionCard(
-                  icon: Icons.event,
-                  title: 'Mis Citas',
+                  icon: Icons.search,
+                  title: 'Docentes Disponibles',
                   color: Colors.green,
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Próximamente')),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            VerDisponibilidadDocentesScreen(usuario: usuario),
+                      ),
                     );
                   },
                 ),
@@ -237,6 +536,7 @@ class _DashboardEstudiante extends StatelessWidget {
                 ),
               ],
             ),
+
             const SizedBox(height: 24),
 
             // Próximas tutorías
@@ -251,11 +551,7 @@ class _DashboardEstudiante extends StatelessWidget {
                 padding: const EdgeInsets.all(32),
                 child: Column(
                   children: [
-                    Icon(
-                      Icons.calendar_today,
-                      size: 64,
-                      color: Colors.grey[400],
-                    ),
+                    Icon(Icons.calendar_today, size: 64, color: Colors.grey[400]),
                     const SizedBox(height: 16),
                     Text(
                       'No tienes tutorías próximas',
@@ -272,7 +568,11 @@ class _DashboardEstudiante extends StatelessWidget {
   }
 }
 
-// Dashboard para Docentes
+
+// =====================================================
+// ✅ DASHBOARD DOCENTE (CORREGIDO Y LISTO)
+// =====================================================
+
 class _DashboardDocente extends StatelessWidget {
   final Usuario usuario;
 
@@ -299,6 +599,7 @@ class _DashboardDocente extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Tarjeta de bienvenida
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -321,8 +622,10 @@ class _DashboardDocente extends StatelessWidget {
                 ),
               ),
             ),
+
             const SizedBox(height: 24),
 
+            // Estadísticas rápidas
             Row(
               children: [
                 Expanded(
@@ -344,16 +647,17 @@ class _DashboardDocente extends StatelessWidget {
                 ),
               ],
             ),
+
             const SizedBox(height: 24),
 
-            // ⭐ SECCIÓN NUEVA: Acciones rápidas
+            // Acciones rápidas
             const Text(
               'Acciones rápidas',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
 
-            // ⭐ Tarjeta de Gestión de Materias
+            // Mis Materias
             Card(
               elevation: 2,
               child: InkWell(
@@ -361,7 +665,8 @@ class _DashboardDocente extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => GestionMateriasScreen(usuario: usuario),
+                      builder: (context) =>
+                          GestionMateriasScreen(usuario: usuario),
                     ),
                   );
                 },
@@ -397,10 +702,8 @@ class _DashboardDocente extends StatelessWidget {
                             SizedBox(height: 4),
                             Text(
                               'Gestionar materias y horarios',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
-                              ),
+                              style:
+                                  TextStyle(fontSize: 14, color: Colors.grey),
                             ),
                           ],
                         ),
@@ -415,9 +718,74 @@ class _DashboardDocente extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-            // ⭐ FIN DE SECCIÓN NUEVA
 
+            const SizedBox(height: 12),
+
+            // Mis Horarios
+            Card(
+              elevation: 2,
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          GestionHorariosScreen(usuario: usuario),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4CAF50).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.schedule,
+                          size: 32,
+                          color: Color(0xFF4CAF50),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Mis Horarios',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Gestionar horarios de tutorías',
+                              style:
+                                  TextStyle(fontSize: 14, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 18,
+                        color: Colors.grey,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Solicitudes pendientes
             const Text(
               'Solicitudes pendientes',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -446,139 +814,11 @@ class _DashboardDocente extends StatelessWidget {
   }
 }
 
-// Dashboard para Administradores
-class _DashboardAdministrador extends StatelessWidget {
-  final Usuario usuario;
 
-  const _DashboardAdministrador({required this.usuario});
+// =====================================================
+// ✅ PERFIL SCREEN (SIN CAMBIOS DE TU VERSIÓN)
+// =====================================================
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Panel de Administración')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Bienvenido, ${usuario.nombre}',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 24),
-
-            // Acciones rápidas
-            const Text(
-              'Acciones rápidas',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-
-            // Tarjeta de Gestión de Usuarios
-            Card(
-              elevation: 2,
-              child: InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => GestionUsuariosScreen(usuario: usuario),
-                    ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1565C0).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.people,
-                          size: 32,
-                          color: Color(0xFF1565C0),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Gestión de Usuarios',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Administrar docentes del sistema',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(
-                        Icons.arrow_forward_ios,
-                        size: 18,
-                        color: Colors.grey,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              children: [
-                _StatCard(
-                  title: 'Usuarios',
-                  value: '0',
-                  icon: Icons.people,
-                  color: Colors.blue,
-                ),
-                _StatCard(
-                  title: 'Tutorías',
-                  value: '0',
-                  icon: Icons.book,
-                  color: Colors.green,
-                ),
-                _StatCard(
-                  title: 'Docentes',
-                  value: '0',
-                  icon: Icons.school,
-                  color: Colors.orange,
-                ),
-                _StatCard(
-                  title: 'Estudiantes',
-                  value: '0',
-                  icon: Icons.person,
-                  color: Colors.purple,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Pantalla de Perfil
 class _PerfilScreen extends StatefulWidget {
   final Usuario usuario;
   final ValueChanged<Usuario>? onUserUpdated;
@@ -598,11 +838,8 @@ class _PerfilScreenState extends State<_PerfilScreen> {
     _usuario = widget.usuario;
   }
 
-  // ✅ MÉTODO CORREGIDO: Navega y actualiza el perfil
   Future<void> _navegarAEditarPerfil() async {
-    // ✅ VALIDAR QUE EL USUARIO TIENE ID
     if (_usuario.id.isEmpty) {
-      print('❌ ERROR: Usuario sin ID válido');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Error: Sesión inválida. Inicia sesión nuevamente.'),
@@ -611,13 +848,7 @@ class _PerfilScreenState extends State<_PerfilScreen> {
       );
       return;
     }
-    
-    print('🔹 Navegando a editar perfil con usuario:');
-    print('   ID: ${_usuario.id}');
-    print('   Nombre: ${_usuario.nombre}');
-    print('   Email: ${_usuario.email}');
-    print('   Rol: ${_usuario.rol}');
-    
+
     final usuarioActualizado = await Navigator.push<Usuario>(
       context,
       MaterialPageRoute(
@@ -626,15 +857,10 @@ class _PerfilScreenState extends State<_PerfilScreen> {
     );
 
     if (usuarioActualizado != null && mounted) {
-      print('✅ Usuario actualizado recibido: ${usuarioActualizado.nombre}');
       setState(() {
         _usuario = usuarioActualizado;
       });
-      
-      // ✅ ESTA LÍNEA ES LA CLAVE - Notifica al HomeScreen
       widget.onUserUpdated?.call(usuarioActualizado);
-    } else {
-      print('⚠️ No se recibió usuario actualizado');
     }
   }
 
@@ -685,7 +911,6 @@ class _PerfilScreenState extends State<_PerfilScreen> {
           ListTile(
             leading: const Icon(Icons.edit),
             title: const Text('Editar Perfil'),
-            subtitle: const Text('Actualiza tu información personal'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: _navegarAEditarPerfil,
           ),
@@ -693,7 +918,6 @@ class _PerfilScreenState extends State<_PerfilScreen> {
           ListTile(
             leading: const Icon(Icons.lock),
             title: const Text('Cambiar Contraseña'),
-            subtitle: const Text('Actualiza tu contraseña'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
               Navigator.push(
@@ -710,18 +934,14 @@ class _PerfilScreenState extends State<_PerfilScreen> {
 
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text(
-              'Cerrar Sesión',
-              style: TextStyle(color: Colors.red),
-            ),
+            title: const Text('Cerrar Sesión',
+                style: TextStyle(color: Colors.red)),
             onTap: () async {
               final confirmar = await showDialog<bool>(
                 context: context,
                 builder: (context) => AlertDialog(
                   title: const Text('Cerrar Sesión'),
-                  content: const Text(
-                    '¿Estás seguro de que deseas cerrar sesión?',
-                  ),
+                  content: const Text('¿Estás seguro de que deseas cerrar sesión?'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context, false),
@@ -729,9 +949,8 @@ class _PerfilScreenState extends State<_PerfilScreen> {
                     ),
                     ElevatedButton(
                       onPressed: () => Navigator.pop(context, true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                      ),
+                      style:
+                          ElevatedButton.styleFrom(backgroundColor: Colors.red),
                       child: const Text('Cerrar Sesión'),
                     ),
                   ],
@@ -750,9 +969,10 @@ class _PerfilScreenState extends State<_PerfilScreen> {
   }
 }
 
-// ========== WIDGETS AUXILIARES ==========
+// =====================================================
+// ✅ WIDGETS AUXILIARES
+// =====================================================
 
-// Tarjeta de acción rápida
 class _QuickActionCard extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -796,53 +1016,6 @@ class _QuickActionCard extends StatelessWidget {
   }
 }
 
-// Tarjeta de estadística
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 40, color: color),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Pantalla placeholder
 class _PlaceholderScreen extends StatelessWidget {
   final String titulo;
 

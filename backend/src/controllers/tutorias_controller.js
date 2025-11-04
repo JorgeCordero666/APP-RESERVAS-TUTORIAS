@@ -1,11 +1,16 @@
 import Tutoria from '../models/tutorias.js';
 import disponibilidadDocente from '../models/disponibilidadDocente.js';
-import moment from 'moment'
-// Registrar una nueva tutoría
+import Docente from '../models/docente.js';
+import moment from 'moment';
+
+// =====================================================
+// ✅ REGISTRAR TUTORIA
+// =====================================================
 const registrarTutoria = async (req, res) => {
   try {
     const { docente, fecha, horaInicio, horaFin } = req.body;
-    //Obtener el ID del estudiante 
+
+    // Obtener el ID del estudiante 
     const estudiante = req.estudianteBDD?._id;
     if (!estudiante) {
       return res.status(401).json({ msg: "Estudiante no autenticado" });
@@ -17,7 +22,6 @@ const registrarTutoria = async (req, res) => {
       fecha,
       horaInicio,
       horaFin,
-      estado: { $in: ['pendiente', 'confirmada'] },
       estado: { $in: ['pendiente', 'confirmada'] },
       $or: [
         {
@@ -32,14 +36,14 @@ const registrarTutoria = async (req, res) => {
     }
 
     // 2. Validar que el bloque esté en la disponibilidad del docente
-    const fechaUTC = new Date(fecha + 'T05:00:00Z');   //Forzar la zona horaria a Ecuador
+    const fechaUTC = new Date(fecha + 'T05:00:00Z'); // Ecuador
     const diaSemana = fechaUTC.toLocaleDateString('es-EC', { weekday: 'long' }).toLowerCase();
+
     const disponibilidad = await disponibilidadDocente.findOne({ docente, diaSemana });
     if (!disponibilidad) {
       return res.status(400).json({ msg: "El docente no tiene disponibilidad registrada para ese día." });
     }
 
-    //Buscar el bloque especifico en el array de bloques disponibles
     const bloqueValido = disponibilidad.bloques.some(
       b => b.horaInicio === horaInicio && b.horaFin === horaFin
     );
@@ -48,56 +52,52 @@ const registrarTutoria = async (req, res) => {
       return res.status(400).json({ msg: "Ese bloque no está dentro del horario disponible del docente." });
     }
 
-    // 3. Registrar la tutoría si todo es válido
+    // 3. Registrar la tutoría
     const nuevaTutoria = new Tutoria({
       estudiante,
       docente,
       fecha,
       horaInicio,
       horaFin,
-      estado: 'pendiente' // por defecto
+      estado: 'pendiente'
     });
 
     await nuevaTutoria.save();
 
-    // Eliminar los campos innecesarios para la respuesta
-    const { motivoCancelacion, observacionesDocente, __v, ...tutoria} = nuevaTutoria.toObject();
+    const { motivoCancelacion, observacionesDocente, __v, ...tutoria } = nuevaTutoria.toObject();
 
-    res.status(201).json({msg:"Tutoria registrada con éxito!", nuevaTutoria: tutoria});
+    res.status(201).json({ msg: "Tutoria registrada con éxito!", nuevaTutoria: tutoria });
 
   } catch (error) {
     res.status(500).json({ mensaje: 'Error al agendar tutoría.', error });
   }
 };
 
-//Listar todas las tutorias
+// =====================================================
+// ✅ LISTAR TUTORIAS
+// =====================================================
 const listarTutorias = async (req, res) => {
   try {
     let filtro = {};
 
-    // Filtrado por rol
     if (req.docenteBDD) {
       filtro.docente = req.docenteBDD._id;
     } else if (req.estudianteBDD) {
       filtro.estudiante = req.estudianteBDD._id;
-    } 
+    }
 
-    // Filtros opcionales por query
     const { fecha, estado } = req.query;
 
     if (fecha) {
       filtro.fecha = fecha;
     } else {
-      // Si no envían fecha, filtramos solo tutorías de la semana actual
       const inicioSemana = moment().startOf('isoWeek').format("YYYY-MM-DD");
       const finSemana = moment().endOf('isoWeek').format("YYYY-MM-DD");
 
       filtro.fecha = { $gte: inicioSemana, $lte: finSemana };
     }
 
-    if (estado) {
-      filtro.estado = estado;
-    }
+    if (estado) filtro.estado = estado;
 
     const tutorias = await Tutoria.find(filtro)
       .populate("estudiante", "nombreEstudiante")
@@ -109,7 +109,9 @@ const listarTutorias = async (req, res) => {
   }
 };
 
-
+// =====================================================
+// ✅ ACTUALIZAR TUTORIA
+// =====================================================
 const actualizarTutoria = async (req, res) => {
   try {
     const { id } = req.params;
@@ -121,12 +123,11 @@ const actualizarTutoria = async (req, res) => {
       return res.status(400).json({ msg: 'No se puede modificar una tutoría cancelada.' });
     }
 
-    // Validar que el usuario autenticado modifica la tutoria
     if (!req.estudianteBDD || tutoria.estudiante.toString() !== req.estudianteBDD._id.toString()) {
       return res.status(403).json({ msg: 'No autorizado para modificar esta tutoría.' });
     }
 
-    Object.assign(tutoria, req.body); //Actualiza los campos recibidos
+    Object.assign(tutoria, req.body);
     await tutoria.save();
 
     res.json(tutoria);
@@ -135,7 +136,9 @@ const actualizarTutoria = async (req, res) => {
   }
 };
 
-//Cancelar una tutoría por estudiante o docente
+// =====================================================
+// ✅ CANCELAR TUTORIA
+// =====================================================
 const cancelarTutoria = async (req, res) => {
   try {
     const { id } = req.params;
@@ -168,7 +171,9 @@ const cancelarTutoria = async (req, res) => {
   }
 };
 
-// Registrar asistencia (solo si no está cancelada)
+// =====================================================
+// ✅ REGISTRAR ASISTENCIA
+// =====================================================
 const registrarAsistencia = async (req, res) => {
   try {
     const { id } = req.params;
@@ -177,12 +182,10 @@ const registrarAsistencia = async (req, res) => {
     const tutoria = await Tutoria.findById(id);
     if (!tutoria) return res.status(404).json({ msg: 'Tutoría no encontrada.' });
 
-    //Validar que la tutoría no esté cancelada
     if (['cancelada_por_estudiante', 'cancelada_por_docente'].includes(tutoria.estado)) {
       return res.status(400).json({ msg: 'No se puede registrar asistencia en una tutoría cancelada.' });
     }
 
-    // Validar que no se haya registrado ya
     if (tutoria.asistenciaEstudiante !== null) {
       return res.status(400).json({ msg: 'La asistencia ya fue registrada.' });
     }
@@ -199,20 +202,20 @@ const registrarAsistencia = async (req, res) => {
   }
 };
 
-// Funcion para que el docente registre/actualice su disponibilidad semanal
+// =====================================================
+// ✅ REGISTRAR DISPONIBILIDAD GENERAL
+// =====================================================
 const registrarDisponibilidadDocente = async (req, res) => {
   try {
     const { diaSemana, bloques } = req.body;
     const docente = req.docenteBDD?._id;
     if (!docente) return res.status(401).json({ msg: "Docente no autenticado" });
-    // Validar que el docente y día exista o no
+
     let disponibilidad = await disponibilidadDocente.findOne({ docente, diaSemana });
 
     if (disponibilidad) {
-      // Actualiza bloques
       disponibilidad.bloques = bloques;
     } else {
-      // Crea nuevo documento
       disponibilidad = new disponibilidadDocente({ docente, diaSemana, bloques });
     }
 
@@ -223,13 +226,15 @@ const registrarDisponibilidadDocente = async (req, res) => {
   }
 };
 
+// =====================================================
+// ✅ VER DISPONIBILIDAD GENERAL
+// =====================================================
 const verDisponibilidadDocente = async (req, res) => {
   try {
     const { docenteId } = req.params;
-    console.log("docenteId recibido:", docenteId);
-    // Buscar TODA la disponibilidad semanal del docente
+
     const disponibilidad = await disponibilidadDocente.find({ docente: docenteId });
-    console.log("Disponibilidad encontrada:", disponibilidad);
+
     if (!disponibilidad || disponibilidad.length === 0) {
       return res.status(404).json({ msg: "El docente no tiene disponibilidad registrada." });
     }
@@ -240,6 +245,9 @@ const verDisponibilidadDocente = async (req, res) => {
   }
 };
 
+// =====================================================
+// ✅ BLOQUES OCUPADOS DOCENTE
+// =====================================================
 const bloquesOcupadosDocente = async (req, res) => {
   try {
     const { docenteId } = req.params;
@@ -253,10 +261,10 @@ const bloquesOcupadosDocente = async (req, res) => {
       estado: { $in: ['pendiente', 'confirmada'] }
     }).select("fecha horaInicio horaFin");
 
-    // Convertir la fecha a día de la semana en español
     const resultado = ocupados.map(o => {
       const fechaUTC = new Date(o.fecha + 'T05:00:00Z');
       const diaSemana = fechaUTC.toLocaleDateString('es-EC', { weekday: 'long' }).toLowerCase();
+
       return {
         diaSemana,
         fecha: o.fecha,
@@ -271,7 +279,167 @@ const bloquesOcupadosDocente = async (req, res) => {
   }
 };
 
+// =====================================================
+// ✅ NUEVAS FUNCIONES — DISPONIBILIDAD POR MATERIA
+// =====================================================
 
+// ⭐ Registrar disponibilidad por materia
+const registrarDisponibilidadPorMateria = async (req, res) => {
+  try {
+    const { materia, diaSemana, bloques } = req.body;
+    const docente = req.docenteBDD?._id;
+
+    if (!docente) {
+      return res.status(401).json({ msg: "Docente no autenticado" });
+    }
+
+    if (!materia || !diaSemana || !bloques) {
+      return res.status(400).json({ 
+        msg: "Materia, día de la semana y bloques son obligatorios" 
+      });
+    }
+
+    const docenteBDD = await Docente.findById(docente);
+
+    if (!docenteBDD.asignaturas || !docenteBDD.asignaturas.includes(materia)) {
+      return res.status(400).json({
+        msg: "Esta materia no está asignada a tu perfil"
+      });
+    }
+
+    let disponibilidad = await disponibilidadDocente.findOne({ 
+      docente, 
+      diaSemana, 
+      materia 
+    });
+
+    if (disponibilidad) {
+      disponibilidad.bloques = bloques;
+    } else {
+      disponibilidad = new disponibilidadDocente({ 
+        docente, 
+        diaSemana, 
+        materia,
+        bloques 
+      });
+    }
+
+    await disponibilidad.save();
+
+    res.status(200).json({ 
+      msg: "Disponibilidad actualizada con éxito.", 
+      disponibilidad 
+    });
+  } catch (error) {
+    console.error("Error en registrarDisponibilidadPorMateria:", error);
+    res.status(500).json({ 
+      msg: "Error al actualizar disponibilidad", 
+      error: error.message 
+    });
+  }
+};
+
+// ⭐ Ver disponibilidad por materia
+const verDisponibilidadPorMateria = async (req, res) => {
+  try {
+    const { docenteId, materia } = req.params;
+
+    const disponibilidad = await disponibilidadDocente.find({ 
+      docente: docenteId,
+      materia 
+    });
+
+    if (!disponibilidad || disponibilidad.length === 0) {
+      return res.status(200).json({
+        msg: "El docente no tiene disponibilidad registrada para esta materia.",
+        disponibilidad: []
+      });
+    }
+
+    res.status(200).json({ disponibilidad });
+  } catch (error) {
+    console.error("Error en verDisponibilidadPorMateria:", error);
+    res.status(500).json({ 
+      msg: "Error al obtener la disponibilidad.", 
+      error: error.message 
+    });
+  }
+};
+
+// ⭐ Ver toda la disponibilidad agrupada por materia
+const verDisponibilidadCompletaDocente = async (req, res) => {
+  try {
+    const { docenteId } = req.params;
+
+    const disponibilidad = await disponibilidadDocente.find({
+      docente: docenteId
+    }).sort({ materia: 1, diaSemana: 1 });
+
+    if (!disponibilidad || disponibilidad.length === 0) {
+      return res.status(200).json({
+        msg: "El docente no tiene disponibilidad registrada.",
+        disponibilidad: {}
+      });
+    }
+
+    const porMateria = {};
+    disponibilidad.forEach(disp => {
+      const mat = disp.materia || 'General';
+      if (!porMateria[mat]) porMateria[mat] = [];
+
+      porMateria[mat].push({
+        diaSemana: disp.diaSemana,
+        bloques: disp.bloques
+      });
+    });
+
+    res.status(200).json({
+      docenteId,
+      materias: porMateria
+    });
+
+  } catch (error) {
+    console.error("Error en verDisponibilidadCompletaDocente:", error);
+    res.status(500).json({
+      msg: "Error al obtener disponibilidad.",
+      error: error.message
+    });
+  }
+};
+
+// ⭐ Eliminar disponibilidad por materia y día
+const eliminarDisponibilidadMateria = async (req, res) => {
+  try {
+    const { docenteId, materia, dia } = req.params;
+
+    if (req.docenteBDD._id.toString() !== docenteId) {
+      return res.status(403).json({
+        msg: 'No tienes permiso para eliminar esta disponibilidad'
+      });
+    }
+
+    await disponibilidadDocente.findOneAndDelete({
+      docente: docenteId,
+      materia,
+      diaSemana: dia
+    });
+
+    res.status(200).json({
+      msg: "Disponibilidad eliminada correctamente"
+    });
+
+  } catch (error) {
+    console.error("Error en eliminarDisponibilidadMateria:", error);
+    res.status(500).json({
+      msg: "Error al eliminar disponibilidad",
+      error: error.message
+    });
+  }
+};
+
+// =====================================================
+// ✅ EXPORTAR TODO
+// =====================================================
 export {
   registrarTutoria,
   listarTutorias,
@@ -280,5 +448,11 @@ export {
   registrarAsistencia,
   registrarDisponibilidadDocente,
   verDisponibilidadDocente,
-  bloquesOcupadosDocente
+  bloquesOcupadosDocente,
+
+  // ✅ Nuevas funciones
+  registrarDisponibilidadPorMateria,
+  verDisponibilidadPorMateria,
+  verDisponibilidadCompletaDocente,
+  eliminarDisponibilidadMateria
 };
