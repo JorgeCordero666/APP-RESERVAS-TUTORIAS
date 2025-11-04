@@ -649,6 +649,202 @@ const actualizarPasswordEstudiante = async (req, res) => {
   }
 };
 
+// ========== LISTAR ESTUDIANTES (ADMIN) ==========
+const listarEstudiantes = async (req, res) => {
+  try {
+    // Solo admin puede listar todos los estudiantes
+    if (!req.administradorBDD) {
+      return res.status(403).json({ 
+        msg: "No autorizado para ver estudiantes" 
+      });
+    }
+
+    const estudiantes = await Estudiante.find()
+      .select("-password -token -__v")
+      .sort({ confirmEmail: -1, nombreEstudiante: 1 });
+
+    return res.status(200).json({ 
+      total: estudiantes.length,
+      estudiantes 
+    });
+  } catch (error) {
+    console.error("Error al listar estudiantes:", error);
+    return res.status(500).json({ 
+      msg: "Error al listar estudiantes", 
+      error: error.message 
+    });
+  }
+};
+
+// ========== DETALLE DE ESTUDIANTE (ADMIN) ==========
+const detalleEstudiante = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(404).json({ 
+        msg: `ID de estudiante inválido` 
+      });
+    }
+    
+    const estudiante = await Estudiante.findById(id)
+      .select('-password -token -__v');
+
+    if (!estudiante) {
+      return res.status(404).json({ 
+        msg: "Estudiante no encontrado" 
+      });
+    }
+
+    res.status(200).json(estudiante);
+  } catch (error) {
+    res.status(500).json({ 
+      msg: "Error al obtener detalle", 
+      error: error.message 
+    });
+  }
+};
+
+// ========== ACTUALIZAR ESTUDIANTE (ADMIN) ==========
+const actualizarEstudianteAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombreEstudiante, telefono, emailEstudiante } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        msg: "ID de estudiante inválido" 
+      });
+    }
+
+    const estudianteBDD = await Estudiante.findById(id);
+
+    if (!estudianteBDD) {
+      return res.status(404).json({ 
+        msg: "Estudiante no encontrado" 
+      });
+    }
+
+    // Actualizar campos
+    if (nombreEstudiante && nombreEstudiante.trim() !== '') {
+      if (nombreEstudiante.trim().length < 3) {
+        return res.status(400).json({
+          msg: "El nombre debe tener al menos 3 caracteres"
+        });
+      }
+      estudianteBDD.nombreEstudiante = nombreEstudiante.trim();
+    }
+
+    if (emailEstudiante && emailEstudiante.trim() !== '') {
+      const emailNormalizado = emailEstudiante.trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      
+      if (!emailRegex.test(emailNormalizado)) {
+        return res.status(400).json({
+          msg: "Por favor ingresa un email válido"
+        });
+      }
+
+      const emailExistente = await Estudiante.findOne({ 
+        emailEstudiante: emailNormalizado 
+      });
+      
+      if (emailExistente && emailExistente._id.toString() !== id) {
+        return res.status(400).json({
+          msg: "El email ya está en uso por otro estudiante"
+        });
+      }
+
+      estudianteBDD.emailEstudiante = emailNormalizado;
+    }
+
+    if (telefono && telefono.trim() !== '') {
+      const telefonoLimpio = telefono.replace(/[\s\-\(\)]/g, '');
+
+      if (!/^\d+$/.test(telefonoLimpio)) {
+        return res.status(400).json({
+          msg: "El teléfono solo debe contener números"
+        });
+      }
+
+      if (telefonoLimpio.length !== 10) {
+        return res.status(400).json({
+          msg: "El teléfono debe tener exactamente 10 dígitos"
+        });
+      }
+
+      estudianteBDD.telefono = telefonoLimpio;
+    }
+
+    // Actualizar imagen si se envía
+    if (req.files?.imagen) {
+      if (estudianteBDD.fotoPerfilID) {
+        await cloudinary.uploader.destroy(estudianteBDD.fotoPerfilID);
+      }
+
+      const { secure_url, public_id } = await cloudinary.uploader.upload(
+        req.files.imagen.tempFilePath,
+        {
+          folder: "Estudiantes",
+          transformation: [
+            { width: 500, height: 500, crop: "limit" },
+            { quality: "auto:good" }
+          ]
+        }
+      );
+
+      estudianteBDD.fotoPerfil = secure_url;
+      estudianteBDD.fotoPerfilID = public_id;
+
+      await fs.unlink(req.files.imagen.tempFilePath);
+    }
+
+    await estudianteBDD.save();
+
+    const estudianteActualizado = await Estudiante.findById(id)
+      .select('-password -token -__v');
+
+    res.status(200).json({
+      success: true,
+      msg: "Estudiante actualizado con éxito",
+      estudiante: estudianteActualizado
+    });
+  } catch (error) {
+    console.error("Error actualizando estudiante:", error);
+    res.status(500).json({ 
+      msg: "Error al actualizar estudiante", 
+      error: error.message 
+    });
+  }
+};
+
+// ========== ELIMINAR ESTUDIANTE (ADMIN - DESHABILITAR) ==========
+const eliminarEstudiante = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(404).json({ 
+        msg: `ID de estudiante inválido` 
+      });
+    }
+    
+    await Estudiante.findByIdAndUpdate(id, {
+      status: false
+    });
+    
+    res.status(200).json({ 
+      msg: "Estudiante deshabilitado con éxito" 
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      msg: "Error al deshabilitar estudiante", 
+      error: error.message 
+    });
+  }
+};
+
+
 // ========== EXPORTACIONES ==========
 export {
   registroEstudiante,
@@ -659,5 +855,10 @@ export {
   loginEstudiante,
   perfilEstudiante,
   actualizarPerfilEstudiante,
-  actualizarPasswordEstudiante
+  actualizarPasswordEstudiante,
+  // NUEVAS EXPORTACIONES PARA ADMIN
+  listarEstudiantes,
+  detalleEstudiante,
+  actualizarEstudianteAdmin,
+  eliminarEstudiante
 };

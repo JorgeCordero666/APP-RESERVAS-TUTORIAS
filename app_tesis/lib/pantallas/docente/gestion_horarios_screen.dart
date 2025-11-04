@@ -1,4 +1,4 @@
-// lib/pantallas/docente/gestion_horarios_screen.dart
+// lib/pantallas/docente/gestion_horarios_screen.dart - VERSIÓN CORREGIDA
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/horario_service.dart';
@@ -35,23 +35,34 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
   bool _isLoading = false;
   bool _hasChanges = false;
 
+  // ⭐ NUEVA VARIABLE: Lista de materias que EL DOCENTE escogió
+  List<String> _materiasDocente = [];
+
   @override
   void initState() {
     super.initState();
-    _cargarMaterias();
+    _cargarMateriasDocente();
   }
 
-  void _cargarMaterias() {
-    // Obtener materias del docente
+  // ⭐ MÉTODO CORREGIDO: Cargar materias ESCOGIDAS POR EL DOCENTE
+  void _cargarMateriasDocente() {
+    // ✅ Las materias deben venir del campo 'asignaturas' del docente
+    // Este campo se actualiza cuando el docente escoge sus materias en gestion_materias_screen
     if (widget.usuario.asignaturas != null && widget.usuario.asignaturas!.isNotEmpty) {
       setState(() {
-        // Inicializar horarios para cada materia
-        for (var materia in widget.usuario.asignaturas!) {
+        _materiasDocente = List.from(widget.usuario.asignaturas!);
+        
+        // Inicializar horarios para cada materia ESCOGIDA
+        for (var materia in _materiasDocente) {
           _horariosPorMateria[materia] = [];
         }
-        _materiaSeleccionada = widget.usuario.asignaturas!.first;
+        
+        // Seleccionar primera materia por defecto
+        if (_materiasDocente.isNotEmpty) {
+          _materiaSeleccionada = _materiasDocente.first;
+          _cargarHorariosExistentes();
+        }
       });
-      _cargarHorariosExistentes();
     }
   }
 
@@ -174,7 +185,8 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.usuario.asignaturas == null || widget.usuario.asignaturas!.isEmpty) {
+    // ⭐ VALIDACIÓN CORREGIDA: Verificar materias ESCOGIDAS por el docente
+    if (_materiasDocente.isEmpty) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Gestión de Horarios'),
@@ -187,14 +199,26 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
               const Icon(Icons.warning_amber, size: 80, color: Colors.orange),
               const SizedBox(height: 16),
               const Text(
-                'No tienes materias asignadas',
+                'No has seleccionado materias',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Contacta al administrador para que te asigne materias',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 40),
+                child: Text(
+                  'Ve a "Mis Materias" para seleccionar las asignaturas que impartes',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.book),
+                label: const Text('Ir a Mis Materias'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1565C0),
+                ),
               ),
             ],
           ),
@@ -217,7 +241,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
       ),
       body: Column(
         children: [
-          // Selector de materia
+          // Selector de materia - SOLO MUESTRA LAS ESCOGIDAS POR EL DOCENTE
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -246,7 +270,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                       value: _materiaSeleccionada,
                       isExpanded: true,
                       icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF1565C0)),
-                      items: widget.usuario.asignaturas!.map((materia) {
+                      items: _materiasDocente.map((materia) {
                         return DropdownMenuItem(
                           value: materia,
                           child: Text(materia),
