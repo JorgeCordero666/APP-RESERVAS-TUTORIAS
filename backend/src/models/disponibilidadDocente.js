@@ -6,17 +6,19 @@ const disponibilidadSchema = new Schema({
     type: Schema.Types.ObjectId, 
     ref: "Docente", 
     required: true,
-    index: true // Mejorar búsquedas
+    index: true
   },
   diaSemana: {
     type: String,
     enum: ["lunes", "martes", "miércoles", "jueves", "viernes"],
-    required: true
+    required: true,
+    lowercase: true, // ✅ Asegurar minúsculas siempre
+    trim: true
   },
   materia: {
     type: String,
     trim: true,
-    required: true, // ✅ CAMBIO: Ahora es obligatorio
+    required: true,
     index: true
   },
   bloques: [
@@ -41,7 +43,7 @@ const disponibilidadSchema = new Schema({
           message: 'Formato de hora inválido (HH:MM)'
         }
       },
-      _id: false // No generar IDs automáticos para sub-documentos
+      _id: false
     }
   ]
 }, {
@@ -54,7 +56,32 @@ disponibilidadSchema.index(
   { unique: true }
 );
 
-// ✅ Validación personalizada: hora fin debe ser mayor que hora inicio
+// ✅ Middleware para normalizar días ANTES de guardar
+disponibilidadSchema.pre('save', function(next) {
+  if (this.diaSemana) {
+    // Normalizar: quitar acentos, espacios, minúsculas
+    this.diaSemana = this.diaSemana
+      .toLowerCase()
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, ''); // Quitar acentos
+    
+    // Mapeo explícito
+    const mapaValidos = {
+      'lunes': 'lunes',
+      'martes': 'martes',
+      'miercoles': 'miércoles',
+      'miércoles': 'miércoles',
+      'jueves': 'jueves',
+      'viernes': 'viernes'
+    };
+    
+    this.diaSemana = mapaValidos[this.diaSemana] || this.diaSemana;
+  }
+  next();
+});
+
+// ✅ Validación: hora fin > hora inicio
 disponibilidadSchema.path('bloques').validate(function(bloques) {
   return bloques.every(bloque => {
     const [hIni, mIni] = bloque.horaInicio.split(':').map(Number);

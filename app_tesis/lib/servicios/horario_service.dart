@@ -1,4 +1,4 @@
-// lib/servicios/horario_service.dart - VERSIÓN CORREGIDA
+// lib/servicios/horario_service.dart - VERSIÓN CORREGIDA COMPLETA
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
@@ -46,7 +46,7 @@ class HorarioService {
           
           for (var bloque in bloques) {
             todosLosBloques.add({
-              'dia': _capitalizarDia(dia),
+              'dia': _capitalizarDia(dia), // ✅ Capitalizar al recibir
               'horaInicio': bloque['horaInicio'],
               'horaFin': bloque['horaFin'],
             });
@@ -54,6 +54,11 @@ class HorarioService {
         }
         
         print('✅ Horarios obtenidos: ${todosLosBloques.length} bloques');
+        print('📋 Bloques por día:');
+        for (var bloque in todosLosBloques) {
+          print('   ${bloque['dia']}: ${bloque['horaInicio']}-${bloque['horaFin']}');
+        }
+        
         return todosLosBloques;
         
       } else if (response.statusCode == 404) {
@@ -70,7 +75,7 @@ class HorarioService {
     }
   }
 
-  /// ✅ Actualizar horarios de una materia (VERSIÓN CORREGIDA)
+  /// ✅ Actualizar horarios de una materia
   static Future<bool> actualizarHorarios({
     required String docenteId,
     required String materia,
@@ -84,11 +89,11 @@ class HorarioService {
         return false;
       }
 
-      // ✅ AGRUPACIÓN CORRECTA: Por día de la semana
+      // ✅ AGRUPACIÓN: Por día de la semana (NORMALIZAR A MINÚSCULAS)
       Map<String, List<Map<String, String>>> bloquesPorDia = {};
       
       for (var bloque in bloques) {
-        final dia = (bloque['dia'] as String).toLowerCase();
+        final dia = (bloque['dia'] as String).toLowerCase(); // ✅ Normalizar aquí
         
         if (!bloquesPorDia.containsKey(dia)) {
           bloquesPorDia[dia] = [];
@@ -114,7 +119,7 @@ class HorarioService {
         
         final body = {
           'materia': materia,
-          'diaSemana': dia,
+          'diaSemana': dia, // Ya está en minúsculas
           'bloques': bloquesDelDia,
         };
 
@@ -188,7 +193,7 @@ class HorarioService {
             
             for (var bloque in bloques) {
               bloquesMat.add({
-                'dia': _capitalizarDia(dia),
+                'dia': _capitalizarDia(dia), // ✅ Capitalizar al recibir
                 'horaInicio': bloque['horaInicio'],
                 'horaFin': bloque['horaFin'],
               });
@@ -196,6 +201,13 @@ class HorarioService {
           }
           
           resultado[materia] = bloquesMat;
+          
+          // ✅ LOG DETALLADO
+          print('📚 Materia: $materia');
+          print('   Total bloques: ${bloquesMat.length}');
+          for (var bloque in bloquesMat) {
+            print('   - ${bloque['dia']}: ${bloque['horaInicio']}-${bloque['horaFin']}');
+          }
         });
         
         print('✅ Disponibilidad completa obtenida: ${resultado.keys.length} materias');
@@ -212,23 +224,29 @@ class HorarioService {
     }
   }
 
-  /// ✅ Método auxiliar para capitalizar día
+  /// ✅ Método auxiliar para capitalizar día (CRUCIAL)
   static String _capitalizarDia(String dia) {
     if (dia.isEmpty) return dia;
     
-    final diaLower = dia.toLowerCase();
+    final diaLower = dia.toLowerCase().trim(); // ✅ Trim agregado
     
-    // Manejar casos especiales
+    // ✅ Mapa de normalización completo
     final mapaCapitalizacion = {
       'lunes': 'Lunes',
       'martes': 'Martes',
       'miércoles': 'Miércoles',
-      'miercoles': 'Miércoles',
+      'miercoles': 'Miércoles', // Sin acento también
       'jueves': 'Jueves',
       'viernes': 'Viernes',
+      'sábado': 'Sábado',
+      'sabado': 'Sábado',
+      'domingo': 'Domingo',
     };
     
-    return mapaCapitalizacion[diaLower] ?? 
-           dia[0].toUpperCase() + dia.substring(1).toLowerCase();
+    final resultado = mapaCapitalizacion[diaLower] ?? 
+                      dia[0].toUpperCase() + dia.substring(1).toLowerCase();
+    
+    print('🔄 Capitalización: "$dia" -> "$resultado"');
+    return resultado;
   }
 }

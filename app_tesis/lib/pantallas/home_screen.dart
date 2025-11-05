@@ -664,13 +664,27 @@ class _DashboardEstudiante extends StatelessWidget {
 }
 
 // =====================================================
-// ✅ DASHBOARD DOCENTE (ACTUALIZADO)
+// ✅ DASHBOARD DOCENTE (STATEFUL - CORREGIDO)
 // =====================================================
 
-class _DashboardDocente extends StatelessWidget {
+class _DashboardDocente extends StatefulWidget {
   final Usuario usuario;
 
   const _DashboardDocente({required this.usuario});
+
+  @override
+  State<_DashboardDocente> createState() => _DashboardDocenteState();
+}
+
+class _DashboardDocenteState extends State<_DashboardDocente> {
+  // ⭐ Usuario mutable que puede actualizarse
+  late Usuario _usuarioActual;
+
+  @override
+  void initState() {
+    super.initState();
+    _usuarioActual = widget.usuario;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -700,7 +714,7 @@ class _DashboardDocente extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Bienvenido, ${usuario.nombre}',
+                      'Bienvenido, ${_usuarioActual.nombre}',
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -748,17 +762,32 @@ class _DashboardDocente extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
+            // ⭐ BOTÓN MIS MATERIAS - ACTUALIZADO
             Card(
               elevation: 2,
               child: InkWell(
-                onTap: () {
-                  Navigator.push(
+                onTap: () async {
+                  print('📚 Navegando a Mis Materias...');
+                  
+                  // ⭐ Esperar usuario actualizado
+                  final usuarioActualizado = await Navigator.push<Usuario>(
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          GestionMateriasScreen(usuario: usuario),
+                          GestionMateriasScreen(usuario: _usuarioActual),
                     ),
                   );
+                  
+                  // ⭐ Actualizar estado si hay cambios
+                  if (usuarioActualizado != null && mounted) {
+                    setState(() {
+                      _usuarioActual = usuarioActualizado;
+                    });
+                    
+                    print('✅ Usuario actualizado en DashboardDocente');
+                    print('   Semestre: ${_usuarioActual.semestreAsignado}');
+                    print('   Materias: ${_usuarioActual.asignaturas?.join(", ") ?? "ninguna"}');
+                  }
                 },
                 borderRadius: BorderRadius.circular(12),
                 child: Padding(
@@ -811,16 +840,18 @@ class _DashboardDocente extends StatelessWidget {
 
             const SizedBox(height: 12),
 
-            // ⭐ BOTÓN DE ACCIÓN RÁPIDA PARA HORARIOS
+            // ⭐ BOTÓN MIS HORARIOS
             Card(
               elevation: 2,
               child: InkWell(
                 onTap: () {
+                  print('📅 Navegando a Mis Horarios...');
+                  
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          GestionHorariosScreen(usuario: usuario),
+                          GestionHorariosScreen(usuario: _usuarioActual),
                     ),
                   );
                 },
@@ -902,7 +933,6 @@ class _DashboardDocente extends StatelessWidget {
     );
   }
 }
-
 // =====================================================
 // ✅ PERFIL SCREEN (SIN CAMBIOS)
 // =====================================================

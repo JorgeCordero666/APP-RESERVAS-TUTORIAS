@@ -1,4 +1,4 @@
-// lib/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart
+// lib/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart - VERSIÓN CORREGIDA
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/docente_service.dart';
@@ -66,12 +66,27 @@ class _VerDisponibilidadDocentesScreenState
     });
 
     try {
-      final disponibilidad =
-          await HorarioService.obtenerDisponibilidadCompleta(
+      print('📥 Cargando disponibilidad de: ${docente['nombreDocente']}');
+      print('   ID: ${docente['_id']}');
+      
+      final disponibilidad = await HorarioService.obtenerDisponibilidadCompleta(
         docenteId: docente['_id'],
       );
 
       if (mounted) {
+        print('📊 Disponibilidad recibida: ${disponibilidad?.keys.join(", ")}');
+        
+        // ✅ LOG DETALLADO DE LO QUE RECIBIMOS
+        if (disponibilidad != null) {
+          disponibilidad.forEach((materia, bloques) {
+            print('📚 Materia: $materia');
+            print('   Total bloques: ${bloques.length}');
+            for (var bloque in bloques) {
+              print('   - ${bloque['dia']}: ${bloque['horaInicio']}-${bloque['horaFin']}');
+            }
+          });
+        }
+        
         setState(() {
           _disponibilidad = disponibilidad;
           _isLoadingDisponibilidad = false;
@@ -79,6 +94,7 @@ class _VerDisponibilidadDocentesScreenState
           // Seleccionar primera materia si existe
           if (disponibilidad != null && disponibilidad.isNotEmpty) {
             _materiaSeleccionada = disponibilidad.keys.first;
+            print('✅ Materia seleccionada por defecto: $_materiaSeleccionada');
           }
         });
       }
@@ -92,14 +108,41 @@ class _VerDisponibilidadDocentesScreenState
     }
   }
 
+  /// ✅ MÉTODO CORREGIDO - Filtra bloques por día (con normalización)
   List<Map<String, dynamic>> _obtenerBloquesPorDia(String dia) {
     if (_disponibilidad == null || _materiaSeleccionada == null) {
+      print('⚠️ _obtenerBloquesPorDia: Sin disponibilidad o materia');
       return [];
     }
 
     final bloques = _disponibilidad![_materiaSeleccionada!] ?? [];
-    return bloques.where((bloque) => bloque['dia'] == dia).toList()
+    
+    print('🔍 Filtrando bloques para: $dia');
+    print('   Total bloques disponibles: ${bloques.length}');
+    
+    // ✅ NORMALIZAR AMBOS LADOS DE LA COMPARACIÓN
+    final diaComparar = dia.trim(); // Ya viene capitalizado de _diasSemana
+    
+    final resultado = bloques.where((bloque) {
+      final diaBloque = bloque['dia']?.toString().trim() ?? '';
+      final coincide = diaBloque == diaComparar;
+      
+      if (!coincide) {
+        print('   ❌ No coincide: "$diaBloque" vs "$diaComparar"');
+      } else {
+        print('   ✅ Coincide: $diaBloque');
+      }
+      
+      return coincide;
+    }).toList()
       ..sort((a, b) => a['horaInicio'].compareTo(b['horaInicio']));
+    
+    print('📋 Bloques filtrados: ${resultado.length}');
+    for (var bloque in resultado) {
+      print('   - ${bloque['horaInicio']}-${bloque['horaFin']}');
+    }
+    
+    return resultado;
   }
 
   void _mostrarError(String mensaje) {
@@ -323,6 +366,7 @@ class _VerDisponibilidadDocentesScreenState
                                         onChanged: (value) {
                                           setState(() {
                                             _materiaSeleccionada = value;
+                                            print('🔄 Materia cambiada a: $value');
                                           });
                                         },
                                       ),

@@ -1,4 +1,5 @@
 // lib/pantallas/docente/gestion_horarios_screen.dart - VERSIÓN CORREGIDA
+import 'package:app_tesis/servicios/auth_service.dart';
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/horario_service.dart';
@@ -43,22 +44,30 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
   }
 
   void _cargarMateriasDocente() {
-    if (widget.usuario.asignaturas != null && widget.usuario.asignaturas!.isNotEmpty) {
-      setState(() {
-        _materiasDocente = List.from(widget.usuario.asignaturas!);
+    // ⭐ NUEVO: Recargar usuario desde SharedPreferences
+    AuthService.getUsuarioActual().then((usuarioActualizado) {
+      if (usuarioActualizado != null && mounted) {
+        final materiasActualizadas = usuarioActualizado.asignaturas ?? [];
         
-        // Inicializar horarios vacíos para cada materia
-        for (var materia in _materiasDocente) {
-          _horariosPorMateria[materia] = [];
+        if (materiasActualizadas.isNotEmpty) {
+          setState(() {
+            _materiasDocente = List.from(materiasActualizadas);
+            
+            // Inicializar horarios vacíos para cada materia
+            for (var materia in _materiasDocente) {
+              _horariosPorMateria[materia] = [];
+            }
+            
+            // Seleccionar primera materia por defecto
+            _materiaSeleccionada = _materiasDocente.first;
+            _cargarHorariosExistentes();
+          });
+          
+          print('✅ Materias recargadas en GestionHorariosScreen');
+          print('   Materias: ${_materiasDocente.join(", ")}');
         }
-        
-        // Seleccionar primera materia por defecto
-        if (_materiasDocente.isNotEmpty) {
-          _materiaSeleccionada = _materiasDocente.first;
-          _cargarHorariosExistentes();
-        }
-      });
-    }
+      }
+    });
   }
 
   Future<void> _cargarHorariosExistentes() async {
