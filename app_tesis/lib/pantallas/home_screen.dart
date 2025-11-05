@@ -1,4 +1,4 @@
-// ✅ IMPORTS NECESARIOS
+// lib/pantallas/home_screen.dart - VERSIÓN CORREGIDA COMPLETA
 import 'package:flutter/material.dart';
 import '../modelos/usuario.dart';
 import '../servicios/auth_service.dart';
@@ -6,17 +6,17 @@ import '../config/routes.dart';
 import 'perfil/editar_perfil_screen.dart';
 import 'auth/cambiar_password_screen.dart';
 import 'admin/gestion_usuarios_screen.dart';
+import 'admin/gestion_estudiantes_screen.dart';
 import 'docente/gestion_materias_screen.dart';
-import 'package:app_tesis/pantallas/docente/gestion_horarios_screen.dart';
-import 'package:app_tesis/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart';
+import 'docente/gestion_horarios_screen.dart';
+import 'estudiante/ver_disponibilidad_docentes_screen.dart';
 
-// ✅ IMPORTS PARA ESTADÍSTICAS
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../config/api_config.dart';
 
 // =====================================================
-// ✅ SERVICIO DE ESTADÍSTICAS
+// ✅ SERVICIO DE ESTADÍSTICAS ACTUALIZADO
 // =====================================================
 
 class EstadisticasService {
@@ -29,11 +29,13 @@ class EstadisticasService {
           'docentes': 0,
           'docentesActivos': 0,
           'estudiantes': 0,
+          'estudiantesActivos': 0,
           'tutorias': 0,
+          'tutoriasMes': 0,
         };
       }
 
-      // Obtener docentes
+      // ✅ Obtener docentes
       final docentesResponse = await http.get(
         Uri.parse(ApiConfig.listarDocentes),
         headers: ApiConfig.getHeaders(token: token),
@@ -50,13 +52,48 @@ class EstadisticasService {
             docentes.where((d) => d['estadoDocente'] == true).length;
       }
 
-      // TODO: Cargar estudiantes y tutorías cuando existan endpoints
+      // ✅ Obtener estudiantes
+      final estudiantesResponse = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/estudiantes'),
+        headers: ApiConfig.getHeaders(token: token),
+      );
+
+      int totalEstudiantes = 0;
+      int estudiantesActivos = 0;
+
+      if (estudiantesResponse.statusCode == 200) {
+        final data = jsonDecode(estudiantesResponse.body);
+        final estudiantes = data['estudiantes'] as List? ?? [];
+        totalEstudiantes = estudiantes.length;
+        estudiantesActivos =
+            estudiantes.where((e) => e['status'] == true).length;
+      }
+
+      // ✅ Obtener tutorías (cuando el endpoint esté listo)
+      int totalTutorias = 0;
+      int tutoriasMes = 0;
+
+      // TODO: Descomentar cuando el endpoint de tutorías esté disponible
+      /*
+      final tutoriasResponse = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/tutorias/estadisticas'),
+        headers: ApiConfig.getHeaders(token: token),
+      );
+
+      if (tutoriasResponse.statusCode == 200) {
+        final data = jsonDecode(tutoriasResponse.body);
+        totalTutorias = data['total'] ?? 0;
+        tutoriasMes = data['mes_actual'] ?? 0;
+      }
+      */
 
       return {
         'docentes': totalDocentes,
         'docentesActivos': docentesActivos,
-        'estudiantes': 0,
-        'tutorias': 0,
+        'estudiantes': totalEstudiantes,
+        'estudiantesActivos': estudiantesActivos,
+        'tutorias': totalTutorias,
+        'tutoriasMes': tutoriasMes,
       };
     } catch (e) {
       print('Error obteniendo estadísticas: $e');
@@ -64,7 +101,9 @@ class EstadisticasService {
         'docentes': 0,
         'docentesActivos': 0,
         'estudiantes': 0,
+        'estudiantesActivos': 0,
         'tutorias': 0,
+        'tutoriasMes': 0,
       };
     }
   }
@@ -104,14 +143,13 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'Administrador':
         return [
           _DashboardAdministrador(usuario: _usuario),
-          //_PlaceholderScreen(titulo: 'Gestión de Usuarios'),
           _PlaceholderScreen(titulo: 'Reportes'),
           _PerfilScreen(usuario: _usuario, onUserUpdated: _onUserUpdated),
         ];
       case 'Docente':
         return [
           _DashboardDocente(usuario: _usuario),
-          _PlaceholderScreen(titulo: 'Mi Disponibilidad'),
+          GestionHorariosScreen(usuario: _usuario), // ⭐ NAVEGACIÓN CORREGIDA
           _PlaceholderScreen(titulo: 'Mis Tutorías'),
           _PerfilScreen(usuario: _usuario, onUserUpdated: _onUserUpdated),
         ];
@@ -130,14 +168,13 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'Administrador':
         return const [
           BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Inicio'),
-          //BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Usuarios'),
           BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Reportes'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
         ];
       case 'Docente':
         return const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Horario'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Horarios'), // ⭐ CORREGIDO
           BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Tutorías'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
         ];
@@ -169,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 // =====================================================
-// ✅ DASHBOARD PARA ADMINISTRADORES — ACTUALIZADO
+// ✅ DASHBOARD PARA ADMINISTRADORES — ACTUALIZADO COMPLETO
 // =====================================================
 
 class _DashboardAdministrador extends StatefulWidget {
@@ -186,7 +223,9 @@ class _DashboardAdministradorState extends State<_DashboardAdministrador> {
     'docentes': 0,
     'docentesActivos': 0,
     'estudiantes': 0,
+    'estudiantesActivos': 0,
     'tutorias': 0,
+    'tutoriasMes': 0,
   };
 
   bool _cargando = true;
@@ -210,6 +249,9 @@ class _DashboardAdministradorState extends State<_DashboardAdministrador> {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Calcular total de usuarios
+    final totalUsuarios = _estadisticas['docentes']! + _estadisticas['estudiantes']!;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Panel de Administración'),
@@ -262,33 +304,37 @@ class _DashboardAdministradorState extends State<_DashboardAdministrador> {
                     _StatCard(
                       title: 'Estudiantes',
                       value: '${_estadisticas['estudiantes']}',
+                      subtitle: '${_estadisticas['estudiantesActivos']} activos',
                       icon: Icons.school,
                       color: const Color(0xFF4CAF50),
                     ),
                     _StatCard(
-                      title: 'Tutorías',
-                      value: '${_estadisticas['tutorias']}',
-                      icon: Icons.book,
-                      color: const Color(0xFFFF9800),
+                      title: 'Total Usuarios',
+                      value: '$totalUsuarios',
+                      subtitle: 'En el sistema',
+                      icon: Icons.group,
+                      color: const Color(0xFF9C27B0),
                     ),
                     _StatCard(
-                      title: 'Este mes',
-                      value: '0',
-                      icon: Icons.calendar_today,
-                      color: const Color(0xFF9C27B0),
+                      title: 'Tutorías',
+                      value: '${_estadisticas['tutorias']}',
+                      subtitle: '${_estadisticas['tutoriasMes']} este mes',
+                      icon: Icons.event_note,
+                      color: const Color(0xFFFF9800),
                     ),
                   ],
                 ),
 
               const SizedBox(height: 24),
 
-              // ✅ Acción rápida a gestión de usuarios
+              // ✅ Acciones rápidas
               const Text(
                 'Acciones rápidas',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
 
+              // ✅ Gestión de Docentes
               Card(
                 elevation: 2,
                 child: InkWell(
@@ -325,6 +371,58 @@ class _DashboardAdministradorState extends State<_DashboardAdministrador> {
                                       fontSize: 18, fontWeight: FontWeight.bold)),
                               SizedBox(height: 4),
                               Text('Administrar docentes del sistema',
+                                  style:
+                                      TextStyle(fontSize: 14, color: Colors.grey)),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios,
+                            size: 18, color: Colors.grey),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 12),
+
+              // ⭐ NUEVO: Gestión de Estudiantes
+              Card(
+                elevation: 2,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            GestionEstudiantesScreen(usuario: widget.usuario),
+                      ),
+                    ).then((_) => _cargarEstadisticas());
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4CAF50).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.school,
+                              size: 32, color: Color(0xFF4CAF50)),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Gestión de Estudiantes',
+                                  style: TextStyle(
+                                      fontSize: 18, fontWeight: FontWeight.bold)),
+                              SizedBox(height: 4),
+                              Text('Administrar estudiantes del sistema',
                                   style:
                                       TextStyle(fontSize: 14, color: Colors.grey)),
                             ],
@@ -406,7 +504,7 @@ class _StatCard extends StatelessWidget {
 }
 
 // =====================================================
-// ✅ DASHBOARD ESTUDIANTE (CORREGIDO Y LISTO)
+// ✅ DASHBOARD ESTUDIANTE (SIN CAMBIOS)
 // =====================================================
 
 class _DashboardEstudiante extends StatelessWidget {
@@ -435,7 +533,6 @@ class _DashboardEstudiante extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Tarjeta de perfil
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -476,7 +573,6 @@ class _DashboardEstudiante extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // Acciones rápidas
             const Text(
               'Acciones rápidas',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -539,7 +635,6 @@ class _DashboardEstudiante extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // Próximas tutorías
             const Text(
               'Próximas tutorías',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -568,9 +663,8 @@ class _DashboardEstudiante extends StatelessWidget {
   }
 }
 
-
 // =====================================================
-// ✅ DASHBOARD DOCENTE (CORREGIDO Y LISTO)
+// ✅ DASHBOARD DOCENTE (ACTUALIZADO)
 // =====================================================
 
 class _DashboardDocente extends StatelessWidget {
@@ -599,7 +693,6 @@ class _DashboardDocente extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Tarjeta de bienvenida
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -625,7 +718,6 @@ class _DashboardDocente extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // Estadísticas rápidas
             Row(
               children: [
                 Expanded(
@@ -650,14 +742,12 @@ class _DashboardDocente extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // Acciones rápidas
             const Text(
               'Acciones rápidas',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
 
-            // Mis Materias
             Card(
               elevation: 2,
               child: InkWell(
@@ -701,7 +791,7 @@ class _DashboardDocente extends StatelessWidget {
                             ),
                             SizedBox(height: 4),
                             Text(
-                              'Gestionar materias y horarios',
+                              'Gestionar materias que imparto',
                               style:
                                   TextStyle(fontSize: 14, color: Colors.grey),
                             ),
@@ -721,7 +811,7 @@ class _DashboardDocente extends StatelessWidget {
 
             const SizedBox(height: 12),
 
-            // Mis Horarios
+            // ⭐ BOTÓN DE ACCIÓN RÁPIDA PARA HORARIOS
             Card(
               elevation: 2,
               child: InkWell(
@@ -785,7 +875,6 @@ class _DashboardDocente extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // Solicitudes pendientes
             const Text(
               'Solicitudes pendientes',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -814,9 +903,8 @@ class _DashboardDocente extends StatelessWidget {
   }
 }
 
-
 // =====================================================
-// ✅ PERFIL SCREEN (SIN CAMBIOS DE TU VERSIÓN)
+// ✅ PERFIL SCREEN (SIN CAMBIOS)
 // =====================================================
 
 class _PerfilScreen extends StatefulWidget {

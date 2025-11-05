@@ -35,7 +35,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
   bool _isLoading = false;
   bool _hasChanges = false;
 
-  // ⭐ NUEVA VARIABLE: Lista de materias que EL DOCENTE escogió
+  // ✅ CORRECCIÓN: Lista de materias escogidas por el DOCENTE
   List<String> _materiasDocente = [];
 
   @override
@@ -44,10 +44,8 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
     _cargarMateriasDocente();
   }
 
-  // ⭐ MÉTODO CORREGIDO: Cargar materias ESCOGIDAS POR EL DOCENTE
+  // ✅ CORRECCIÓN: Cargar SOLO las materias que el docente escogió
   void _cargarMateriasDocente() {
-    // ✅ Las materias deben venir del campo 'asignaturas' del docente
-    // Este campo se actualiza cuando el docente escoge sus materias en gestion_materias_screen
     if (widget.usuario.asignaturas != null && widget.usuario.asignaturas!.isNotEmpty) {
       setState(() {
         _materiasDocente = List.from(widget.usuario.asignaturas!);
@@ -185,7 +183,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ⭐ VALIDACIÓN CORREGIDA: Verificar materias ESCOGIDAS por el docente
+    // ✅ VALIDACIÓN CORREGIDA: Verificar materias ESCOGIDAS por el docente
     if (_materiasDocente.isEmpty) {
       return Scaffold(
         appBar: AppBar(
