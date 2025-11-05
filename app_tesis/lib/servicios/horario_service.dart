@@ -1,11 +1,11 @@
-// lib/servicios/horario_service.dart
+// lib/servicios/horario_service.dart - VERSIÓN CORREGIDA
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../servicios/auth_service.dart';
 
 class HorarioService {
-  /// Obtener horarios de una materia específica del docente
+  /// ✅ Obtener horarios de una materia específica del docente
   static Future<List<Map<String, dynamic>>?> obtenerHorariosPorMateria({
     required String docenteId,
     required String materia,
@@ -14,48 +14,63 @@ class HorarioService {
       final token = await AuthService.getToken();
       
       if (token == null) {
+        print('❌ No hay token de autenticación');
         return null;
       }
 
-      // ⭐ Usando endpoint existente modificado
       final url = '${ApiConfig.baseUrl}/ver-disponibilidad-materia/$docenteId/$materia';
+      
+      print('🔍 Obteniendo horarios:');
+      print('   URL: $url');
+      print('   Docente: $docenteId');
+      print('   Materia: $materia');
 
       final response = await http.get(
         Uri.parse(url),
         headers: ApiConfig.getHeaders(token: token),
       );
 
+      print('📬 Status code: ${response.statusCode}');
+      print('📄 Response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> disponibilidad = data['disponibilidad'] ?? [];
         
-        // Aplanar la estructura: convertir [{diaSemana, bloques[]}] a una lista plana
+        // ✅ Convertir estructura del backend a formato plano para la app
         List<Map<String, dynamic>> todosLosBloques = [];
+        
         for (var disp in disponibilidad) {
           final dia = disp['diaSemana'];
           final bloques = disp['bloques'] as List;
+          
           for (var bloque in bloques) {
             todosLosBloques.add({
-              'dia': dia,
+              'dia': _capitalizarDia(dia),
               'horaInicio': bloque['horaInicio'],
               'horaFin': bloque['horaFin'],
             });
           }
         }
         
+        print('✅ Horarios obtenidos: ${todosLosBloques.length} bloques');
         return todosLosBloques;
+        
       } else if (response.statusCode == 404) {
+        print('ℹ️ No hay horarios registrados para esta materia');
         return [];
+      } else {
+        print('❌ Error del servidor: ${response.statusCode}');
+        return null;
       }
       
-      return null;
     } catch (e) {
-      print('Error obteniendo horarios: $e');
+      print('❌ Error obteniendo horarios: $e');
       return null;
     }
   }
 
-  /// Actualizar horarios de una materia
+  /// ✅ Actualizar horarios de una materia (VERSIÓN CORREGIDA)
   static Future<bool> actualizarHorarios({
     required String docenteId,
     required String materia,
@@ -65,50 +80,73 @@ class HorarioService {
       final token = await AuthService.getToken();
       
       if (token == null) {
+        print('❌ No hay token de autenticación');
         return false;
       }
 
-      // Agrupar bloques por día
+      // ✅ AGRUPACIÓN CORRECTA: Por día de la semana
       Map<String, List<Map<String, String>>> bloquesPorDia = {};
+      
       for (var bloque in bloques) {
-        final dia = bloque['dia'] as String;
+        final dia = (bloque['dia'] as String).toLowerCase();
+        
         if (!bloquesPorDia.containsKey(dia)) {
           bloquesPorDia[dia] = [];
         }
+        
         bloquesPorDia[dia]!.add({
           'horaInicio': bloque['horaInicio'] as String,
           'horaFin': bloque['horaFin'] as String,
         });
       }
 
-      // Guardar cada día por separado
-      for (var dia in bloquesPorDia.keys) {
-        final url = '${ApiConfig.baseUrl}/tutorias/registrar-disponibilidad-materia';
+      print('📝 Actualizando horarios:');
+      print('   Docente: $docenteId');
+      print('   Materia: $materia');
+      print('   Días con bloques: ${bloquesPorDia.keys.join(", ")}');
+
+      // ✅ Guardar cada día por separado
+      final url = '${ApiConfig.baseUrl}/tutorias/registrar-disponibilidad-materia';
+      
+      for (var entrada in bloquesPorDia.entries) {
+        final dia = entrada.key;
+        final bloquesDelDia = entrada.value;
+        
+        final body = {
+          'materia': materia,
+          'diaSemana': dia,
+          'bloques': bloquesDelDia,
+        };
+
+        print('📤 Enviando: $dia con ${bloquesDelDia.length} bloques');
+        print('   Body: ${jsonEncode(body)}');
 
         final response = await http.post(
           Uri.parse(url),
           headers: ApiConfig.getHeaders(token: token),
-          body: jsonEncode({
-            'materia': materia,
-            'diaSemana': dia.toLowerCase(),
-            'bloques': bloquesPorDia[dia],
-          }),
+          body: jsonEncode(body),
         );
 
+        print('📬 Respuesta: ${response.statusCode}');
+        print('📄 Body: ${response.body}');
+
         if (response.statusCode != 200) {
-          print('Error guardando día $dia: ${response.body}');
+          final error = jsonDecode(response.body);
+          print('❌ Error guardando $dia: ${error['msg']}');
           return false;
         }
       }
 
+      print('✅ Todos los horarios guardados exitosamente');
       return true;
+      
     } catch (e) {
-      print('Error actualizando horarios: $e');
+      print('❌ Error actualizando horarios: $e');
       return false;
     }
   }
 
-  /// Obtener disponibilidad completa de un docente (todas las materias)
+  /// ✅ Obtener disponibilidad completa de un docente (todas las materias)
   static Future<Map<String, List<Map<String, dynamic>>>?> obtenerDisponibilidadCompleta({
     required String docenteId,
   }) async {
@@ -116,21 +154,29 @@ class HorarioService {
       final token = await AuthService.getToken();
       
       if (token == null) {
+        print('❌ No hay token de autenticación');
         return null;
       }
 
       final url = '${ApiConfig.baseUrl}/ver-disponibilidad-completa/$docenteId';
+
+      print('🔍 Obteniendo disponibilidad completa:');
+      print('   URL: $url');
+      print('   Docente: $docenteId');
 
       final response = await http.get(
         Uri.parse(url),
         headers: ApiConfig.getHeaders(token: token),
       );
 
+      print('📬 Status code: ${response.statusCode}');
+      print('📄 Response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final Map<String, dynamic> materias = data['materias'] ?? {};
         
-        // Convertir estructura del backend a formato esperado
+        // ✅ Convertir estructura del backend a formato esperado por la app
         Map<String, List<Map<String, dynamic>>> resultado = {};
         
         materias.forEach((materia, diasList) {
@@ -142,7 +188,7 @@ class HorarioService {
             
             for (var bloque in bloques) {
               bloquesMat.add({
-                'dia': dia,
+                'dia': _capitalizarDia(dia),
                 'horaInicio': bloque['horaInicio'],
                 'horaFin': bloque['horaFin'],
               });
@@ -152,13 +198,37 @@ class HorarioService {
           resultado[materia] = bloquesMat;
         });
         
+        print('✅ Disponibilidad completa obtenida: ${resultado.keys.length} materias');
         return resultado;
+        
+      } else {
+        print('❌ Error del servidor: ${response.statusCode}');
+        return null;
       }
       
-      return null;
     } catch (e) {
-      print('Error obteniendo disponibilidad completa: $e');
+      print('❌ Error obteniendo disponibilidad completa: $e');
       return null;
     }
+  }
+
+  /// ✅ Método auxiliar para capitalizar día
+  static String _capitalizarDia(String dia) {
+    if (dia.isEmpty) return dia;
+    
+    final diaLower = dia.toLowerCase();
+    
+    // Manejar casos especiales
+    final mapaCapitalizacion = {
+      'lunes': 'Lunes',
+      'martes': 'Martes',
+      'miércoles': 'Miércoles',
+      'miercoles': 'Miércoles',
+      'jueves': 'Jueves',
+      'viernes': 'Viernes',
+    };
+    
+    return mapaCapitalizacion[diaLower] ?? 
+           dia[0].toUpperCase() + dia.substring(1).toLowerCase();
   }
 }

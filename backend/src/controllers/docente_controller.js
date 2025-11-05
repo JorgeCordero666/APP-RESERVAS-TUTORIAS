@@ -634,12 +634,16 @@ const perfilDocente = (req, res) => {
 };
 
 // ========== ACTUALIZAR PERFIL DOCENTE (POR ÉL MISMO) ==========
+// backend/src/controllers/docente_controller.js
+// ✅ FUNCIÓN CORREGIDA - actualizarPerfilDocente
+
 const actualizarPerfilDocente = async (req, res) => {
   try {
     const { id } = req.params;
+    
     // ✅ PERMITIR: Docente edita su propio perfil O Admin edita cualquier perfil
     const esDocente = req.docenteBDD && req.docenteBDD._id.toString() === id;
-    const esAdmin = req.administradorBDD; // Si existe, es admin
+    const esAdmin = req.administradorBDD;
     
     if (!esDocente && !esAdmin) {
       return res.status(403).json({ 
@@ -653,8 +657,6 @@ const actualizarPerfilDocente = async (req, res) => {
       });
     }
 
-    const { nombreDocente, celularDocente, oficinaDocente, emailAlternativoDocente } = req.body;
-
     const docenteBDD = await Docente.findById(id);
     
     if (!docenteBDD) {
@@ -663,7 +665,27 @@ const actualizarPerfilDocente = async (req, res) => {
       });
     }
 
-    // Actualizar campos permitidos
+    // ========================================
+    // ✅ EXTRAER DATOS DEL REQUEST
+    // ========================================
+    const { 
+      nombreDocente, 
+      celularDocente, 
+      oficinaDocente, 
+      emailAlternativoDocente,
+      semestreAsignado,
+      asignaturas 
+    } = req.body;
+
+    console.log('📥 Datos recibidos para actualizar:');
+    console.log('   nombreDocente:', nombreDocente);
+    console.log('   semestreAsignado:', semestreAsignado);
+    console.log('   asignaturas (raw):', asignaturas);
+    console.log('   tipo de asignaturas:', typeof asignaturas);
+
+    // ========================================
+    // ✅ ACTUALIZAR CAMPOS BÁSICOS
+    // ========================================
     if (nombreDocente !== undefined && nombreDocente.trim() !== '') {
       if (nombreDocente.trim().length < 3) {
         return res.status(400).json({
@@ -671,6 +693,7 @@ const actualizarPerfilDocente = async (req, res) => {
         });
       }
       docenteBDD.nombreDocente = nombreDocente.trim();
+      console.log('✅ Nombre actualizado');
     }
 
     if (celularDocente !== undefined && celularDocente.trim() !== '') {
@@ -686,10 +709,12 @@ const actualizarPerfilDocente = async (req, res) => {
         });
       }
       docenteBDD.celularDocente = telefonoLimpio;
+      console.log('✅ Celular actualizado');
     }
 
     if (oficinaDocente !== undefined && oficinaDocente.trim() !== '') {
       docenteBDD.oficinaDocente = oficinaDocente.trim();
+      console.log('✅ Oficina actualizada');
     }
 
     if (emailAlternativoDocente !== undefined && emailAlternativoDocente.trim() !== '') {
@@ -700,7 +725,6 @@ const actualizarPerfilDocente = async (req, res) => {
         });
       }
       
-      // Verificar que el email alternativo no esté en uso por otro docente
       const emailExistente = await Docente.findOne({ 
         emailAlternativoDocente: emailAlternativoDocente.toLowerCase() 
       });
@@ -712,9 +736,74 @@ const actualizarPerfilDocente = async (req, res) => {
       }
       
       docenteBDD.emailAlternativoDocente = emailAlternativoDocente.toLowerCase();
+      console.log('✅ Email alternativo actualizado');
     }
 
-    // Actualizar foto de perfil si se envía
+    // ========================================
+    // ✅ ACTUALIZAR SEMESTRE
+    // ========================================
+    if (semestreAsignado !== undefined && semestreAsignado !== null) {
+      const semestresValidos = ['Nivelacion', 'Primer Semestre'];
+      
+      if (!semestresValidos.includes(semestreAsignado)) {
+        return res.status(400).json({
+          msg: "Semestre inválido. Debe ser 'Nivelacion' o 'Primer Semestre'"
+        });
+      }
+      
+      docenteBDD.semestreAsignado = semestreAsignado;
+      console.log(`✅ Semestre actualizado: ${semestreAsignado}`);
+    }
+
+    // ========================================
+    // ✅ ACTUALIZAR ASIGNATURAS (CRÍTICO)
+    // ========================================
+    if (asignaturas !== undefined) {
+      console.log('🔄 Procesando asignaturas...');
+      
+      let asignaturasArray = [];
+      
+      // ✅ Manejar diferentes formatos
+      if (typeof asignaturas === 'string') {
+        try {
+          // Intentar parsear si viene como JSON string
+          asignaturasArray = JSON.parse(asignaturas);
+          console.log('   ✅ Parseado desde string JSON');
+        } catch (e) {
+          // Si no es JSON, asumir que es un array vacío
+          console.log('   ⚠️ No se pudo parsear, usando array vacío');
+          asignaturasArray = [];
+        }
+      } else if (Array.isArray(asignaturas)) {
+        asignaturasArray = asignaturas;
+        console.log('   ✅ Ya es un array');
+      } else if (asignaturas === null) {
+        asignaturasArray = [];
+        console.log('   ℹ️ Asignaturas es null, usando array vacío');
+      }
+      
+      // ✅ Validar que todos los elementos sean strings
+      if (!Array.isArray(asignaturasArray)) {
+        return res.status(400).json({
+          msg: "Asignaturas debe ser un array"
+        });
+      }
+
+      // ✅ Filtrar valores vacíos
+      asignaturasArray = asignaturasArray.filter(a => 
+        a && typeof a === 'string' && a.trim() !== ''
+      );
+
+      // ✅ GUARDAR DIRECTAMENTE COMO ARRAY (NO COMO STRING)
+      docenteBDD.asignaturas = asignaturasArray;
+      
+      console.log(`✅ Asignaturas actualizadas: ${asignaturasArray.length} materias`);
+      console.log(`   Materias: ${asignaturasArray.join(', ')}`);
+    }
+
+    // ========================================
+    // ✅ ACTUALIZAR FOTO DE PERFIL
+    // ========================================
     if (req.files?.imagen) {
       try {
         if (docenteBDD.avatarDocenteID) {
@@ -729,7 +818,7 @@ const actualizarPerfilDocente = async (req, res) => {
           });
         }
 
-        const maxSize = 5 * 1024 * 1024; // 5MB
+        const maxSize = 5 * 1024 * 1024;
         if (req.files.imagen.size > maxSize) {
           await fs.unlink(req.files.imagen.tempFilePath);
           return res.status(400).json({
@@ -752,6 +841,7 @@ const actualizarPerfilDocente = async (req, res) => {
         docenteBDD.avatarDocenteID = public_id;
 
         await fs.unlink(req.files.imagen.tempFilePath);
+        console.log('✅ Foto actualizada');
       } catch (cloudinaryError) {
         console.error("Error subiendo imagen:", cloudinaryError);
         return res.status(500).json({
@@ -760,18 +850,33 @@ const actualizarPerfilDocente = async (req, res) => {
       }
     }
 
+    // ========================================
+    // ✅ GUARDAR EN BASE DE DATOS
+    // ========================================
     await docenteBDD.save();
 
+    console.log('💾 Cambios guardados en BD');
+
+    // ========================================
+    // ✅ OBTENER DOCENTE ACTUALIZADO
+    // ========================================
     const docenteActualizado = await Docente.findById(id)
       .select('-passwordDocente -token -__v -createdAt -updatedAt');
+
+    console.log('📤 Enviando respuesta:');
+    console.log('   ID:', docenteActualizado._id);
+    console.log('   Nombre:', docenteActualizado.nombreDocente);
+    console.log('   Semestre:', docenteActualizado.semestreAsignado);
+    console.log('   Asignaturas:', docenteActualizado.asignaturas);
 
     res.status(200).json({
       success: true,
       msg: "Perfil actualizado con éxito",
       docente: docenteActualizado
     });
+
   } catch (error) {
-    console.error("Error actualizando perfil:", error);
+    console.error("❌ Error actualizando perfil:", error);
     res.status(500).json({ 
       msg: "Error al actualizar perfil", 
       error: error.message 

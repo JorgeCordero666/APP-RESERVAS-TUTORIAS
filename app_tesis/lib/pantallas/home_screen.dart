@@ -156,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
       default:
         return [
           _DashboardEstudiante(usuario: _usuario),
-          _PlaceholderScreen(titulo: 'Docentes Disponibles'),
+          //_PlaceholderScreen(titulo: 'Docentes Disponibles'),
           _PlaceholderScreen(titulo: 'Mis Citas'),
           _PerfilScreen(usuario: _usuario, onUserUpdated: _onUserUpdated),
         ];
@@ -181,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
       default:
         return const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Docentes'),
+          //BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Docentes'),
           BottomNavigationBarItem(icon: Icon(Icons.event), label: 'Mis Citas'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
         ];

@@ -34,8 +34,6 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
   String _diaSeleccionado = 'Lunes';
   bool _isLoading = false;
   bool _hasChanges = false;
-
-  // ✅ CORRECCIÓN: Lista de materias escogidas por el DOCENTE
   List<String> _materiasDocente = [];
 
   @override
@@ -44,13 +42,12 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
     _cargarMateriasDocente();
   }
 
-  // ✅ CORRECCIÓN: Cargar SOLO las materias que el docente escogió
   void _cargarMateriasDocente() {
     if (widget.usuario.asignaturas != null && widget.usuario.asignaturas!.isNotEmpty) {
       setState(() {
         _materiasDocente = List.from(widget.usuario.asignaturas!);
         
-        // Inicializar horarios para cada materia ESCOGIDA
+        // Inicializar horarios vacíos para cada materia
         for (var materia in _materiasDocente) {
           _horariosPorMateria[materia] = [];
         }
@@ -70,6 +67,8 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
     setState(() => _isLoading = true);
 
     try {
+      print('📥 Cargando horarios de: $_materiaSeleccionada');
+      
       final horarios = await HorarioService.obtenerHorariosPorMateria(
         docenteId: widget.usuario.id,
         materia: _materiaSeleccionada!,
@@ -78,9 +77,18 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
       if (horarios != null && mounted) {
         setState(() {
           _horariosPorMateria[_materiaSeleccionada!] = horarios;
+          _hasChanges = false; // ✅ Resetear cambios al cargar
+        });
+        
+        print('✅ Horarios cargados: ${horarios.length} bloques');
+      } else {
+        print('ℹ️ No hay horarios previos o hubo error');
+        setState(() {
+          _horariosPorMateria[_materiaSeleccionada!] = [];
         });
       }
     } catch (e) {
+      print('❌ Error cargando horarios: $e');
       _mostrarError('Error al cargar horarios: $e');
     } finally {
       if (mounted) {
@@ -96,6 +104,18 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
         diasDisponibles: _diasSemana,
         horasDisponibles: _horasDisponibles,
         onAgregar: (dia, horaInicio, horaFin) {
+          // ✅ Validar que no exista bloque duplicado
+          final yaExiste = _horariosPorMateria[_materiaSeleccionada!]!.any(
+            (b) => b['dia'] == dia && 
+                   b['horaInicio'] == horaInicio && 
+                   b['horaFin'] == horaFin
+          );
+          
+          if (yaExiste) {
+            _mostrarError('Este bloque ya existe en tu horario');
+            return;
+          }
+          
           setState(() {
             _horariosPorMateria[_materiaSeleccionada!]!.add({
               'dia': dia,
@@ -104,16 +124,43 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
             });
             _hasChanges = true;
           });
+          
+          print('➕ Bloque agregado: $dia $horaInicio-$horaFin');
         },
       ),
     );
   }
 
   void _eliminarBloque(int index) {
-    setState(() {
-      _horariosPorMateria[_materiaSeleccionada!]!.removeAt(index);
-      _hasChanges = true;
-    });
+    final bloque = _horariosPorMateria[_materiaSeleccionada!]![index];
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar bloque'),
+        content: Text(
+          '¿Eliminar el bloque ${bloque['dia']} ${bloque['horaInicio']}-${bloque['horaFin']}?'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _horariosPorMateria[_materiaSeleccionada!]!.removeAt(index);
+                _hasChanges = true;
+              });
+              print('🗑️ Bloque eliminado');
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _guardarCambios() async {
@@ -122,20 +169,34 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
       return;
     }
 
+    // ✅ Validar que hay al menos un bloque
+    if (_horariosPorMateria[_materiaSeleccionada!]!.isEmpty) {
+      _mostrarError('Debes agregar al menos un bloque de horario');
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      await HorarioService.actualizarHorarios(
+      print('💾 Guardando horarios de: $_materiaSeleccionada');
+      print('   Total bloques: ${_horariosPorMateria[_materiaSeleccionada!]!.length}');
+      
+      final exito = await HorarioService.actualizarHorarios(
         docenteId: widget.usuario.id,
         materia: _materiaSeleccionada!,
         bloques: _horariosPorMateria[_materiaSeleccionada!]!,
       );
 
       if (mounted) {
-        _mostrarExito('Horarios guardados correctamente');
-        setState(() => _hasChanges = false);
+        if (exito) {
+          _mostrarExito('Horarios guardados correctamente');
+          setState(() => _hasChanges = false);
+        } else {
+          _mostrarError('Error al guardar horarios. Verifica los datos e intenta nuevamente.');
+        }
       }
     } catch (e) {
+      print('❌ Error guardando: $e');
       _mostrarError('Error al guardar: $e');
     } finally {
       if (mounted) {
@@ -146,6 +207,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
 
   List<Map<String, dynamic>> _obtenerBloquesPorDia(String dia) {
     if (_materiaSeleccionada == null) return [];
+    
     return _horariosPorMateria[_materiaSeleccionada!]!
         .where((bloque) => bloque['dia'] == dia)
         .toList()
@@ -158,6 +220,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
         content: Text(mensaje),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -183,7 +246,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ VALIDACIÓN CORREGIDA: Verificar materias ESCOGIDAS por el docente
+    // ✅ Validación: Sin materias escogidas
     if (_materiasDocente.isEmpty) {
       return Scaffold(
         appBar: AppBar(
@@ -239,7 +302,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
       ),
       body: Column(
         children: [
-          // Selector de materia - SOLO MUESTRA LAS ESCOGIDAS POR EL DOCENTE
+          // ✅ Selector de materia
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -275,19 +338,49 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
                         );
                       }).toList(),
                       onChanged: (value) {
-                        setState(() {
-                          _materiaSeleccionada = value;
+                        if (value != null && value != _materiaSeleccionada) {
+                          setState(() {
+                            _materiaSeleccionada = value;
+                            _hasChanges = false;
+                          });
                           _cargarHorariosExistentes();
-                        });
+                        }
                       },
                     ),
                   ),
                 ),
+                if (_hasChanges) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning_amber, color: Colors.orange[700], size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Tienes cambios sin guardar',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.orange[900],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
 
-          // Tabs de días
+          // ✅ Tabs de días
           Container(
             color: Colors.white,
             child: SingleChildScrollView(
@@ -330,14 +423,12 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
             ),
           ),
 
-          // Lista de bloques
+          // ✅ Lista de bloques
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _materiaSeleccionada == null
-                    ? const Center(
-                        child: Text('Selecciona una materia'),
-                      )
+                    ? const Center(child: Text('Selecciona una materia'))
                     : () {
                         final bloques = _obtenerBloquesPorDia(_diaSeleccionado);
                         
@@ -430,7 +521,9 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
   }
 }
 
-// Dialog para agregar bloque
+// =====================================================
+// ✅ Dialog para agregar bloque
+// =====================================================
 class _DialogAgregarBloque extends StatefulWidget {
   final List<String> diasDisponibles;
   final List<String> horasDisponibles;
@@ -450,41 +543,90 @@ class _DialogAgregarBloqueState extends State<_DialogAgregarBloque> {
   String? _diaSeleccionado;
   String? _horaInicio;
   String? _horaFin;
+  String? _error;
+
+  void _validarYAgregar() {
+    setState(() => _error = null);
+
+    if (_diaSeleccionado == null || _horaInicio == null || _horaFin == null) {
+      setState(() => _error = 'Todos los campos son obligatorios');
+      return;
+    }
+
+    // ✅ Validar que hora fin > hora inicio
+    final [hIni, mIni] = _horaInicio!.split(':').map(int.parse).toList();
+    final [hFin, mFin] = _horaFin!.split(':').map(int.parse).toList();
+    final inicioMinutos = hIni * 60 + mIni;
+    final finMinutos = hFin * 60 + mFin;
+
+    if (finMinutos <= inicioMinutos) {
+      setState(() => _error = 'La hora de fin debe ser mayor que la de inicio');
+      return;
+    }
+
+    widget.onAgregar(_diaSeleccionado!, _horaInicio!, _horaFin!);
+    Navigator.pop(context);
+  }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Agregar Horario'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DropdownButtonFormField<String>(
-            value: _diaSeleccionado,
-            decoration: const InputDecoration(labelText: 'Día'),
-            items: widget.diasDisponibles.map((dia) {
-              return DropdownMenuItem(value: dia, child: Text(dia));
-            }).toList(),
-            onChanged: (value) => setState(() => _diaSeleccionado = value),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            value: _horaInicio,
-            decoration: const InputDecoration(labelText: 'Hora inicio'),
-            items: widget.horasDisponibles.map((hora) {
-              return DropdownMenuItem(value: hora, child: Text(hora));
-            }).toList(),
-            onChanged: (value) => setState(() => _horaInicio = value),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            value: _horaFin,
-            decoration: const InputDecoration(labelText: 'Hora fin'),
-            items: widget.horasDisponibles.map((hora) {
-              return DropdownMenuItem(value: hora, child: Text(hora));
-            }).toList(),
-            onChanged: (value) => setState(() => _horaFin = value),
-          ),
-        ],
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_error != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            DropdownButtonFormField<String>(
+              value: _diaSeleccionado,
+              decoration: const InputDecoration(labelText: 'Día'),
+              items: widget.diasDisponibles.map((dia) {
+                return DropdownMenuItem(value: dia, child: Text(dia));
+              }).toList(),
+              onChanged: (value) => setState(() => _diaSeleccionado = value),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _horaInicio,
+              decoration: const InputDecoration(labelText: 'Hora inicio'),
+              items: widget.horasDisponibles.map((hora) {
+                return DropdownMenuItem(value: hora, child: Text(hora));
+              }).toList(),
+              onChanged: (value) => setState(() => _horaInicio = value),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _horaFin,
+              decoration: const InputDecoration(labelText: 'Hora fin'),
+              items: widget.horasDisponibles.map((hora) {
+                return DropdownMenuItem(value: hora, child: Text(hora));
+              }).toList(),
+              onChanged: (value) => setState(() => _horaFin = value),
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(
@@ -492,14 +634,7 @@ class _DialogAgregarBloqueState extends State<_DialogAgregarBloque> {
           child: const Text('Cancelar'),
         ),
         ElevatedButton(
-          onPressed: () {
-            if (_diaSeleccionado != null &&
-                _horaInicio != null &&
-                _horaFin != null) {
-              widget.onAgregar(_diaSeleccionado!, _horaInicio!, _horaFin!);
-              Navigator.pop(context);
-            }
-          },
+          onPressed: _validarYAgregar,
           child: const Text('Agregar'),
         ),
       ],

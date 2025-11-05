@@ -1,3 +1,4 @@
+// ✅ FUNCIÓN CORREGIDA - actualizarPerfilDocente
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -6,9 +7,7 @@ import '../modelos/usuario.dart';
 import '../servicios/auth_service.dart';
 
 class PerfilService {
-  // ========== ACTUALIZAR PERFIL ==========
-
-  /// Actualizar perfil de Administrador
+  // ========== ACTUALIZAR PERFIL ADMINISTRADOR ==========
   static Future<Map<String, dynamic>?> actualizarPerfilAdministrador({
     required String id,
     String? nombre,
@@ -24,10 +23,8 @@ class PerfilService {
         Uri.parse(ApiConfig.actualizarPerfilAdmin(id)),
       );
 
-      // Agregar headers
       request.headers.addAll(ApiConfig.getMultipartHeaders(token: token));
 
-      // Agregar campos - SIEMPRE enviar los campos aunque no cambien
       if (nombre != null && nombre.isNotEmpty) {
         request.fields['nombreAdministrador'] = nombre;
       }
@@ -35,20 +32,18 @@ class PerfilService {
         request.fields['email'] = email;
       }
 
-      // Agregar imagen si existe
       if (imagen != null) {
         request.files.add(
           await http.MultipartFile.fromPath('imagen', imagen.path),
         );
       }
 
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        // Actualizar usuario en SharedPreferences
         if (data['administrador'] != null) {
           final usuarioActualizado = Usuario.fromJson(
             data['administrador'],
@@ -68,7 +63,7 @@ class PerfilService {
     }
   }
 
-  /// Actualizar perfil de Docente
+  // ========== ✅ ACTUALIZAR PERFIL DOCENTE (CORREGIDO) ==========
   static Future<Map<String, dynamic>?> actualizarPerfilDocente({
     required String id,
     String? nombre,
@@ -89,89 +84,136 @@ class PerfilService {
       print('🔑 Token obtenido: ${token.substring(0, 20)}...');
       print('🆔 Actualizando perfil del docente ID: $id');
 
-      // ✅ USAR LA URL CORRECTA - /docente/perfil/:id
+      // ✅ URL correcta
       final url = '${ApiConfig.baseUrl}/docente/perfil/$id';
       print('🔗 URL de actualización: $url');
 
       var request = http.MultipartRequest('PUT', Uri.parse(url));
 
-      // ✅ HEADERS CON TOKEN
+      // ✅ Header con token
       request.headers['Authorization'] = 'Bearer $token';
       print('📋 Headers configurados con Authorization');
 
-      // Agregar campos básicos del docente
+      // ==========================================
+      // ✅ CAMPOS BÁSICOS
+      // ==========================================
       if (nombre != null && nombre.isNotEmpty) {
         request.fields['nombreDocente'] = nombre;
         print('📝 Campo agregado: nombreDocente = $nombre');
       }
+      
       if (cedula != null && cedula.isNotEmpty) {
         request.fields['cedulaDocente'] = cedula;
+        print('📝 Campo agregado: cedulaDocente = $cedula');
       }
+      
       if (fechaNacimiento != null && fechaNacimiento.isNotEmpty) {
         request.fields['fechaNacimientoDocente'] = fechaNacimiento;
       }
+      
       if (oficina != null && oficina.isNotEmpty) {
         request.fields['oficinaDocente'] = oficina;
+        print('📝 Campo agregado: oficinaDocente = $oficina');
       }
+      
       if (emailAlternativo != null && emailAlternativo.isNotEmpty) {
         request.fields['emailAlternativoDocente'] = emailAlternativo;
+        print('📝 Campo agregado: emailAlternativoDocente = $emailAlternativo');
       }
+      
       if (celular != null && celular.isNotEmpty) {
         request.fields['celularDocente'] = celular;
+        print('📝 Campo agregado: celularDocente = $celular');
       }
 
-      // Nuevos campos para gestión de materias
+      // ==========================================
+      // ✅ SEMESTRE
+      // ==========================================
       if (semestreAsignado != null && semestreAsignado.isNotEmpty) {
         request.fields['semestreAsignado'] = semestreAsignado;
-      }
-      if (asignaturas != null && asignaturas.isNotEmpty) {
-        request.fields['asignaturas'] = jsonEncode(asignaturas);
+        print('📝 Campo agregado: semestreAsignado = $semestreAsignado');
       }
 
-      // Agregar imagen si existe
+      // ==========================================
+      // ✅ ASIGNATURAS (CRÍTICO)
+      // ==========================================
+      if (asignaturas != null) {
+        // ✅ ENVIAR COMO JSON STRING (el backend espera esto)
+        final asignaturasJson = jsonEncode(asignaturas);
+        request.fields['asignaturas'] = asignaturasJson;
+        
+        print('📝 Campo agregado: asignaturas');
+        print('   Cantidad: ${asignaturas.length} materias');
+        print('   Materias: ${asignaturas.join(", ")}');
+        print('   JSON enviado: $asignaturasJson');
+      }
+
+      // ==========================================
+      // ✅ IMAGEN
+      // ==========================================
       if (imagen != null) {
         request.files.add(
           await http.MultipartFile.fromPath('imagen', imagen.path),
         );
+        print('📸 Imagen agregada al request');
       }
 
+      // ==========================================
+      // ✅ EJECUTAR REQUEST
+      // ==========================================
       print('🚀 Enviando request...');
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('📬 Status code: ${response.statusCode}');
-      print('📄 Response body: ${response.body}');
+      print('📬 Status: ${response.statusCode}');
+      print('📄 Body: ${response.body}');
 
+      // ==========================================
+      // ✅ RESPUESTA EXITOSA
+      // ==========================================
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        // Actualizar usuario en SharedPreferences
         if (data['docente'] != null) {
           final usuarioActualizado = Usuario.fromJson(
             data['docente'],
             'Docente',
           );
           await AuthService.actualizarUsuario(usuarioActualizado);
+
+          print('✅ Usuario en SharedPreferences actualizado');
+          print('   Semestre: ${usuarioActualizado.semestreAsignado}');
+          print('   Asignaturas: ${usuarioActualizado.asignaturas}');
         }
 
         return data;
-      } else if (response.statusCode == 401 || response.statusCode == 403) {
-        // Error de autenticación/autorización
+      }
+
+      // ==========================================
+      // ✅ ERRORES 401 / 403
+      // ==========================================
+      else if (response.statusCode == 401 || response.statusCode == 403) {
         final error = jsonDecode(response.body);
         print('❌ Error de autorización: ${error['msg']}');
         return {'error': 'Acceso denegado. Por favor inicia sesión nuevamente.'};
-      } else {
+      }
+
+      // ==========================================
+      // ✅ OTRO ERROR DEL BACKEND
+      // ==========================================
+      else {
         final error = jsonDecode(response.body);
-        print('❌ Error del servidor: ${error['msg']}');
+        print('❌ Error en servidor: ${error['msg']}');
         return {'error': error['msg'] ?? 'Error al actualizar perfil'};
       }
+
     } catch (e) {
       print('❌ Error en actualizarPerfilDocente: $e');
       return {'error': 'Error de conexión: $e'};
     }
   }
 
-  /// Actualizar perfil de Estudiante
+  // ========== ACTUALIZAR PERFIL ESTUDIANTE ==========
   static Future<Map<String, dynamic>?> actualizarPerfilEstudiante({
     required String id,
     String? nombre,
@@ -190,52 +232,39 @@ class PerfilService {
 
       request.headers.addAll(ApiConfig.getMultipartHeaders(token: token));
 
-      // Agregar campos editables
       if (nombre != null && nombre.isNotEmpty) {
         request.fields['nombreEstudiante'] = nombre;
-        print('📝 Enviando nombre: $nombre');
       }
       if (telefono != null && telefono.isNotEmpty) {
         request.fields['telefono'] = telefono;
-        print('📞 Enviando teléfono: $telefono');
       }
       if (email != null && email.isNotEmpty) {
         request.fields['emailEstudiante'] = email;
-        print('📧 Enviando email: $email');
       }
 
-      // Agregar imagen si existe
       if (imagen != null) {
         request.files.add(
           await http.MultipartFile.fromPath('imagen', imagen.path),
         );
-        print('📸 Enviando imagen');
       }
 
-      print('🚀 Enviando request...');
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
-      print('📬 Status code: ${response.statusCode}');
-      print('📄 Response body: ${response.body}');
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        // Actualizar usuario en SharedPreferences
         if (data['estudiante'] != null) {
           final usuarioActualizado = Usuario.fromJson(
             data['estudiante'],
             'Estudiante',
           );
           await AuthService.actualizarUsuario(usuarioActualizado);
-          print('✅ Usuario actualizado en cache');
         }
 
         return data;
       } else {
         final error = jsonDecode(response.body);
-        print('❌ Error del servidor: ${error['msg']}');
         return {'error': error['msg'] ?? 'Error al actualizar perfil'};
       }
     } catch (e) {
@@ -244,9 +273,7 @@ class PerfilService {
     }
   }
 
-  // ========== CAMBIAR CONTRASEÑA ==========
-
-  /// Cambiar contraseña de Administrador
+  // ========== CAMBIAR CONTRASEÑA ADMIN / DOCENTE / ESTUDIANTE ==========
   static Future<Map<String, dynamic>?> cambiarPasswordAdministrador({
     required String id,
     required String passwordActual,
@@ -266,8 +293,7 @@ class PerfilService {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data;
+        return jsonDecode(response.body);
       } else {
         final error = jsonDecode(response.body);
         return {'error': error['msg'] ?? 'Error al cambiar contraseña'};
@@ -278,7 +304,6 @@ class PerfilService {
     }
   }
 
-  /// Cambiar contraseña de Docente
   static Future<Map<String, dynamic>?> cambiarPasswordDocente({
     required String id,
     required String passwordActual,
@@ -298,8 +323,7 @@ class PerfilService {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data;
+        return jsonDecode(response.body);
       } else {
         final error = jsonDecode(response.body);
         return {'error': error['msg'] ?? 'Error al cambiar contraseña'};
@@ -310,7 +334,6 @@ class PerfilService {
     }
   }
 
-  /// Cambiar contraseña de Estudiante
   static Future<Map<String, dynamic>?> cambiarPasswordEstudiante({
     required String id,
     required String passwordActual,
@@ -330,8 +353,7 @@ class PerfilService {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data;
+        return jsonDecode(response.body);
       } else {
         final error = jsonDecode(response.body);
         return {'error': error['msg'] ?? 'Error al cambiar contraseña'};

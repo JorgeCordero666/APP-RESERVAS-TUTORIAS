@@ -1,3 +1,4 @@
+import 'dart:convert';
 import '../config/api_config.dart';
 
 class Usuario {
@@ -72,6 +73,55 @@ class Usuario {
       case 'Docente':
         final id = json['_id'] ?? json['id'] ?? '';
         print('✅ Docente ID extraído: $id');
+        
+        // ========================================
+        // ✅ PROCESAMIENTO CORRECTO DE ASIGNATURAS
+        // ========================================
+        List<String>? asignaturasFinales;
+        
+        if (json['asignaturas'] != null) {
+          print('📚 Procesando asignaturas...');
+          print('   Tipo: ${json['asignaturas'].runtimeType}');
+          print('   Valor: ${json['asignaturas']}');
+          
+          if (json['asignaturas'] is List) {
+            // Ya es una lista
+            asignaturasFinales = List<String>.from(json['asignaturas']);
+            print('   ✅ Ya es una lista: ${asignaturasFinales.length} materias');
+          } else if (json['asignaturas'] is String) {
+            // Es un string, intentar parsear
+            final stringValue = json['asignaturas'] as String;
+            
+            // Si es un string vacío o "[]", tratar como lista vacía
+            if (stringValue.trim().isEmpty || stringValue.trim() == '[]') {
+              asignaturasFinales = [];
+              print('   ℹ️ String vacío o "[]", usando lista vacía');
+            } else {
+              try {
+                final parsed = jsonDecode(stringValue);
+                if (parsed is List) {
+                  asignaturasFinales = List<String>.from(parsed);
+                  print('   ✅ Parseado desde string: ${asignaturasFinales.length} materias');
+                } else {
+                  asignaturasFinales = [];
+                  print('   ⚠️ String parseado no es una lista válida');
+                }
+              } catch (e) {
+                print('   ❌ Error parseando string: $e');
+                asignaturasFinales = [];
+              }
+            }
+          } else {
+            asignaturasFinales = [];
+            print('   ⚠️ Tipo no reconocido, usando lista vacía');
+          }
+        } else {
+          asignaturasFinales = [];
+          print('   ℹ️ asignaturas es null, usando lista vacía');
+        }
+        
+        print('   📋 Asignaturas finales: ${asignaturasFinales.isEmpty ? "ninguna" : asignaturasFinales.join(", ")}');
+        
         return Usuario(
           id: id,
           nombre: json['nombreDocente'] ?? '',
@@ -84,9 +134,7 @@ class Usuario {
           celular: json['celularDocente'],
           oficina: json['oficinaDocente'],
           emailAlternativo: json['emailAlternativoDocente'],
-          asignaturas: json['asignaturas'] != null
-              ? List<String>.from(json['asignaturas'])
-              : null,
+          asignaturas: asignaturasFinales,                    // ✅ CORREGIDO
           semestreAsignado: json['semestreAsignado'],
           fechaNacimiento: json['fechaNacimientoDocente'] != null
               ? DateTime.parse(json['fechaNacimientoDocente'])
@@ -142,7 +190,7 @@ class Usuario {
     if (celular != null) data['celular'] = celular;
     if (oficina != null) data['oficina'] = oficina;
     if (emailAlternativo != null) data['emailAlternativo'] = emailAlternativo;
-    if (asignaturas != null) data['asignaturas'] = asignaturas;
+    if (asignaturas != null) data['asignaturas'] = asignaturas; // ✅ COMO LISTA
     if (semestreAsignado != null) data['semestreAsignado'] = semestreAsignado;
     if (fechaNacimiento != null) {
       data['fechaNacimiento'] = fechaNacimiento!.toIso8601String();
@@ -218,6 +266,7 @@ class Usuario {
   bool get esOAuth => isOAuth;
 
   String get nombreCompleto => nombre;
+  
   String get fotoPerfilUrl {
     final placeholder =
         'https://cdn-icons-png.flaticon.com/512/4715/4715329.png';

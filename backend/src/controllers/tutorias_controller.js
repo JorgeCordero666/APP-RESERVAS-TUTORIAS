@@ -1,3 +1,4 @@
+// backend/src/controllers/tutorias_controller.js - VERSIÓN COMPLETA
 import Tutoria from '../models/tutorias.js';
 import disponibilidadDocente from '../models/disponibilidadDocente.js';
 import Docente from '../models/docente.js';
@@ -203,7 +204,7 @@ const registrarAsistencia = async (req, res) => {
 };
 
 // =====================================================
-// ✅ REGISTRAR DISPONIBILIDAD GENERAL
+// ✅ REGISTRAR DISPONIBILIDAD GENERAL (LEGACY)
 // =====================================================
 const registrarDisponibilidadDocente = async (req, res) => {
   try {
@@ -227,7 +228,7 @@ const registrarDisponibilidadDocente = async (req, res) => {
 };
 
 // =====================================================
-// ✅ VER DISPONIBILIDAD GENERAL
+// ✅ VER DISPONIBILIDAD GENERAL (LEGACY)
 // =====================================================
 const verDisponibilidadDocente = async (req, res) => {
   try {
@@ -280,58 +281,147 @@ const bloquesOcupadosDocente = async (req, res) => {
 };
 
 // =====================================================
-// ✅ NUEVAS FUNCIONES — DISPONIBILIDAD POR MATERIA
+// ✅ REGISTRAR/ACTUALIZAR DISPONIBILIDAD POR MATERIA
 // =====================================================
-
-// ⭐ Registrar disponibilidad por materia
 const registrarDisponibilidadPorMateria = async (req, res) => {
   try {
     const { materia, diaSemana, bloques } = req.body;
     const docente = req.docenteBDD?._id;
 
+    // Validaciones básicas
     if (!docente) {
       return res.status(401).json({ msg: "Docente no autenticado" });
     }
 
-    if (!materia || !diaSemana || !bloques) {
+    if (!materia || !diaSemana || !bloques || !Array.isArray(bloques)) {
       return res.status(400).json({ 
-        msg: "Materia, día de la semana y bloques son obligatorios" 
+        msg: "Materia, día de la semana y bloques (array) son obligatorios" 
       });
     }
 
-    const docenteBDD = await Docente.findById(docente);
-
-    if (!docenteBDD.asignaturas || !docenteBDD.asignaturas.includes(materia)) {
+    // Validar que bloques no esté vacío
+    if (bloques.length === 0) {
       return res.status(400).json({
-        msg: "Esta materia no está asignada a tu perfil"
+        msg: "Debes agregar al menos un bloque de horario"
       });
     }
 
+    // Normalizar día de la semana
+    const diaNormalizado = diaSemana.toLowerCase().trim();
+    const diasValidos = ["lunes", "martes", "miércoles", "jueves", "viernes"];
+    
+    if (!diasValidos.includes(diaNormalizado)) {
+      return res.status(400).json({
+        msg: "Día de la semana inválido. Debe ser lunes, martes, miércoles, jueves o viernes"
+      });
+    }
+
+    // ✅ Verificar que la materia pertenece al docente
+    const docenteBDD = await Docente.findById(docente);
+    
+    if (!docenteBDD) {
+      return res.status(404).json({ msg: "Docente no encontrado" });
+    }
+
+    // Parsear asignaturas si es string
+    let asignaturasDocente = docenteBDD.asignaturas;
+    if (typeof asignaturasDocente === 'string') {
+      try {
+        asignaturasDocente = JSON.parse(asignaturasDocente);
+      } catch {
+        asignaturasDocente = [];
+      }
+    }
+
+    if (!asignaturasDocente || !asignaturasDocente.includes(materia)) {
+      return res.status(400).json({
+        msg: `La materia "${materia}" no está asignada a tu perfil. Primero agrega la materia en "Mis Materias".`
+      });
+    }
+
+    // ✅ Validar formato de bloques
+    for (const bloque of bloques) {
+      if (!bloque.horaInicio || !bloque.horaFin) {
+        return res.status(400).json({
+          msg: "Cada bloque debe tener horaInicio y horaFin"
+        });
+      }
+
+      // Validar formato HH:MM
+      const formatoHora = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (!formatoHora.test(bloque.horaInicio) || !formatoHora.test(bloque.horaFin)) {
+        return res.status(400).json({
+          msg: "Formato de hora inválido. Usa HH:MM (ej: 14:00)"
+        });
+      }
+
+      // Validar que hora fin > hora inicio
+      const [hIni, mIni] = bloque.horaInicio.split(':').map(Number);
+      const [hFin, mFin] = bloque.horaFin.split(':').map(Number);
+      const inicioMinutos = hIni * 60 + mIni;
+      const finMinutos = hFin * 60 + mFin;
+
+      if (finMinutos <= inicioMinutos) {
+        return res.status(400).json({
+          msg: `El bloque ${bloque.horaInicio}-${bloque.horaFin} es inválido: la hora de fin debe ser mayor que la de inicio`
+        });
+      }
+    }
+
+    // ✅ Buscar o crear disponibilidad
     let disponibilidad = await disponibilidadDocente.findOne({ 
       docente, 
-      diaSemana, 
+      diaSemana: diaNormalizado, 
       materia 
     });
 
     if (disponibilidad) {
-      disponibilidad.bloques = bloques;
+      // Actualizar bloques existentes
+      disponibilidad.bloques = bloques.map(b => ({
+        horaInicio: b.horaInicio,
+        horaFin: b.horaFin
+      }));
+      
+      console.log(`📝 Actualizando disponibilidad: ${materia} - ${diaNormalizado}`);
     } else {
+      // Crear nueva disponibilidad
       disponibilidad = new disponibilidadDocente({ 
         docente, 
-        diaSemana, 
+        diaSemana: diaNormalizado, 
         materia,
-        bloques 
+        bloques: bloques.map(b => ({
+          horaInicio: b.horaInicio,
+          horaFin: b.horaFin
+        }))
       });
+      
+      console.log(`✨ Creando nueva disponibilidad: ${materia} - ${diaNormalizado}`);
     }
 
     await disponibilidad.save();
 
+    console.log(`✅ Disponibilidad guardada exitosamente`);
+
     res.status(200).json({ 
+      success: true,
       msg: "Disponibilidad actualizada con éxito.", 
-      disponibilidad 
+      disponibilidad: {
+        materia: disponibilidad.materia,
+        diaSemana: disponibilidad.diaSemana,
+        bloques: disponibilidad.bloques,
+        id: disponibilidad._id
+      }
     });
   } catch (error) {
-    console.error("Error en registrarDisponibilidadPorMateria:", error);
+    console.error("❌ Error en registrarDisponibilidadPorMateria:", error);
+    
+    // Manejo de error de clave duplicada
+    if (error.code === 11000) {
+      return res.status(409).json({
+        msg: "Ya existe un registro para esta materia y día. Intenta actualizar en lugar de crear uno nuevo."
+      });
+    }
+    
     res.status(500).json({ 
       msg: "Error al actualizar disponibilidad", 
       error: error.message 
@@ -339,26 +429,45 @@ const registrarDisponibilidadPorMateria = async (req, res) => {
   }
 };
 
-// ⭐ Ver disponibilidad por materia
+// =====================================================
+// ✅ VER DISPONIBILIDAD POR MATERIA
+// =====================================================
 const verDisponibilidadPorMateria = async (req, res) => {
   try {
     const { docenteId, materia } = req.params;
 
+    // Validar ObjectId
+    if (!docenteId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ msg: "ID de docente inválido" });
+    }
+
+    console.log(`🔍 Buscando disponibilidad: Docente=${docenteId}, Materia=${materia}`);
+
     const disponibilidad = await disponibilidadDocente.find({ 
       docente: docenteId,
       materia 
-    });
+    }).sort({ diaSemana: 1 });
 
     if (!disponibilidad || disponibilidad.length === 0) {
+      console.log(`ℹ️ No hay disponibilidad para ${materia}`);
       return res.status(200).json({
         msg: "El docente no tiene disponibilidad registrada para esta materia.",
         disponibilidad: []
       });
     }
 
-    res.status(200).json({ disponibilidad });
+    console.log(`✅ Disponibilidad encontrada: ${disponibilidad.length} días`);
+
+    res.status(200).json({ 
+      success: true,
+      disponibilidad: disponibilidad.map(d => ({
+        diaSemana: d.diaSemana,
+        bloques: d.bloques,
+        id: d._id
+      }))
+    });
   } catch (error) {
-    console.error("Error en verDisponibilidadPorMateria:", error);
+    console.error("❌ Error en verDisponibilidadPorMateria:", error);
     res.status(500).json({ 
       msg: "Error al obtener la disponibilidad.", 
       error: error.message 
@@ -366,26 +475,41 @@ const verDisponibilidadPorMateria = async (req, res) => {
   }
 };
 
-// ⭐ Ver toda la disponibilidad agrupada por materia
+// =====================================================
+// ✅ VER DISPONIBILIDAD COMPLETA (TODAS LAS MATERIAS)
+// =====================================================
 const verDisponibilidadCompletaDocente = async (req, res) => {
   try {
     const { docenteId } = req.params;
+
+    // Validar ObjectId
+    if (!docenteId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ msg: "ID de docente inválido" });
+    }
+
+    console.log(`🔍 Buscando disponibilidad completa del docente: ${docenteId}`);
 
     const disponibilidad = await disponibilidadDocente.find({
       docente: docenteId
     }).sort({ materia: 1, diaSemana: 1 });
 
     if (!disponibilidad || disponibilidad.length === 0) {
+      console.log(`ℹ️ No hay disponibilidad registrada`);
       return res.status(200).json({
+        success: true,
         msg: "El docente no tiene disponibilidad registrada.",
-        disponibilidad: {}
+        docenteId,
+        materias: {}
       });
     }
 
+    // Agrupar por materia
     const porMateria = {};
     disponibilidad.forEach(disp => {
-      const mat = disp.materia || 'General';
-      if (!porMateria[mat]) porMateria[mat] = [];
+      const mat = disp.materia;
+      if (!porMateria[mat]) {
+        porMateria[mat] = [];
+      }
 
       porMateria[mat].push({
         diaSemana: disp.diaSemana,
@@ -393,13 +517,16 @@ const verDisponibilidadCompletaDocente = async (req, res) => {
       });
     });
 
+    console.log(`✅ Disponibilidad completa: ${Object.keys(porMateria).length} materias`);
+
     res.status(200).json({
+      success: true,
       docenteId,
       materias: porMateria
     });
 
   } catch (error) {
-    console.error("Error en verDisponibilidadCompletaDocente:", error);
+    console.error("❌ Error en verDisponibilidadCompletaDocente:", error);
     res.status(500).json({
       msg: "Error al obtener disponibilidad.",
       error: error.message
@@ -407,29 +534,43 @@ const verDisponibilidadCompletaDocente = async (req, res) => {
   }
 };
 
-// ⭐ Eliminar disponibilidad por materia y día
+// =====================================================
+// ✅ ELIMINAR DISPONIBILIDAD POR MATERIA Y DÍA
+// =====================================================
 const eliminarDisponibilidadMateria = async (req, res) => {
   try {
     const { docenteId, materia, dia } = req.params;
 
+    // Solo el docente puede eliminar su propia disponibilidad
     if (req.docenteBDD._id.toString() !== docenteId) {
       return res.status(403).json({
         msg: 'No tienes permiso para eliminar esta disponibilidad'
       });
     }
 
-    await disponibilidadDocente.findOneAndDelete({
+    const diaNormalizado = dia.toLowerCase().trim();
+
+    const resultado = await disponibilidadDocente.findOneAndDelete({
       docente: docenteId,
       materia,
-      diaSemana: dia
+      diaSemana: diaNormalizado
     });
 
+    if (!resultado) {
+      return res.status(404).json({
+        msg: "No se encontró disponibilidad para eliminar"
+      });
+    }
+
+    console.log(`🗑️ Disponibilidad eliminada: ${materia} - ${diaNormalizado}`);
+
     res.status(200).json({
+      success: true,
       msg: "Disponibilidad eliminada correctamente"
     });
 
   } catch (error) {
-    console.error("Error en eliminarDisponibilidadMateria:", error);
+    console.error("❌ Error en eliminarDisponibilidadMateria:", error);
     res.status(500).json({
       msg: "Error al eliminar disponibilidad",
       error: error.message
@@ -438,19 +579,22 @@ const eliminarDisponibilidadMateria = async (req, res) => {
 };
 
 // =====================================================
-// ✅ EXPORTAR TODO
+// ✅ EXPORTAR TODAS LAS FUNCIONES
 // =====================================================
 export {
+  // Tutorías
   registrarTutoria,
   listarTutorias,
   actualizarTutoria,
   cancelarTutoria,
   registrarAsistencia,
+  
+  // Disponibilidad general (legacy)
   registrarDisponibilidadDocente,
   verDisponibilidadDocente,
   bloquesOcupadosDocente,
 
-  // ✅ Nuevas funciones
+  // Disponibilidad por materia (nuevo)
   registrarDisponibilidadPorMateria,
   verDisponibilidadPorMateria,
   verDisponibilidadCompletaDocente,
