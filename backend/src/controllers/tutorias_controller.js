@@ -75,51 +75,64 @@ const registrarTutoria = async (req, res) => {
 };
 
 // =====================================================
-// ✅ LISTAR TUTORIAS - CORREGIDO (línea ~50)
+// ✅ LISTAR TUTORIAS
 // =====================================================
 const listarTutorias = async (req, res) => {
   try {
     let filtro = {};
 
+    // Filtrar por rol (docente o estudiante autenticado)
     if (req.docenteBDD) {
       filtro.docente = req.docenteBDD._id;
     } else if (req.estudianteBDD) {
       filtro.estudiante = req.estudianteBDD._id;
     }
 
-    const { fecha, estado } = req.query;
+    // Extraer parámetros de consulta
+    const { fecha, estado, incluirCanceladas } = req.query;
 
+    // Filtrar por fecha específica o rango semanal
     if (fecha) {
       filtro.fecha = fecha;
     } else {
       const inicioSemana = moment().startOf('isoWeek').format("YYYY-MM-DD");
       const finSemana = moment().endOf('isoWeek').format("YYYY-MM-DD");
-
       filtro.fecha = { $gte: inicioSemana, $lte: finSemana };
     }
 
-    // ✅ NUEVO: Excluir tutorías canceladas por defecto
-    if (estado) {
-      filtro.estado = estado;
-    } else {
-      // Si no se especifica estado, mostrar solo activas
-      filtro.estado = { $nin: ['cancelada_por_estudiante', 'cancelada_por_docente'] };
+    // ✅ CLAVE: Excluir canceladas por defecto
+    if (incluirCanceladas !== 'true') {
+      filtro.estado = { 
+        $nin: ['cancelada_por_estudiante', 'cancelada_por_docente'] 
+      };
     }
 
+    // Si se especifica un estado concreto, usarlo (solo si no se piden canceladas)
+    if (estado && incluirCanceladas !== 'true') {
+      filtro.estado = estado;
+    }
+
+    console.log(`📋 Listando tutorías con filtro:`, JSON.stringify(filtro, null, 2));
+
     const tutorias = await Tutoria.find(filtro)
-      .populate("estudiante", "nombreEstudiante")
-      .populate("docente", "nombreDocente")
-      .sort({ fecha: 1, horaInicio: 1 }); // Ordenar por fecha y hora
+      .populate("estudiante", "nombreEstudiante emailEstudiante fotoPerfil")
+      .populate("docente", "nombreDocente emailDocente avatarDocente")
+      .sort({ fecha: 1, horaInicio: 1 }); // ✅ Ordenar por fecha y hora
 
-    console.log(`📋 Tutorías encontradas: ${tutorias.length}`);
+    console.log(`✅ Tutorías encontradas (activas): ${tutorias.length}`);
 
-    res.json({
+    res.status(200).json({
+      success: true,
       total: tutorias.length,
       tutorias
     });
   } catch (error) {
-    console.error("Error al listar tutorías:", error);
-    res.status(500).json({ mensaje: "Error al listar tutorías.", error: error.message });
+    console.error("❌ Error al listar tutorías:", error);
+    res.status(500).json({ 
+      success: false,
+      msg: "Error al listar tutorías.", 
+      error: error.message 
+    });
   }
 };
 
@@ -151,7 +164,7 @@ const actualizarTutoria = async (req, res) => {
 };
 
 // =====================================================
-// ✅ CANCELAR TUTORIA - CORREGIDO (línea ~110)
+// ✅ CANCELAR TUTORIA
 // =====================================================
 const cancelarTutoria = async (req, res) => {
   try {
@@ -171,10 +184,11 @@ const cancelarTutoria = async (req, res) => {
       return res.status(400).json({ msg: 'Esta tutoría ya fue cancelada.' });
     }
 
-    const hoy = new Date();
-    const fechaTutoria = new Date(tutoria.fecha);
+    // ✅ Validar fecha correctamente (comparar sin hora)
+    const hoy = moment().startOf('day');
+    const fechaTutoria = moment(tutoria.fecha, 'YYYY-MM-DD').startOf('day');
 
-    if (fechaTutoria < hoy) {
+    if (fechaTutoria.isBefore(hoy)) {
       return res.status(400).json({ msg: 'No puedes cancelar una tutoría pasada.' });
     }
 
@@ -196,7 +210,8 @@ const cancelarTutoria = async (req, res) => {
     console.log(`✅ Tutoría cancelada: ${tutoria._id}`);
     console.log(`   Nuevo estado: ${tutoria.estado}`);
 
-    res.json({ 
+    res.status(200).json({ 
+      success: true,
       msg: 'Tutoría cancelada correctamente.', 
       tutoria: {
         _id: tutoria._id,
@@ -206,8 +221,12 @@ const cancelarTutoria = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error al cancelar tutoría:", error);
-    res.status(500).json({ msg: 'Error al cancelar la tutoría.', error: error.message });
+    console.error("❌ Error al cancelar tutoría:", error);
+    res.status(500).json({ 
+      success: false,
+      msg: 'Error al cancelar la tutoría.', 
+      error: error.message 
+    });
   }
 };
 
@@ -320,7 +339,7 @@ const bloquesOcupadosDocente = async (req, res) => {
 };
 
 // =====================================================
-// ✅ REGISTRAR/ACTUALIZAR DISPONIBILIDAD POR MATERIA  ✅ MODIFICADA
+// ✅ REGISTRAR/ACTUALIZAR DISPONIBILIDAD POR MATERIA
 // =====================================================
 const registrarDisponibilidadPorMateria = async (req, res) => {
   try {
@@ -355,10 +374,6 @@ const registrarDisponibilidadPorMateria = async (req, res) => {
       });
     }
 
-    // ✅ VALIDACIÓN SIMPLIFICADA — YA NO SE VERIFICA SI LA MATERIA PERTENECE AL DOCENTE
-
-    // ❌ COMENTADO EL BLOQUE ANTERIOR
-    /*
     // ✅ Verificar que la materia pertenece al docente
     const docenteBDD = await Docente.findById(docente);
     
@@ -366,6 +381,7 @@ const registrarDisponibilidadPorMateria = async (req, res) => {
       return res.status(404).json({ msg: "Docente no encontrado" });
     }
 
+    // Parsear asignaturas si es string
     let asignaturasDocente = docenteBDD.asignaturas;
     if (typeof asignaturasDocente === 'string') {
       try {
@@ -380,18 +396,6 @@ const registrarDisponibilidadPorMateria = async (req, res) => {
         msg: `La materia "${materia}" no está asignada a tu perfil. Primero agrega la materia en "Mis Materias".`
       });
     }
-    */
-
-    // ✅ Nueva validación simple
-    const docenteBDD = await Docente.findById(docente);
-
-    if (!docenteBDD) {
-      return res.status(404).json({ msg: "Docente no encontrado" });
-    }
-
-    // Permitir registrar disponibilidad para cualquier materia
-    console.log(`📚 Registrando disponibilidad de ${docenteBDD.nombreDocente} para ${materia}`);
-
 
     // ✅ Validar formato de bloques
     for (const bloque of bloques) {
@@ -401,6 +405,7 @@ const registrarDisponibilidadPorMateria = async (req, res) => {
         });
       }
 
+      // Validar formato HH:MM
       const formatoHora = /^([01]\d|2[0-3]):([0-5]\d)$/;
       if (!formatoHora.test(bloque.horaInicio) || !formatoHora.test(bloque.horaFin)) {
         return res.status(400).json({
@@ -408,12 +413,13 @@ const registrarDisponibilidadPorMateria = async (req, res) => {
         });
       }
 
+      // Validar que hora fin > hora inicio
       const [hIni, mIni] = bloque.horaInicio.split(':').map(Number);
       const [hFin, mFin] = bloque.horaFin.split(':').map(Number);
-      const inicioMin = hIni * 60 + mIni;
-      const finMin = hFin * 60 + mFin;
+      const inicioMinutos = hIni * 60 + mIni;
+      const finMinutos = hFin * 60 + mFin;
 
-      if (finMin <= inicioMin) {
+      if (finMinutos <= inicioMinutos) {
         return res.status(400).json({
           msg: `El bloque ${bloque.horaInicio}-${bloque.horaFin} es inválido: la hora de fin debe ser mayor que la de inicio`
         });
@@ -464,10 +470,10 @@ const registrarDisponibilidadPorMateria = async (req, res) => {
         id: disponibilidad._id
       }
     });
-
   } catch (error) {
     console.error("❌ Error en registrarDisponibilidadPorMateria:", error);
     
+    // Manejo de error de clave duplicada
     if (error.code === 11000) {
       return res.status(409).json({
         msg: "Ya existe un registro para esta materia y día. Intenta actualizar en lugar de crear uno nuevo."
@@ -481,9 +487,8 @@ const registrarDisponibilidadPorMateria = async (req, res) => {
   }
 };
 
-
 // =====================================================
-// ✅ VER DISPONIBILIDAD POR MATERIA - CORREGIDA
+// ✅ VER DISPONIBILIDAD POR MATERIA
 // =====================================================
 const verDisponibilidadPorMateria = async (req, res) => {
   try {
@@ -494,54 +499,33 @@ const verDisponibilidadPorMateria = async (req, res) => {
       return res.status(400).json({ msg: "ID de docente inválido" });
     }
 
-    console.log(`🔍 [Backend] Buscando disponibilidad:`);
-    console.log(`   Docente ID: ${docenteId}`);
-    console.log(`   Materia: ${materia}`);
+    console.log(`🔍 Buscando disponibilidad: Docente=${docenteId}, Materia=${materia}`);
 
     const disponibilidad = await disponibilidadDocente.find({ 
       docente: docenteId,
       materia 
     }).sort({ diaSemana: 1 });
 
-    console.log(`📊 [Backend] Resultados encontrados: ${disponibilidad.length}`);
-    
-    if (disponibilidad.length > 0) {
-      console.log(`📋 [Backend] Disponibilidad por día:`);
-      disponibilidad.forEach(d => {
-        console.log(`   - ${d.diaSemana}: ${d.bloques.length} bloques`);
-        d.bloques.forEach(b => {
-          console.log(`     ${b.horaInicio}-${b.horaFin}`);
-        });
-      });
-    }
-
     if (!disponibilidad || disponibilidad.length === 0) {
-      console.log(`ℹ️ [Backend] No hay disponibilidad para ${materia}`);
+      console.log(`ℹ️ No hay disponibilidad para ${materia}`);
       return res.status(200).json({
-        success: true,
         msg: "El docente no tiene disponibilidad registrada para esta materia.",
         disponibilidad: []
       });
     }
 
-    // ✅ CLAVE: Devolver en formato consistente
-    const resultado = disponibilidad.map(d => ({
-      diaSemana: d.diaSemana,
-      bloques: d.bloques.map(b => ({
-        horaInicio: b.horaInicio,
-        horaFin: b.horaFin
-      })),
-      _id: d._id
-    }));
-
-    console.log(`✅ [Backend] Enviando respuesta con ${resultado.length} días`);
+    console.log(`✅ Disponibilidad encontrada: ${disponibilidad.length} días`);
 
     res.status(200).json({ 
       success: true,
-      disponibilidad: resultado
+      disponibilidad: disponibilidad.map(d => ({
+        diaSemana: d.diaSemana,
+        bloques: d.bloques,
+        id: d._id
+      }))
     });
   } catch (error) {
-    console.error("❌ [Backend] Error en verDisponibilidadPorMateria:", error);
+    console.error("❌ Error en verDisponibilidadPorMateria:", error);
     res.status(500).json({ 
       msg: "Error al obtener la disponibilidad.", 
       error: error.message 
@@ -550,7 +534,7 @@ const verDisponibilidadPorMateria = async (req, res) => {
 };
 
 // =====================================================
-// ✅ VER DISPONIBILIDAD COMPLETA (TODAS LAS MATERIAS) - CORREGIDA
+// ✅ VER DISPONIBILIDAD COMPLETA (TODAS LAS MATERIAS)
 // =====================================================
 const verDisponibilidadCompletaDocente = async (req, res) => {
   try {
@@ -561,16 +545,14 @@ const verDisponibilidadCompletaDocente = async (req, res) => {
       return res.status(400).json({ msg: "ID de docente inválido" });
     }
 
-    console.log(`🔍 [Backend] Buscando disponibilidad completa del docente: ${docenteId}`);
+    console.log(`🔍 Buscando disponibilidad completa del docente: ${docenteId}`);
 
     const disponibilidad = await disponibilidadDocente.find({
       docente: docenteId
     }).sort({ materia: 1, diaSemana: 1 });
 
-    console.log(`📊 [Backend] Registros encontrados: ${disponibilidad.length}`);
-
     if (!disponibilidad || disponibilidad.length === 0) {
-      console.log(`ℹ️ [Backend] No hay disponibilidad registrada`);
+      console.log(`ℹ️ No hay disponibilidad registrada`);
       return res.status(200).json({
         success: true,
         msg: "El docente no tiene disponibilidad registrada.",
@@ -579,36 +561,21 @@ const verDisponibilidadCompletaDocente = async (req, res) => {
       });
     }
 
-    // ✅ ESTRUCTURA CORREGIDA: Agrupar por materia
+    // Agrupar por materia
     const porMateria = {};
-    
     disponibilidad.forEach(disp => {
       const mat = disp.materia;
-      
       if (!porMateria[mat]) {
         porMateria[mat] = [];
       }
 
-      // ✅ CLAVE: Agregar cada DÍA como un objeto separado
       porMateria[mat].push({
         diaSemana: disp.diaSemana,
-        bloques: disp.bloques.map(b => ({
-          horaInicio: b.horaInicio,
-          horaFin: b.horaFin
-        }))
+        bloques: disp.bloques
       });
     });
 
-    console.log(`✅ [Backend] Disponibilidad agrupada:`);
-    Object.keys(porMateria).forEach(mat => {
-      console.log(`   📚 ${mat}: ${porMateria[mat].length} días`);
-      porMateria[mat].forEach(dia => {
-        console.log(`      - ${dia.diaSemana}: ${dia.bloques.length} bloques`);
-        dia.bloques.forEach(b => {
-          console.log(`        ${b.horaInicio}-${b.horaFin}`);
-        });
-      });
-    });
+    console.log(`✅ Disponibilidad completa: ${Object.keys(porMateria).length} materias`);
 
     res.status(200).json({
       success: true,
@@ -617,7 +584,7 @@ const verDisponibilidadCompletaDocente = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ [Backend] Error en verDisponibilidadCompletaDocente:", error);
+    console.error("❌ Error en verDisponibilidadCompletaDocente:", error);
     res.status(500).json({
       msg: "Error al obtener disponibilidad.",
       error: error.message
@@ -632,12 +599,7 @@ const eliminarDisponibilidadMateria = async (req, res) => {
   try {
     const { docenteId, materia, dia } = req.params;
 
-    console.log('🗑️ Solicitud de eliminación:');
-    console.log('   Docente:', docenteId);
-    console.log('   Materia:', materia);
-    console.log('   Día:', dia);
-
-    // Validar que el docente autenticado es el mismo
+    // Solo el docente puede eliminar su propia disponibilidad
     if (req.docenteBDD._id.toString() !== docenteId) {
       return res.status(403).json({
         msg: 'No tienes permiso para eliminar esta disponibilidad'
@@ -653,15 +615,12 @@ const eliminarDisponibilidadMateria = async (req, res) => {
     });
 
     if (!resultado) {
-      console.log('ℹ️ No se encontró disponibilidad para eliminar');
-      // ✅ NO ES ERROR - puede no existir
-      return res.status(200).json({
-        success: true,
-        msg: "No había disponibilidad para eliminar"
+      return res.status(404).json({
+        msg: "No se encontró disponibilidad para eliminar"
       });
     }
 
-    console.log(`✅ Eliminado: ${materia} - ${diaNormalizado}`);
+    console.log(`🗑️ Disponibilidad eliminada: ${materia} - ${diaNormalizado}`);
 
     res.status(200).json({
       success: true,

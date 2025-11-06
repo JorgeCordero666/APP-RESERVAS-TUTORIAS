@@ -1,3 +1,4 @@
+// backend/src/routers/tutorias_routes.js
 import { Router } from "express";
 import {
   registrarTutoria,
@@ -8,8 +9,6 @@ import {
   registrarDisponibilidadDocente,        
   verDisponibilidadDocente,             
   bloquesOcupadosDocente,
-
-  // ⭐ NUEVAS IMPORTACIONES
   registrarDisponibilidadPorMateria,
   verDisponibilidadPorMateria,
   verDisponibilidadCompletaDocente,
@@ -22,10 +21,10 @@ import verificarRol from "../middlewares/rol.js";
 const routerTutorias = Router();
 
 // =====================================================
-// ✅ RUTAS EXISTENTES (NO MODIFICAR)
+// ✅ GESTIÓN DE TUTORÍAS
 // =====================================================
 
-// 📌 Registrar tutoría (solo estudiantes)
+// Registrar tutoría (solo estudiantes)
 routerTutorias.post(
   "/tutoria/registro",
   verificarTokenJWT,
@@ -33,7 +32,7 @@ routerTutorias.post(
   registrarTutoria
 );
 
-// 📌 Listar tutorías
+// Listar tutorías activas (sin canceladas)
 routerTutorias.get(
   "/tutorias",
   verificarTokenJWT,
@@ -41,7 +40,7 @@ routerTutorias.get(
   listarTutorias
 );
 
-// 📌 Actualizar tutoría
+// Actualizar tutoría
 routerTutorias.put(
   "/tutoria/actualizar/:id",
   verificarTokenJWT,
@@ -49,7 +48,7 @@ routerTutorias.put(
   actualizarTutoria
 );
 
-// 📌 Cancelar tutoría
+// Cancelar tutoría
 routerTutorias.delete(
   "/tutoria/cancelar/:id",
   verificarTokenJWT,
@@ -57,15 +56,88 @@ routerTutorias.delete(
   cancelarTutoria
 );
 
-// 📌 Registrar asistencia
+// Registrar asistencia
 routerTutorias.put(
-  "/tutoria/registrar-asistencia/:id_tutoria",
+  "/tutoria/registrar-asistencia/:id",
   verificarTokenJWT,
   verificarRol(["Docente"]),
   registrarAsistencia
 );
 
-// 📌 Disponibilidad semanal (versión antigua — mantener)
+// =====================================================
+// ✅ HISTORIAL DE TUTORÍAS (incluye canceladas)
+// =====================================================
+
+// Historial completo del estudiante
+routerTutorias.get(
+  "/estudiante/historial-tutorias",
+  verificarTokenJWT,
+  verificarRol(["Estudiante"]),
+  (req, res, next) => {
+    req.query.incluirCanceladas = 'true';
+    next();
+  },
+  listarTutorias
+);
+
+// Historial completo del docente
+routerTutorias.get(
+  "/docente/historial-tutorias",
+  verificarTokenJWT,
+  verificarRol(["Docente"]),
+  (req, res, next) => {
+    req.query.incluirCanceladas = 'true';
+    next();
+  },
+  listarTutorias
+);
+
+// Historial completo para administrador (todas las tutorías del sistema)
+routerTutorias.get(
+  "/admin/todas-tutorias",
+  verificarTokenJWT,
+  verificarRol(["Administrador"]),
+  async (req, res) => {
+    try {
+      const { incluirCanceladas } = req.query;
+      
+      let filtro = {};
+      
+      if (incluirCanceladas !== 'true') {
+        filtro.estado = { 
+          $nin: ['cancelada_por_estudiante', 'cancelada_por_docente'] 
+        };
+      }
+
+      // Importar Tutoria aquí para evitar dependencia circular
+      const Tutoria = (await import('../models/tutorias.js')).default;
+
+      const tutorias = await Tutoria.find(filtro)
+        .populate("estudiante", "nombreEstudiante emailEstudiante")
+        .populate("docente", "nombreDocente emailDocente")
+        .sort({ fecha: -1, horaInicio: -1 });
+
+      res.json({
+        success: true,
+        total: tutorias.length,
+        tutorias
+      });
+    } catch (error) {
+      console.error("❌ Error en admin/todas-tutorias:", error);
+      res.status(500).json({ 
+        success: false,
+        msg: "Error al obtener tutorías", 
+        error: error.message 
+      });
+    }
+  }
+);
+
+// =====================================================
+// ✅ DISPONIBILIDAD GENERAL (LEGACY)
+// =====================================================
+
+// Registrar disponibilidad semanal
 routerTutorias.post(
   "/tutorias/registrar-disponibilidad",
   verificarTokenJWT,
@@ -73,7 +145,7 @@ routerTutorias.post(
   registrarDisponibilidadDocente
 );
 
-// 📌 Ver disponibilidad general del docente
+// Ver disponibilidad general del docente
 routerTutorias.get(
   "/ver-disponibilidad-docente/:docenteId",
   verificarTokenJWT,
@@ -81,11 +153,14 @@ routerTutorias.get(
   verDisponibilidadDocente
 );
 
-// 📌 Bloques ocupados
-routerTutorias.get("/tutorias-ocupadas/:docenteId", bloquesOcupadosDocente);
+// Bloques ocupados
+routerTutorias.get(
+  "/tutorias-ocupadas/:docenteId", 
+  bloquesOcupadosDocente
+);
 
 // =====================================================
-// ✅ ⭐ NUEVAS RUTAS — DISPONIBILIDAD POR MATERIA
+// ✅ DISPONIBILIDAD POR MATERIA
 // =====================================================
 
 // Registrar disponibilidad por materia
