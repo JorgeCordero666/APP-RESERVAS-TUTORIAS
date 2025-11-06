@@ -593,7 +593,12 @@ const eliminarDisponibilidadMateria = async (req, res) => {
   try {
     const { docenteId, materia, dia } = req.params;
 
-    // Solo el docente puede eliminar su propia disponibilidad
+    console.log('🗑️ Solicitud de eliminación:');
+    console.log('   Docente:', docenteId);
+    console.log('   Materia:', materia);
+    console.log('   Día:', dia);
+
+    // Validar que el docente autenticado es el mismo
     if (req.docenteBDD._id.toString() !== docenteId) {
       return res.status(403).json({
         msg: 'No tienes permiso para eliminar esta disponibilidad'
@@ -609,12 +614,15 @@ const eliminarDisponibilidadMateria = async (req, res) => {
     });
 
     if (!resultado) {
-      return res.status(404).json({
-        msg: "No se encontró disponibilidad para eliminar"
+      console.log('ℹ️ No se encontró disponibilidad para eliminar');
+      // ✅ NO ES ERROR - puede no existir
+      return res.status(200).json({
+        success: true,
+        msg: "No había disponibilidad para eliminar"
       });
     }
 
-    console.log(`🗑️ Disponibilidad eliminada: ${materia} - ${diaNormalizado}`);
+    console.log(`✅ Eliminado: ${materia} - ${diaNormalizado}`);
 
     res.status(200).json({
       success: true,

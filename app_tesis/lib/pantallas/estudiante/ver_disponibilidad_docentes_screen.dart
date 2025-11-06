@@ -1,4 +1,4 @@
-// lib/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart - VERSIÓN CORREGIDA
+// lib/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart - SIN OVERFLOW
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/docente_service.dart';
@@ -75,33 +75,13 @@ class _VerDisponibilidadDocentesScreenState
       );
 
       if (mounted) {
-        // ✅ Normalizar días a formato consistente (Capitalizado)
         Map<String, List<Map<String, dynamic>>>? disponibilidadNormalizada;
         
         if (disponibilidad != null && disponibilidad.isNotEmpty) {
           disponibilidadNormalizada = {};
           
           disponibilidad.forEach((materia, bloques) {
-            print('📚 Materia: $materia - ${bloques.length} bloques');
-            
-            // Normalizar cada bloque
-            List<Map<String, dynamic>> bloquesNormalizados = bloques.map((bloque) {
-              // ✅ Capitalizar día (lunes -> Lunes)
-              String diaOriginal = bloque['dia'] ?? '';
-              String diaNormalizado = _capitalizarDia(diaOriginal);
-              
-              if (diaOriginal != diaNormalizado) {
-                print('🔄 Capitalización: "$diaOriginal" -> "$diaNormalizado"');
-              }
-              
-              return {
-                'dia': diaNormalizado,
-                'horaInicio': bloque['horaInicio'],
-                'horaFin': bloque['horaFin'],
-              };
-            }).toList();
-            
-            disponibilidadNormalizada![materia] = bloquesNormalizados;
+            disponibilidadNormalizada![materia] = bloques;
           });
         }
 
@@ -109,7 +89,6 @@ class _VerDisponibilidadDocentesScreenState
           _disponibilidad = disponibilidadNormalizada;
           _isLoadingDisponibilidad = false;
           
-          // Seleccionar primera materia si existe
           if (_disponibilidad != null && _disponibilidad!.isNotEmpty) {
             _materiaSeleccionada = _disponibilidad!.keys.first;
             print('✅ Materia seleccionada: $_materiaSeleccionada');
@@ -126,56 +105,18 @@ class _VerDisponibilidadDocentesScreenState
     }
   }
 
-  // ✅ Capitalizar día correctamente
-  String _capitalizarDia(String dia) {
-    if (dia.isEmpty) return dia;
-    
-    final diaLower = dia.toLowerCase().trim();
-    
-    // Mapa de días en español
-    final mapaCapitalizacion = {
-      'lunes': 'Lunes',
-      'martes': 'Martes',
-      'miércoles': 'Miércoles',
-      'miercoles': 'Miércoles',
-      'jueves': 'Jueves',
-      'viernes': 'Viernes',
-      'sábado': 'Sábado',
-      'sabado': 'Sábado',
-      'domingo': 'Domingo',
-    };
-    
-    return mapaCapitalizacion[diaLower] ?? 
-           (dia[0].toUpperCase() + dia.substring(1).toLowerCase());
-  }
-
-  // ✅ Obtener bloques por día (con normalización case-insensitive)
   List<Map<String, dynamic>> _obtenerBloquesPorDia(String dia) {
     if (_disponibilidad == null || _materiaSeleccionada == null) {
       return [];
     }
 
     final bloques = _disponibilidad![_materiaSeleccionada!] ?? [];
-    final diaNormalizado = _capitalizarDia(dia);
-    
-    print('🔍 Filtrando bloques para día: "$diaNormalizado"');
-    print('   Total bloques disponibles: ${bloques.length}');
     
     final resultado = bloques.where((bloque) {
-      final bloqueNormalizado = _capitalizarDia(bloque['dia'] ?? '');
-      final coincide = bloqueNormalizado == diaNormalizado;
-      
-      if (!coincide) {
-        print('   ❌ No coincide: "$bloqueNormalizado" vs "$diaNormalizado"');
-      }
-      
-      return coincide;
+      return bloque['dia'] == dia;
     }).toList();
     
-    // Ordenar por hora de inicio
     resultado.sort((a, b) => (a['horaInicio'] ?? '').compareTo(b['horaInicio'] ?? ''));
-    
-    print('📋 Bloques encontrados: ${resultado.length}');
     
     return resultado;
   }
@@ -199,7 +140,7 @@ class _VerDisponibilidadDocentesScreenState
       ),
       body: Row(
         children: [
-          // Panel izquierdo: Lista de docentes
+          // ✅ Panel izquierdo - SIN CAMBIOS
           Container(
             width: 280,
             decoration: BoxDecoration(
@@ -265,10 +206,13 @@ class _VerDisponibilidadDocentesScreenState
                                             ? FontWeight.bold
                                             : FontWeight.normal,
                                       ),
+                                      overflow: TextOverflow.ellipsis, // ✅ AGREGADO
+                                      maxLines: 2,
                                     ),
                                     subtitle: Text(
                                       docente['oficinaDocente'] ?? 'Sin oficina',
                                       style: const TextStyle(fontSize: 12),
+                                      overflow: TextOverflow.ellipsis, // ✅ AGREGADO
                                     ),
                                     trailing: Icon(
                                       Icons.chevron_right,
@@ -285,7 +229,7 @@ class _VerDisponibilidadDocentesScreenState
             ),
           ),
 
-          // Panel derecho: Disponibilidad del docente seleccionado
+          // ✅ Panel derecho - CORREGIDO OVERFLOW
           Expanded(
             child: _docenteSeleccionado == null
                 ? Center(
@@ -305,14 +249,6 @@ class _VerDisponibilidadDocentesScreenState
                             color: Colors.grey[600],
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'para ver su disponibilidad',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                          ),
-                        ),
                       ],
                     ),
                   )
@@ -320,7 +256,7 @@ class _VerDisponibilidadDocentesScreenState
                     ? const Center(child: CircularProgressIndicator())
                     : Column(
                         children: [
-                          // Header con info del docente
+                          // ✅ Header con info del docente - CORREGIDO
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
@@ -351,6 +287,8 @@ class _VerDisponibilidadDocentesScreenState
                                               fontSize: 20,
                                               fontWeight: FontWeight.bold,
                                             ),
+                                            overflow: TextOverflow.ellipsis, // ✅ AGREGADO
+                                            maxLines: 2,
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
@@ -359,6 +297,7 @@ class _VerDisponibilidadDocentesScreenState
                                               fontSize: 14,
                                               color: Colors.grey,
                                             ),
+                                            overflow: TextOverflow.ellipsis, // ✅ AGREGADO
                                           ),
                                         ],
                                       ),
@@ -366,7 +305,7 @@ class _VerDisponibilidadDocentesScreenState
                                   ],
                                 ),
                                 
-                                // Selector de materia
+                                // ✅ Selector de materia - CORREGIDO
                                 if (_disponibilidad != null &&
                                     _disponibilidad!.isNotEmpty) ...[
                                   const SizedBox(height: 16),
@@ -395,12 +334,15 @@ class _VerDisponibilidadDocentesScreenState
                                             .map((materia) {
                                           return DropdownMenuItem(
                                             value: materia,
-                                            child: Text(materia),
+                                            child: Text(
+                                              materia,
+                                              overflow: TextOverflow.ellipsis, // ✅ AGREGADO
+                                              maxLines: 1,
+                                            ),
                                           );
                                         }).toList(),
                                         onChanged: (value) {
                                           if (value != null) {
-                                            print('🔄 Cambiando materia a: $value');
                                             setState(() {
                                               _materiaSeleccionada = value;
                                             });
@@ -414,7 +356,7 @@ class _VerDisponibilidadDocentesScreenState
                             ),
                           ),
 
-                          // Horarios por día
+                          // ✅ Horarios por día
                           Expanded(
                             child: _disponibilidad == null ||
                                     _disponibilidad!.isEmpty
@@ -545,7 +487,6 @@ class _VerDisponibilidadDocentesScreenState
                                                     'Disponible para tutoría',
                                                     style: TextStyle(fontSize: 12),
                                                   ),
-                                                  // ✅ TRAILING SIMPLIFICADO (sin OutlinedButton que causa error)
                                                   trailing: const Icon(
                                                     Icons.check_circle,
                                                     color: Colors.green,
