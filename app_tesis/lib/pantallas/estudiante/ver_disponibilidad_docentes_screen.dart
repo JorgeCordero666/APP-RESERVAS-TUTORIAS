@@ -58,6 +58,9 @@ class _VerDisponibilidadDocentesScreenState
   }
 
   Future<void> _cargarDisponibilidad(Map<String, dynamic> docente) async {
+    print('📥 Cargando disponibilidad de: ${docente['nombreDocente']}');
+    print('   ID: ${docente['_id']}');
+
     setState(() {
       _docenteSeleccionado = docente;
       _isLoadingDisponibilidad = true;
@@ -66,35 +69,50 @@ class _VerDisponibilidadDocentesScreenState
     });
 
     try {
-      print('📥 Cargando disponibilidad de: ${docente['nombreDocente']}');
-      print('   ID: ${docente['_id']}');
-      
-      final disponibilidad = await HorarioService.obtenerDisponibilidadCompleta(
+      final disponibilidad =
+          await HorarioService.obtenerDisponibilidadCompleta(
         docenteId: docente['_id'],
       );
 
       if (mounted) {
-        print('📊 Disponibilidad recibida: ${disponibilidad?.keys.join(", ")}');
+        // ✅ Normalizar días a formato consistente (Capitalizado)
+        Map<String, List<Map<String, dynamic>>>? disponibilidadNormalizada;
         
-        // ✅ LOG DETALLADO DE LO QUE RECIBIMOS
-        if (disponibilidad != null) {
+        if (disponibilidad != null && disponibilidad.isNotEmpty) {
+          disponibilidadNormalizada = {};
+          
           disponibilidad.forEach((materia, bloques) {
-            print('📚 Materia: $materia');
-            print('   Total bloques: ${bloques.length}');
-            for (var bloque in bloques) {
-              print('   - ${bloque['dia']}: ${bloque['horaInicio']}-${bloque['horaFin']}');
-            }
+            print('📚 Materia: $materia - ${bloques.length} bloques');
+            
+            // Normalizar cada bloque
+            List<Map<String, dynamic>> bloquesNormalizados = bloques.map((bloque) {
+              // ✅ Capitalizar día (lunes -> Lunes)
+              String diaOriginal = bloque['dia'] ?? '';
+              String diaNormalizado = _capitalizarDia(diaOriginal);
+              
+              if (diaOriginal != diaNormalizado) {
+                print('🔄 Capitalización: "$diaOriginal" -> "$diaNormalizado"');
+              }
+              
+              return {
+                'dia': diaNormalizado,
+                'horaInicio': bloque['horaInicio'],
+                'horaFin': bloque['horaFin'],
+              };
+            }).toList();
+            
+            disponibilidadNormalizada![materia] = bloquesNormalizados;
           });
         }
-        
+
         setState(() {
-          _disponibilidad = disponibilidad;
+          _disponibilidad = disponibilidadNormalizada;
           _isLoadingDisponibilidad = false;
           
           // Seleccionar primera materia si existe
-          if (disponibilidad != null && disponibilidad.isNotEmpty) {
-            _materiaSeleccionada = disponibilidad.keys.first;
-            print('✅ Materia seleccionada por defecto: $_materiaSeleccionada');
+          if (_disponibilidad != null && _disponibilidad!.isNotEmpty) {
+            _materiaSeleccionada = _disponibilidad!.keys.first;
+            print('✅ Materia seleccionada: $_materiaSeleccionada');
           }
         });
       }
@@ -108,39 +126,56 @@ class _VerDisponibilidadDocentesScreenState
     }
   }
 
-  /// ✅ MÉTODO CORREGIDO - Filtra bloques por día (con normalización)
+  // ✅ Capitalizar día correctamente
+  String _capitalizarDia(String dia) {
+    if (dia.isEmpty) return dia;
+    
+    final diaLower = dia.toLowerCase().trim();
+    
+    // Mapa de días en español
+    final mapaCapitalizacion = {
+      'lunes': 'Lunes',
+      'martes': 'Martes',
+      'miércoles': 'Miércoles',
+      'miercoles': 'Miércoles',
+      'jueves': 'Jueves',
+      'viernes': 'Viernes',
+      'sábado': 'Sábado',
+      'sabado': 'Sábado',
+      'domingo': 'Domingo',
+    };
+    
+    return mapaCapitalizacion[diaLower] ?? 
+           (dia[0].toUpperCase() + dia.substring(1).toLowerCase());
+  }
+
+  // ✅ Obtener bloques por día (con normalización case-insensitive)
   List<Map<String, dynamic>> _obtenerBloquesPorDia(String dia) {
     if (_disponibilidad == null || _materiaSeleccionada == null) {
-      print('⚠️ _obtenerBloquesPorDia: Sin disponibilidad o materia');
       return [];
     }
 
     final bloques = _disponibilidad![_materiaSeleccionada!] ?? [];
+    final diaNormalizado = _capitalizarDia(dia);
     
-    print('🔍 Filtrando bloques para: $dia');
+    print('🔍 Filtrando bloques para día: "$diaNormalizado"');
     print('   Total bloques disponibles: ${bloques.length}');
     
-    // ✅ NORMALIZAR AMBOS LADOS DE LA COMPARACIÓN
-    final diaComparar = dia.trim(); // Ya viene capitalizado de _diasSemana
-    
     final resultado = bloques.where((bloque) {
-      final diaBloque = bloque['dia']?.toString().trim() ?? '';
-      final coincide = diaBloque == diaComparar;
+      final bloqueNormalizado = _capitalizarDia(bloque['dia'] ?? '');
+      final coincide = bloqueNormalizado == diaNormalizado;
       
       if (!coincide) {
-        print('   ❌ No coincide: "$diaBloque" vs "$diaComparar"');
-      } else {
-        print('   ✅ Coincide: $diaBloque');
+        print('   ❌ No coincide: "$bloqueNormalizado" vs "$diaNormalizado"');
       }
       
       return coincide;
-    }).toList()
-      ..sort((a, b) => a['horaInicio'].compareTo(b['horaInicio']));
+    }).toList();
     
-    print('📋 Bloques filtrados: ${resultado.length}');
-    for (var bloque in resultado) {
-      print('   - ${bloque['horaInicio']}-${bloque['horaFin']}');
-    }
+    // Ordenar por hora de inicio
+    resultado.sort((a, b) => (a['horaInicio'] ?? '').compareTo(b['horaInicio'] ?? ''));
+    
+    print('📋 Bloques encontrados: ${resultado.length}');
     
     return resultado;
   }
@@ -364,10 +399,12 @@ class _VerDisponibilidadDocentesScreenState
                                           );
                                         }).toList(),
                                         onChanged: (value) {
-                                          setState(() {
-                                            _materiaSeleccionada = value;
-                                            print('🔄 Materia cambiada a: $value');
-                                          });
+                                          if (value != null) {
+                                            print('🔄 Cambiando materia a: $value');
+                                            setState(() {
+                                              _materiaSeleccionada = value;
+                                            });
+                                          }
                                         },
                                       ),
                                     ),
@@ -413,6 +450,7 @@ class _VerDisponibilidadDocentesScreenState
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
+                                            // Header del día
                                             Container(
                                               width: double.infinity,
                                               padding: const EdgeInsets.all(16),
@@ -425,15 +463,47 @@ class _VerDisponibilidadDocentesScreenState
                                                   topRight: Radius.circular(12),
                                                 ),
                                               ),
-                                              child: Text(
-                                                dia,
-                                                style: const TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Color(0xFF1565C0),
-                                                ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.calendar_today,
+                                                    size: 18,
+                                                    color: const Color(0xFF1565C0),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    dia,
+                                                    style: const TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Color(0xFF1565C0),
+                                                    ),
+                                                  ),
+                                                  const Spacer(),
+                                                  if (bloques.isNotEmpty)
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.green,
+                                                        borderRadius: BorderRadius.circular(12),
+                                                      ),
+                                                      child: Text(
+                                                        '${bloques.length} ${bloques.length == 1 ? "bloque" : "bloques"}',
+                                                        style: const TextStyle(
+                                                          fontSize: 11,
+                                                          color: Colors.white,
+                                                          fontWeight: FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
                                               ),
                                             ),
+                                            
+                                            // Lista de bloques
                                             if (bloques.isEmpty)
                                               const Padding(
                                                 padding: EdgeInsets.all(16),
@@ -448,12 +518,14 @@ class _VerDisponibilidadDocentesScreenState
                                             else
                                               ...bloques.map((bloque) {
                                                 return ListTile(
+                                                  contentPadding: const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 8,
+                                                  ),
                                                   leading: Container(
-                                                    padding:
-                                                        const EdgeInsets.all(8),
+                                                    padding: const EdgeInsets.all(8),
                                                     decoration: BoxDecoration(
-                                                      color: Colors.green
-                                                          .withOpacity(0.1),
+                                                      color: Colors.green.withOpacity(0.1),
                                                       borderRadius:
                                                           BorderRadius.circular(8),
                                                     ),
@@ -466,25 +538,18 @@ class _VerDisponibilidadDocentesScreenState
                                                     '${bloque['horaInicio']} - ${bloque['horaFin']}',
                                                     style: const TextStyle(
                                                       fontWeight: FontWeight.bold,
+                                                      fontSize: 15,
                                                     ),
                                                   ),
                                                   subtitle: const Text(
                                                     'Disponible para tutoría',
                                                     style: TextStyle(fontSize: 12),
                                                   ),
-                                                  trailing: OutlinedButton(
-                                                    onPressed: () {
-                                                      // TODO: Implementar agendar tutoría
-                                                      ScaffoldMessenger.of(context)
-                                                          .showSnackBar(
-                                                        const SnackBar(
-                                                          content: Text(
-                                                            'Función de agendar próximamente',
-                                                          ),
-                                                        ),
-                                                      );
-                                                    },
-                                                    child: const Text('Agendar'),
+                                                  // ✅ TRAILING SIMPLIFICADO (sin OutlinedButton que causa error)
+                                                  trailing: const Icon(
+                                                    Icons.check_circle,
+                                                    color: Colors.green,
+                                                    size: 20,
                                                   ),
                                                 );
                                               }),
