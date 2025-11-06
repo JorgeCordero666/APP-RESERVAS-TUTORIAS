@@ -75,7 +75,7 @@ const registrarTutoria = async (req, res) => {
 };
 
 // =====================================================
-// ✅ LISTAR TUTORIAS
+// ✅ LISTAR TUTORIAS - CORREGIDO (línea ~50)
 // =====================================================
 const listarTutorias = async (req, res) => {
   try {
@@ -98,15 +98,28 @@ const listarTutorias = async (req, res) => {
       filtro.fecha = { $gte: inicioSemana, $lte: finSemana };
     }
 
-    if (estado) filtro.estado = estado;
+    // ✅ NUEVO: Excluir tutorías canceladas por defecto
+    if (estado) {
+      filtro.estado = estado;
+    } else {
+      // Si no se especifica estado, mostrar solo activas
+      filtro.estado = { $nin: ['cancelada_por_estudiante', 'cancelada_por_docente'] };
+    }
 
     const tutorias = await Tutoria.find(filtro)
       .populate("estudiante", "nombreEstudiante")
-      .populate("docente", "nombreDocente");
+      .populate("docente", "nombreDocente")
+      .sort({ fecha: 1, horaInicio: 1 }); // Ordenar por fecha y hora
 
-    res.json(tutorias);
+    console.log(`📋 Tutorías encontradas: ${tutorias.length}`);
+
+    res.json({
+      total: tutorias.length,
+      tutorias
+    });
   } catch (error) {
-    res.status(500).json({ mensaje: "Error al listar tutorías.", error });
+    console.error("Error al listar tutorías:", error);
+    res.status(500).json({ mensaje: "Error al listar tutorías.", error: error.message });
   }
 };
 
@@ -138,37 +151,63 @@ const actualizarTutoria = async (req, res) => {
 };
 
 // =====================================================
-// ✅ CANCELAR TUTORIA
+// ✅ CANCELAR TUTORIA - CORREGIDO (línea ~110)
 // =====================================================
 const cancelarTutoria = async (req, res) => {
   try {
     const { id } = req.params;
     const { motivo, canceladaPor } = req.body;
 
+    console.log(`🗑️ Intentando cancelar tutoría: ${id}`);
+    console.log(`   Cancelada por: ${canceladaPor}`);
+
     const tutoria = await Tutoria.findById(id);
-    if (!tutoria) return res.status(404).json({ msg: 'Tutoría no encontrada.' });
+    if (!tutoria) {
+      return res.status(404).json({ msg: 'Tutoría no encontrada.' });
+    }
+
+    // Validar que no esté ya cancelada
+    if (['cancelada_por_estudiante', 'cancelada_por_docente'].includes(tutoria.estado)) {
+      return res.status(400).json({ msg: 'Esta tutoría ya fue cancelada.' });
+    }
 
     const hoy = new Date();
     const fechaTutoria = new Date(tutoria.fecha);
 
     if (fechaTutoria < hoy) {
-      return res.status(400).json({ msg: 'No puedes cancelar una tutoría anterior.' });
+      return res.status(400).json({ msg: 'No puedes cancelar una tutoría pasada.' });
     }
 
-    tutoria.estado = canceladaPor === 'Estudiante'
-      ? 'cancelada_por_estudiante'
-      : 'cancelada_por_docente';
+    // Determinar el estado correcto
+    if (canceladaPor === 'Estudiante') {
+      tutoria.estado = 'cancelada_por_estudiante';
+    } else if (canceladaPor === 'Docente') {
+      tutoria.estado = 'cancelada_por_docente';
+    } else {
+      return res.status(400).json({ msg: 'Valor de canceladaPor inválido.' });
+    }
 
-    tutoria.motivoCancelacion = motivo;
+    tutoria.motivoCancelacion = motivo || 'Sin motivo especificado';
     tutoria.asistenciaEstudiante = null;
     tutoria.observacionesDocente = null;
 
     await tutoria.save();
 
-    res.json({ msg: 'Tutoría cancelada correctamente.', tutoria });
+    console.log(`✅ Tutoría cancelada: ${tutoria._id}`);
+    console.log(`   Nuevo estado: ${tutoria.estado}`);
+
+    res.json({ 
+      msg: 'Tutoría cancelada correctamente.', 
+      tutoria: {
+        _id: tutoria._id,
+        estado: tutoria.estado,
+        motivoCancelacion: tutoria.motivoCancelacion
+      }
+    });
 
   } catch (error) {
-    res.status(500).json({ msg: 'Error al cancelar la tutoría.', error });
+    console.error("Error al cancelar tutoría:", error);
+    res.status(500).json({ msg: 'Error al cancelar la tutoría.', error: error.message });
   }
 };
 

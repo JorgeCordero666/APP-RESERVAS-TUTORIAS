@@ -458,7 +458,10 @@ const detalleDocente = async (req, res) => {
   }
 };
 
-// ========== ELIMINAR DOCENTE (DESHABILITAR) ==========
+// ========== ELIMINAR DOCENTE - LÍNEA 452 APROXIMADAMENTE ==========
+// ANTES: Solo cambiaba estadoDocente a false
+// AHORA: Elimina FÍSICAMENTE de la BD
+
 const eliminarDocente = async (req, res) => {
   try {
     const { id } = req.params;
@@ -475,20 +478,50 @@ const eliminarDocente = async (req, res) => {
       });
     }
     
-    const { salidaDocente } = req.body;
+    // ✅ OPCIÓN 1: ELIMINACIÓN FÍSICA (recomendado si realmente quieres borrar)
+    const docenteEliminado = await Docente.findByIdAndDelete(id);
     
-    await Docente.findByIdAndUpdate(id, {
-      salidaDocente: new Date(salidaDocente),
-      estadoDocente: false
-    });
+    if (!docenteEliminado) {
+      return res.status(404).json({ 
+        msg: "Docente no encontrado" 
+      });
+    }
+    
+    console.log(`🗑️ Docente eliminado permanentemente: ${docenteEliminado.nombreDocente}`);
     
     res.status(200).json({ 
-      msg: "El registro fue deshabilitado con éxito." 
+      msg: "El docente fue eliminado permanentemente del sistema.",
+      eliminado: true
     });
+    
+    // ✅ OPCIÓN 2: SOFT DELETE (si quieres mantener el historial)
+    // Descomenta esto si prefieres mantener el registro pero marcarlo como eliminado
+    /*
+    const { salidaDocente } = req.body;
+    
+    const docenteActualizado = await Docente.findByIdAndUpdate(id, {
+      salidaDocente: new Date(salidaDocente),
+      estadoDocente: false
+    }, { new: true });
+    
+    if (!docenteActualizado) {
+      return res.status(404).json({ 
+        msg: "Docente no encontrado" 
+      });
+    }
+    
+    console.log(`🔒 Docente deshabilitado: ${docenteActualizado.nombreDocente}`);
+    
+    res.status(200).json({ 
+      msg: "El registro fue deshabilitado con éxito.",
+      eliminado: false
+    });
+    */
   } catch (error) {
+    console.error("Error en eliminarDocente:", error);
     res.status(500).json({ 
-      msg: "Error al deshabilitar docente", 
-      error 
+      msg: "Error al eliminar docente", 
+      error: error.message 
     });
   }
 };
