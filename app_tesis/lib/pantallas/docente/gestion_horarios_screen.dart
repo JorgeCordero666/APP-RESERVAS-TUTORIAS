@@ -44,7 +44,6 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
   }
 
   void _cargarMateriasDocente() {
-    // ⭐ NUEVO: Recargar usuario desde SharedPreferences
     AuthService.getUsuarioActual().then((usuarioActualizado) {
       if (usuarioActualizado != null && mounted) {
         final materiasActualizadas = usuarioActualizado.asignaturas ?? [];
@@ -53,12 +52,10 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
           setState(() {
             _materiasDocente = List.from(materiasActualizadas);
             
-            // Inicializar horarios vacíos para cada materia
             for (var materia in _materiasDocente) {
               _horariosPorMateria[materia] = [];
             }
             
-            // Seleccionar primera materia por defecto
             _materiaSeleccionada = _materiasDocente.first;
             _cargarHorariosExistentes();
           });
@@ -86,7 +83,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
       if (horarios != null && mounted) {
         setState(() {
           _horariosPorMateria[_materiaSeleccionada!] = horarios;
-          _hasChanges = false; // ✅ Resetear cambios al cargar
+          _hasChanges = false;
         });
         
         print('✅ Horarios cargados: ${horarios.length} bloques');
@@ -113,7 +110,6 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
         diasDisponibles: _diasSemana,
         horasDisponibles: _horasDisponibles,
         onAgregar: (dia, horaInicio, horaFin) {
-          // ✅ Validar que no exista bloque duplicado
           final yaExiste = _horariosPorMateria[_materiaSeleccionada!]!.any(
             (b) => b['dia'] == dia && 
                    b['horaInicio'] == horaInicio && 
@@ -178,7 +174,6 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
       return;
     }
 
-    // ✅ Validar que hay al menos un bloque
     if (_horariosPorMateria[_materiaSeleccionada!]!.isEmpty) {
       _mostrarError('Debes agregar al menos un bloque de horario');
       return;
@@ -190,18 +185,27 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
       print('💾 Guardando horarios de: $_materiaSeleccionada');
       print('   Total bloques: ${_horariosPorMateria[_materiaSeleccionada!]!.length}');
       
-      final exito = await HorarioService.actualizarHorarios(
+      // ✅ CORRECCIÓN: actualizarHorarios ahora retorna Map<String, dynamic>
+      final resultado = await HorarioService.actualizarHorarios(
         docenteId: widget.usuario.id,
         materia: _materiaSeleccionada!,
         bloques: _horariosPorMateria[_materiaSeleccionada!]!,
+        validarAntes: true, // ✅ Validar antes de guardar
       );
 
       if (mounted) {
-        if (exito) {
-          _mostrarExito('Horarios guardados correctamente');
+        // ✅ Verificar el campo 'success' en lugar de usar bool directamente
+        if (resultado['success'] == true) {
+          _mostrarExito(resultado['mensaje'] ?? 'Horarios guardados correctamente');
+          
+          // ✅ Mostrar estadísticas opcionales
+          if (resultado.containsKey('eliminados') && resultado.containsKey('creados')) {
+            print('   📊 Eliminados: ${resultado['eliminados']}, Creados: ${resultado['creados']}');
+          }
+          
           setState(() => _hasChanges = false);
         } else {
-          _mostrarError('Error al guardar horarios. Verifica los datos e intenta nuevamente.');
+          _mostrarError(resultado['mensaje'] ?? 'Error al guardar horarios');
         }
       }
     } catch (e) {
@@ -255,7 +259,6 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Validación: Sin materias escogidas
     if (_materiasDocente.isEmpty) {
       return Scaffold(
         appBar: AppBar(
@@ -311,7 +314,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
       ),
       body: Column(
         children: [
-          // ✅ Selector de materia
+          // Selector de materia
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -389,7 +392,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
             ),
           ),
 
-          // ✅ Tabs de días
+          // Tabs de días
           Container(
             color: Colors.white,
             child: SingleChildScrollView(
@@ -432,7 +435,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
             ),
           ),
 
-          // ✅ Lista de bloques
+          // Lista de bloques
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -562,7 +565,6 @@ class _DialogAgregarBloqueState extends State<_DialogAgregarBloque> {
       return;
     }
 
-    // ✅ Validar que hora fin > hora inicio
     final [hIni, mIni] = _horaInicio!.split(':').map(int.parse).toList();
     final [hFin, mFin] = _horaFin!.split(':').map(int.parse).toList();
     final inicioMinutos = hIni * 60 + mIni;

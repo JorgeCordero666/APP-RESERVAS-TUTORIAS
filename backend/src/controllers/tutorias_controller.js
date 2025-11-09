@@ -337,6 +337,110 @@ const bloquesOcupadosDocente = async (req, res) => {
     res.status(500).json({ msg: "Error al obtener bloques ocupados.", error });
   }
 };
+/**
+ * ✅ VALIDAR CRUCES DE HORARIOS
+ * Verifica que no haya solapamiento entre bloques del mismo día
+ */
+const validarCrucesHorarios = (bloques) => {
+  // Convertir a minutos para comparar
+  const convertirAMinutos = (hora) => {
+    const [h, m] = hora.split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  // Ordenar bloques por hora de inicio
+  const bloquesOrdenados = bloques
+    .map(b => ({
+      inicio: convertirAMinutos(b.horaInicio),
+      fin: convertirAMinutos(b.horaFin),
+      horaInicio: b.horaInicio,
+      horaFin: b.horaFin
+    }))
+    .sort((a, b) => a.inicio - b.inicio);
+
+  // Verificar solapamientos
+  for (let i = 0; i < bloquesOrdenados.length - 1; i++) {
+    const bloqueActual = bloquesOrdenados[i];
+    const bloqueSiguiente = bloquesOrdenados[i + 1];
+
+    // Si el fin del bloque actual es mayor que el inicio del siguiente
+    if (bloqueActual.fin > bloqueSiguiente.inicio) {
+      return {
+        valido: false,
+        mensaje: `Cruce detectado: ${bloqueActual.horaInicio}-${bloqueActual.horaFin} se solapa con ${bloqueSiguiente.horaInicio}-${bloqueSiguiente.horaFin}`
+      };
+    }
+  }
+
+  return { valido: true };
+};
+
+/**
+ * ✅ VALIDAR CRUCES ENTRE MATERIAS
+ * Verifica que no haya cruces entre diferentes materias del mismo día
+ */
+const validarCrucesEntreMaterias = async (docenteId, materia, diaSemana, bloquesNuevos) => {
+  try {
+    // Obtener TODOS los bloques del docente para ese día (excepto la materia actual)
+    const disponibilidadesExistentes = await disponibilidadDocente.find({
+      docente: docenteId,
+      diaSemana: diaSemana.toLowerCase(),
+      materia: { $ne: materia } // Excluir la materia que estamos editando
+    });
+
+    if (disponibilidadesExistentes.length === 0) {
+      return { valido: true };
+    }
+
+    // Recopilar todos los bloques existentes
+    const bloquesExistentes = [];
+    disponibilidadesExistentes.forEach(disp => {
+      disp.bloques.forEach(b => {
+        bloquesExistentes.push({
+          materia: disp.materia,
+          horaInicio: b.horaInicio,
+          horaFin: b.horaFin
+        });
+      });
+    });
+
+    // Convertir a minutos
+    const convertirAMinutos = (hora) => {
+      const [h, m] = hora.split(':').map(Number);
+      return h * 60 + m;
+    };
+
+    // Verificar cada bloque nuevo contra los existentes
+    for (const bloqueNuevo of bloquesNuevos) {
+      const nuevoInicio = convertirAMinutos(bloqueNuevo.horaInicio);
+      const nuevoFin = convertirAMinutos(bloqueNuevo.horaFin);
+
+      for (const bloqueExistente of bloquesExistentes) {
+        const existenteInicio = convertirAMinutos(bloqueExistente.horaInicio);
+        const existenteFin = convertirAMinutos(bloqueExistente.horaFin);
+
+        // Detectar solapamiento
+        const haySolapamiento = 
+          (nuevoInicio < existenteFin && nuevoFin > existenteInicio);
+
+        if (haySolapamiento) {
+          return {
+            valido: false,
+            mensaje: `El bloque ${bloqueNuevo.horaInicio}-${bloqueNuevo.horaFin} de "${materia}" se cruza con ${bloqueExistente.horaInicio}-${bloqueExistente.horaFin} de "${bloqueExistente.materia}"`
+          };
+        }
+      }
+    }
+
+    return { valido: true };
+  } catch (error) {
+    console.error('Error validando cruces entre materias:', error);
+    return { 
+      valido: false, 
+      mensaje: 'Error al validar cruces de horarios' 
+    };
+  }
+};
 
 // =====================================================
 // ✅ REGISTRAR/ACTUALIZAR DISPONIBILIDAD POR MATERIA
@@ -346,44 +450,40 @@ const registrarDisponibilidadPorMateria = async (req, res) => {
     const { materia, diaSemana, bloques } = req.body;
     const docente = req.docenteBDD?._id;
 
-    // Validaciones básicas
+    // ✅ Validaciones básicas
     if (!docente) {
       return res.status(401).json({ msg: "Docente no autenticado" });
     }
 
     if (!materia || !diaSemana || !bloques || !Array.isArray(bloques)) {
-      return res.status(400).json({ 
-        msg: "Materia, día de la semana y bloques (array) son obligatorios" 
+      return res.status(400).json({
+        msg: "Materia, día de la semana y bloques (array) son obligatorios"
       });
     }
 
-    // Validar que bloques no esté vacío
     if (bloques.length === 0) {
       return res.status(400).json({
         msg: "Debes agregar al menos un bloque de horario"
       });
     }
 
-    // Normalizar día de la semana
+    // ✅ Normalizar día
     const diaNormalizado = diaSemana.toLowerCase().trim();
     const diasValidos = ["lunes", "martes", "miércoles", "jueves", "viernes"];
-    
     if (!diasValidos.includes(diaNormalizado)) {
       return res.status(400).json({
-        msg: "Día de la semana inválido. Debe ser lunes, martes, miércoles, jueves o viernes"
+        msg: "Día inválido. Usa lunes, martes, miércoles, jueves o viernes"
       });
     }
 
     // ✅ Verificar que la materia pertenece al docente
     const docenteBDD = await Docente.findById(docente);
-    
     if (!docenteBDD) {
       return res.status(404).json({ msg: "Docente no encontrado" });
     }
 
-    // Parsear asignaturas si es string
     let asignaturasDocente = docenteBDD.asignaturas;
-    if (typeof asignaturasDocente === 'string') {
+    if (typeof asignaturasDocente === "string") {
       try {
         asignaturasDocente = JSON.parse(asignaturasDocente);
       } catch {
@@ -391,13 +491,13 @@ const registrarDisponibilidadPorMateria = async (req, res) => {
       }
     }
 
-    if (!asignaturasDocente || !asignaturasDocente.includes(materia)) {
+    if (!asignaturasDocente.includes(materia)) {
       return res.status(400).json({
         msg: `La materia "${materia}" no está asignada a tu perfil. Primero agrega la materia en "Mis Materias".`
       });
     }
 
-    // ✅ Validar formato de bloques
+    // ✅ Validar formato y coherencia de bloques
     for (const bloque of bloques) {
       if (!bloque.horaInicio || !bloque.horaFin) {
         return res.status(400).json({
@@ -405,7 +505,6 @@ const registrarDisponibilidadPorMateria = async (req, res) => {
         });
       }
 
-      // Validar formato HH:MM
       const formatoHora = /^([01]\d|2[0-3]):([0-5]\d)$/;
       if (!formatoHora.test(bloque.horaInicio) || !formatoHora.test(bloque.horaFin)) {
         return res.status(400).json({
@@ -413,9 +512,8 @@ const registrarDisponibilidadPorMateria = async (req, res) => {
         });
       }
 
-      // Validar que hora fin > hora inicio
-      const [hIni, mIni] = bloque.horaInicio.split(':').map(Number);
-      const [hFin, mFin] = bloque.horaFin.split(':').map(Number);
+      const [hIni, mIni] = bloque.horaInicio.split(":").map(Number);
+      const [hFin, mFin] = bloque.horaFin.split(":").map(Number);
       const inicioMinutos = hIni * 60 + mIni;
       const finMinutos = hFin * 60 + mFin;
 
@@ -426,43 +524,62 @@ const registrarDisponibilidadPorMateria = async (req, res) => {
       }
     }
 
+    // ✅ NUEVA VALIDACIÓN 1: Cruces dentro de la misma materia
+    const validacionInterna = validarCrucesHorarios(bloques);
+    if (!validacionInterna.valido) {
+      return res.status(400).json({
+        msg: validacionInterna.mensaje
+      });
+    }
+
+    // ✅ NUEVA VALIDACIÓN 2: Cruces entre diferentes materias del mismo docente
+    const validacionEntreMaterias = await validarCrucesEntreMaterias(
+      docente,
+      materia,
+      diaNormalizado,
+      bloques
+    );
+
+    if (!validacionEntreMaterias.valido) {
+      return res.status(400).json({
+        msg: validacionEntreMaterias.mensaje
+      });
+    }
+
     // ✅ Buscar o crear disponibilidad
-    let disponibilidad = await disponibilidadDocente.findOne({ 
-      docente, 
-      diaSemana: diaNormalizado, 
-      materia 
+    let disponibilidad = await disponibilidadDocente.findOne({
+      docente,
+      diaSemana: diaNormalizado,
+      materia
     });
 
     if (disponibilidad) {
-      // Actualizar bloques existentes
       disponibilidad.bloques = bloques.map(b => ({
         horaInicio: b.horaInicio,
         horaFin: b.horaFin
       }));
-      
+
       console.log(`📝 Actualizando disponibilidad: ${materia} - ${diaNormalizado}`);
     } else {
-      // Crear nueva disponibilidad
-      disponibilidad = new disponibilidadDocente({ 
-        docente, 
-        diaSemana: diaNormalizado, 
+      disponibilidad = new disponibilidadDocente({
+        docente,
+        diaSemana: diaNormalizado,
         materia,
         bloques: bloques.map(b => ({
           horaInicio: b.horaInicio,
           horaFin: b.horaFin
         }))
       });
-      
+
       console.log(`✨ Creando nueva disponibilidad: ${materia} - ${diaNormalizado}`);
     }
 
     await disponibilidad.save();
-
     console.log(`✅ Disponibilidad guardada exitosamente`);
 
-    res.status(200).json({ 
+    res.status(200).json({
       success: true,
-      msg: "Disponibilidad actualizada con éxito.", 
+      msg: "Disponibilidad actualizada con éxito.",
       disponibilidad: {
         materia: disponibilidad.materia,
         diaSemana: disponibilidad.diaSemana,
@@ -472,20 +589,20 @@ const registrarDisponibilidadPorMateria = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error en registrarDisponibilidadPorMateria:", error);
-    
-    // Manejo de error de clave duplicada
+
     if (error.code === 11000) {
       return res.status(409).json({
         msg: "Ya existe un registro para esta materia y día. Intenta actualizar en lugar de crear uno nuevo."
       });
     }
-    
-    res.status(500).json({ 
-      msg: "Error al actualizar disponibilidad", 
-      error: error.message 
+
+    res.status(500).json({
+      msg: "Error al actualizar disponibilidad",
+      error: error.message
     });
   }
 };
+
 
 // =====================================================
 // ✅ VER DISPONIBILIDAD POR MATERIA
@@ -637,6 +754,126 @@ const eliminarDisponibilidadMateria = async (req, res) => {
 };
 
 // =====================================================
+// ✅ ACTUALIZAR HORARIOS CON ELIMINACIÓN REAL
+// =====================================================
+const actualizarHorarios = async (req, res) => {
+  try {
+    const { materia, bloques } = req.body;
+    const docente = req.docenteBDD?._id;
+
+    // Validaciones básicas
+    if (!docente) {
+      return res.status(401).json({ msg: "Docente no autenticado" });
+    }
+
+    if (!materia || !bloques || !Array.isArray(bloques)) {
+      return res.status(400).json({ 
+        msg: "Materia y bloques (array) son obligatorios" 
+      });
+    }
+
+    if (bloques.length === 0) {
+      return res.status(400).json({
+        msg: "Debes agregar al menos un bloque de horario"
+      });
+    }
+
+    console.log(`🔄 Actualizando horarios completos de: ${materia}`);
+    console.log(`   Bloques recibidos: ${bloques.length}`);
+
+    // ✅ PASO 1: ELIMINAR FÍSICAMENTE TODOS LOS REGISTROS ANTERIORES
+    const eliminados = await disponibilidadDocente.deleteMany({
+      docente: docente,
+      materia: materia
+    });
+
+    console.log(`🗑️ Registros eliminados: ${eliminados.deletedCount}`);
+
+    // ✅ PASO 2: AGRUPAR BLOQUES POR DÍA
+    const bloquesPorDia = {};
+    
+    for (const bloque of bloques) {
+      const dia = bloque.dia.toLowerCase().trim();
+      
+      if (!bloquesPorDia[dia]) {
+        bloquesPorDia[dia] = [];
+      }
+      
+      bloquesPorDia[dia].push({
+        horaInicio: bloque.horaInicio,
+        horaFin: bloque.horaFin
+      });
+    }
+
+    console.log(`📋 Días a guardar: ${Object.keys(bloquesPorDia).join(', ')}`);
+
+    // ✅ PASO 3: VALIDAR CRUCES INTERNOS POR DÍA
+    for (const [dia, bloquesDelDia] of Object.entries(bloquesPorDia)) {
+      const validacion = validarCrucesHorarios(bloquesDelDia);
+      if (!validacion.valido) {
+        return res.status(400).json({
+          msg: `Error en ${dia}: ${validacion.mensaje}`
+        });
+      }
+    }
+
+    // ✅ PASO 4: VALIDAR CRUCES ENTRE MATERIAS
+    for (const [dia, bloquesDelDia] of Object.entries(bloquesPorDia)) {
+      const validacion = await validarCrucesEntreMaterias(
+        docente,
+        materia,
+        dia,
+        bloquesDelDia
+      );
+
+      if (!validacion.valido) {
+        return res.status(400).json({
+          msg: validacion.mensaje
+        });
+      }
+    }
+
+    // ✅ PASO 5: CREAR NUEVOS REGISTROS
+    const registrosCreados = [];
+
+    for (const [dia, bloquesDelDia] of Object.entries(bloquesPorDia)) {
+      const nuevoRegistro = new disponibilidadDocente({
+        docente: docente,
+        diaSemana: dia,
+        materia: materia,
+        bloques: bloquesDelDia
+      });
+
+      await nuevoRegistro.save();
+      registrosCreados.push(nuevoRegistro);
+      
+      console.log(`✅ Creado: ${dia} con ${bloquesDelDia.length} bloques`);
+    }
+
+    console.log(`✅ Total registros creados: ${registrosCreados.length}`);
+
+    res.status(200).json({
+      success: true,
+      msg: "Horarios actualizados correctamente",
+      registrosEliminados: eliminados.deletedCount,
+      registrosCreados: registrosCreados.length,
+      disponibilidad: registrosCreados.map(r => ({
+        dia: r.diaSemana,
+        bloques: r.bloques
+      }))
+    });
+
+  } catch (error) {
+    console.error('❌ Error actualizando horarios:', error);
+    res.status(500).json({
+      msg: "Error al actualizar horarios",
+      error: error.message
+    });
+  }
+};
+
+
+// =====================================================
 // ✅ EXPORTAR TODAS LAS FUNCIONES
 // =====================================================
 export {
@@ -656,5 +893,9 @@ export {
   registrarDisponibilidadPorMateria,
   verDisponibilidadPorMateria,
   verDisponibilidadCompletaDocente,
-  eliminarDisponibilidadMateria
+  eliminarDisponibilidadMateria,
+  actualizarHorarios,
+  // Validaciones de horarios
+  validarCrucesHorarios,
+  validarCrucesEntreMaterias
 };
