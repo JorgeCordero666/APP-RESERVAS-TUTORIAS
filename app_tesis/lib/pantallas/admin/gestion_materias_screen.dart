@@ -1,4 +1,4 @@
-// lib/pantallas/admin/gestion_materias_screen.dart
+// lib/pantallas/admin/gestion_materias_screen.dart - VERSIÓN CORREGIDA
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../modelos/materia.dart';
@@ -39,6 +39,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
   @override
   void initState() {
     super.initState();
+    print('🎬 GestionMateriasScreen iniciado');
     _cargarMaterias();
     _searchController.addListener(_filtrarMaterias);
   }
@@ -50,6 +51,9 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
   }
 
   Future<void> _cargarMaterias() async {
+    print('\n🔄 Cargando materias...');
+    print('   Filtro estado actual: $_filtroEstado');
+    
     setState(() => _isLoading = true);
 
     try {
@@ -57,11 +61,20 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
         soloActivas: _filtroEstado == 'Activas',
       );
       
-      setState(() {
-        _materias = materias;
-        _aplicarFiltros();
+      print('📦 Materias recibidas del servicio: ${materias.length}');
+      materias.forEach((m) {
+        print('   - ${m.nombre} (${m.codigo}) - Activa: ${m.activa}');
       });
+      
+      if (mounted) {
+        setState(() {
+          _materias = materias;
+          _aplicarFiltros();
+          print('✅ Estado actualizado. Total materias: ${_materias.length}');
+        });
+      }
     } catch (e) {
+      print('❌ Error al cargar materias: $e');
       if (mounted) {
         _mostrarError('Error al cargar materias: $e');
       }
@@ -73,11 +86,18 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
   }
 
   void _filtrarMaterias() {
+    print('🔍 Filtrando materias...');
     _aplicarFiltros();
   }
 
   void _aplicarFiltros() {
     final query = _searchController.text.toLowerCase().trim();
+    
+    print('📝 Aplicando filtros:');
+    print('   Query: "$query"');
+    print('   Semestre: $_filtroSemestre');
+    print('   Estado: $_filtroEstado');
+    print('   Total materias antes de filtrar: ${_materias.length}');
     
     setState(() {
       _materiasFiltradas = _materias.where((materia) {
@@ -95,12 +115,17 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
             (_filtroEstado == 'Activas' && materia.activa) ||
             (_filtroEstado == 'Inactivas' && !materia.activa);
         
-        return cumpleBusqueda && cumpleSemestre && cumpleEstado;
+        final cumple = cumpleBusqueda && cumpleSemestre && cumpleEstado;
+        
+        return cumple;
       }).toList();
+      
+      print('✅ Materias filtradas: ${_materiasFiltradas.length}');
     });
   }
 
   void _cambiarFiltroSemestre(String nuevoFiltro) {
+    print('🔄 Cambiando filtro semestre a: $nuevoFiltro');
     setState(() {
       _filtroSemestre = nuevoFiltro;
       _aplicarFiltros();
@@ -108,6 +133,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
   }
 
   void _cambiarFiltroEstado(String nuevoFiltro) {
+    print('🔄 Cambiando filtro estado a: $nuevoFiltro');
     setState(() {
       _filtroEstado = nuevoFiltro;
       _cargarMaterias(); // Recargar con filtro de estado
@@ -164,7 +190,8 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
       _mostrarError(resultado['error']);
     } else {
       _mostrarExito('Materia desactivada exitosamente');
-      _cargarMaterias();
+      // ✅ Recargar lista después de desactivar
+      await _cargarMaterias();
     }
   }
 
@@ -174,6 +201,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
         content: Text(mensaje),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -192,18 +220,24 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gestión de Materias'),
+        title: Text('Gestión de Materias (${_materiasFiltradas.length})'),
         backgroundColor: const Color(0xFF1565C0),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _cargarMaterias,
+            onPressed: () {
+              print('🔄 Botón refresh presionado');
+              _cargarMaterias();
+            },
             tooltip: 'Recargar lista',
           ),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _cargarMaterias,
+        onRefresh: () async {
+          print('🔄 Pull to refresh activado');
+          await _cargarMaterias();
+        },
         child: Column(
           children: [
             // Buscador
@@ -286,7 +320,16 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
             // Lista de materias
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text('Cargando materias...'),
+                        ],
+                      ),
+                    )
                   : _materiasFiltradas.isEmpty
                       ? _buildEstadoVacio()
                       : ListView.builder(
@@ -308,6 +351,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
                                 );
                               },
                               onEditar: () async {
+                                print('📝 Navegando a editar materia: ${materia.nombre}');
                                 final resultado = await Navigator.push<bool>(
                                   context,
                                   MaterialPageRoute(
@@ -318,6 +362,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
                                 );
 
                                 if (resultado == true && mounted) {
+                                  print('✅ Materia editada, recargando lista...');
                                   _cargarMaterias();
                                 }
                               },
@@ -330,6 +375,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
+          print('➕ Navegando a crear materia...');
           final resultado = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
@@ -337,8 +383,12 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
             ),
           );
 
+          print('🔙 Retorno de CrearMateriaScreen: $resultado');
           if (resultado == true && mounted) {
-            _cargarMaterias();
+            print('✅ Materia creada exitosamente, recargando lista...');
+            await _cargarMaterias();
+          } else {
+            print('⚠️ No se creó materia o mounted=false');
           }
         },
         backgroundColor: const Color(0xFF1565C0),

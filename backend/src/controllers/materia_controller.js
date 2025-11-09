@@ -2,7 +2,7 @@
 import Materia from '../models/materia.js';
 import mongoose from 'mongoose';
 
-// ========== LISTAR MATERIAS ==========
+// ========== LISTAR MATERIAS ========== 
 const listarMaterias = async (req, res) => {
   try {
     const { activas, semestre } = req.query;
@@ -19,16 +19,25 @@ const listarMaterias = async (req, res) => {
       filtro.semestre = semestre;
     }
     
+    console.log('🔍 Listando materias con filtro:', filtro);
+    
     const materias = await Materia.find(filtro)
-      .populate('creadoPor', 'nombreAdministrador email')
-      .sort({ semestre: 1, nombre: 1 });
+      .select('-__v') // ✅ Excluir solo __v
+      .sort({ semestre: 1, nombre: 1 })
+      .lean(); // ✅ Convertir a objetos planos
     
     console.log(`📚 Materias encontradas: ${materias.length}`);
     
+    // ✅ Convertir creadoPor a String si es ObjectId
+    const materiasFormateadas = materias.map(materia => ({
+      ...materia,
+      creadoPor: materia.creadoPor ? materia.creadoPor.toString() : ''
+    }));
+    
     res.status(200).json({
       success: true,
-      total: materias.length,
-      materias
+      total: materiasFormateadas.length,
+      materias: materiasFormateadas
     });
     
   } catch (error) {
@@ -41,7 +50,7 @@ const listarMaterias = async (req, res) => {
   }
 };
 
-// ========== CREAR MATERIA (SOLO ADMIN) ==========
+// ========== CREAR MATERIA (SOLO ADMIN) ========== 
 const crearMateria = async (req, res) => {
   try {
     const { nombre, codigo, semestre, creditos, descripcion } = req.body;
@@ -88,17 +97,33 @@ const crearMateria = async (req, res) => {
       semestre,
       creditos,
       descripcion: descripcion?.trim() || '',
-      creadoPor: administradorId
+      creadoPor: administradorId,
+      activa: true,
+      creadaEn: new Date(),
+      actualizadaEn: new Date()
     });
     
     await nuevaMateria.save();
     
     console.log(`✅ Materia creada: ${nuevaMateria.nombre} (${nuevaMateria.codigo})`);
+    console.log(`   ID: ${nuevaMateria._id}`);
     
+    // ✅ OPCIÓN 1: Enviar solo el ID (recomendado para Flutter)
     res.status(201).json({
       success: true,
       msg: 'Materia creada exitosamente',
-      materia: nuevaMateria
+      materia: {
+        _id: nuevaMateria._id,
+        nombre: nuevaMateria.nombre,
+        codigo: nuevaMateria.codigo,
+        semestre: nuevaMateria.semestre,
+        creditos: nuevaMateria.creditos,
+        descripcion: nuevaMateria.descripcion,
+        activa: nuevaMateria.activa,
+        creadoPor: nuevaMateria.creadoPor.toString(), // ✅ Convertir a String
+        creadaEn: nuevaMateria.creadaEn,
+        actualizadaEn: nuevaMateria.actualizadaEn
+      }
     });
     
   } catch (error) {

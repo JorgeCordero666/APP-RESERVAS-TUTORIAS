@@ -39,19 +39,27 @@ class MateriaService {
       );
 
       print('📬 Status: ${response.statusCode}');
+      print('📄 Response body: ${response.body}'); // ✅ DEBUGGING
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> materiasJson = data['materias'] ?? [];
         
+        print('📚 Materias JSON recibidas: ${materiasJson.length}');
+        
         final materias = materiasJson
             .map((json) => Materia.fromJson(json))
             .toList();
         
-        print('✅ Materias cargadas: ${materias.length}');
+        print('✅ Materias parseadas: ${materias.length}');
+        materias.forEach((m) {
+          print('   - ${m.nombre} (${m.codigo}) - ${m.semestre}');
+        });
+        
         return materias;
       }
       
+      print('⚠️ Status code diferente de 200: ${response.statusCode}');
       return [];
     } catch (e) {
       print('❌ Error listando materias: $e');
@@ -75,6 +83,9 @@ class MateriaService {
       }
 
       print('📝 Creando materia: $nombre');
+      print('   Código: $codigo');
+      print('   Semestre: $semestre');
+      print('   Créditos: $creditos');
 
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/materias'),
@@ -95,6 +106,12 @@ class MateriaService {
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         print('✅ Materia creada exitosamente');
+        
+        // ✅ Verificar que la materia se creó con ID
+        if (data['materia'] != null && data['materia']['_id'] != null) {
+          print('   ID asignado: ${data['materia']['_id']}');
+        }
+        
         return data;
       } else {
         print('❌ Error: ${data['msg']}');
