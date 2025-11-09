@@ -142,6 +142,8 @@ const listarTutorias = async (req, res) => {
 const actualizarTutoria = async (req, res) => {
   try {
     const { id } = req.params;
+    const { fecha, horaInicio, horaFin } = req.body;
+    
     const tutoria = await Tutoria.findById(id);
 
     if (!tutoria) return res.status(404).json({ msg: 'Tutoría no encontrada.' });
@@ -154,12 +156,25 @@ const actualizarTutoria = async (req, res) => {
       return res.status(403).json({ msg: 'No autorizado para modificar esta tutoría.' });
     }
 
-    Object.assign(tutoria, req.body);
+    // ✅ Validar que la fecha no sea pasada
+    const hoy = moment().startOf('day');
+    const fechaTutoria = moment(fecha || tutoria.fecha, 'YYYY-MM-DD').startOf('day');
+
+    if (fechaTutoria.isBefore(hoy)) {
+      return res.status(400).json({ msg: 'No puedes modificar una tutoría pasada.' });
+    }
+
+    // ✅ Solo actualizar campos permitidos
+    if (fecha) tutoria.fecha = fecha;
+    if (horaInicio) tutoria.horaInicio = horaInicio;
+    if (horaFin) tutoria.horaFin = horaFin;
+
     await tutoria.save();
 
-    res.json(tutoria);
+    res.json({ success: true, tutoria });
   } catch (error) {
-    res.status(500).json({ mensaje: 'Error al actualizar tutoría.', error });
+    console.error("❌ Error actualizando tutoría:", error);
+    res.status(500).json({ mensaje: 'Error al actualizar tutoría.', error: error.message });
   }
 };
 
