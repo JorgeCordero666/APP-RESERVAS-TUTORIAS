@@ -10,6 +10,7 @@ import 'docente/gestion_materias_screen.dart';
 import 'docente/gestion_horarios_screen.dart';
 import 'estudiante/ver_disponibilidad_docentes_screen.dart';
 
+
 class HomeScreen extends StatefulWidget {
   final Usuario usuario;
 
@@ -160,6 +161,21 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icons.school,
               color: Colors.green,
               onTap: () => setState(() => _selectedIndex = 2),
+            ),
+            const SizedBox(height: 16),
+            _buildQuickAccessCard(
+              title: 'Gestión de Materias',
+              subtitle: 'Administrar catálogo de materias',
+              icon: Icons.book,
+              color: Colors.purple,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => GestionMateriasScreen(usuario: _usuario),
+                  ),
+                );
+              },
             ),
           ],
         ),
