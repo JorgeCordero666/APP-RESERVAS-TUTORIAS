@@ -6,6 +6,7 @@ import routerAdministrador from './routers/administrador_routes.js'
 import routerDocente from "./routers/docente_routes.js"
 import routerEstudiante from "./routers/estudiante_routes.js"
 import routerTutorias from './routers/tutorias_routes.js';
+import routerMateria from './routers/materia_routes.js'
 import cloudinary from 'cloudinary'
 import fileUpload from "express-fileupload"
 
@@ -52,6 +53,9 @@ app.use('/api', routerEstudiante)
 
 // Rutas para tutorías
 app.use('/api', routerTutorias)
+
+// Rutas para materias
+app.use('/api', routerMateria)
 
 // Manejo de una ruta que no sea encontrada
 app.use((req, res) => res.status(404).send("Endpoint no encontrado - 404"))
