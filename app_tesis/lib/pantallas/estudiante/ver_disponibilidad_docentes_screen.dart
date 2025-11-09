@@ -1,4 +1,4 @@
-// lib/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart - DISEÑO MEJORADO
+// lib/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart - DISEÑO MEJORADO + BÚSQUEDA
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/docente_service.dart';
@@ -17,12 +17,15 @@ class VerDisponibilidadDocentesScreen extends StatefulWidget {
 class _VerDisponibilidadDocentesScreenState
     extends State<VerDisponibilidadDocentesScreen> {
   List<Map<String, dynamic>> _docentes = [];
+  List<Map<String, dynamic>> _docentesFiltrados = [];
   Map<String, dynamic>? _docenteSeleccionado;
   Map<String, List<Map<String, dynamic>>>? _disponibilidad;
   bool _isLoadingDocentes = true;
   bool _isLoadingDisponibilidad = false;
   String? _materiaSeleccionada;
   bool _mostrarListaDocentes = true; // Para mobile
+
+  final _searchController = TextEditingController();
 
   final List<String> _diasSemana = [
     'Lunes',
@@ -43,10 +46,11 @@ class _VerDisponibilidadDocentesScreenState
 
     try {
       final docentes = await DocenteService.listarDocentes();
-      
+
       if (mounted) {
         setState(() {
           _docentes = docentes;
+          _docentesFiltrados = docentes;
           _isLoadingDocentes = false;
         });
       }
@@ -56,6 +60,27 @@ class _VerDisponibilidadDocentesScreenState
         _mostrarError('Error al cargar docentes: $e');
       }
     }
+  }
+
+  // ✅ FILTRADO DE DOCENTES
+  void _filtrarDocentes() {
+    final query = _searchController.text.toLowerCase().trim();
+
+    setState(() {
+      if (query.isEmpty) {
+        _docentesFiltrados = _docentes;
+      } else {
+        _docentesFiltrados = _docentes.where((docente) {
+          final nombreMatch = (docente['nombreDocente'] ?? '')
+              .toLowerCase()
+              .contains(query);
+          final oficinaMatch = (docente['oficinaDocente'] ?? '')
+              .toLowerCase()
+              .contains(query);
+          return nombreMatch || oficinaMatch;
+        }).toList();
+      }
+    });
   }
 
   Future<void> _cargarDisponibilidad(Map<String, dynamic> docente) async {
@@ -75,10 +100,9 @@ class _VerDisponibilidadDocentesScreenState
 
       if (mounted) {
         Map<String, List<Map<String, dynamic>>>? disponibilidadNormalizada;
-        
+
         if (disponibilidad != null && disponibilidad.isNotEmpty) {
           disponibilidadNormalizada = {};
-          
           disponibilidad.forEach((materia, bloques) {
             disponibilidadNormalizada![materia] = bloques;
           });
@@ -87,7 +111,7 @@ class _VerDisponibilidadDocentesScreenState
         setState(() {
           _disponibilidad = disponibilidadNormalizada;
           _isLoadingDisponibilidad = false;
-          
+
           if (_disponibilidad != null && _disponibilidad!.isNotEmpty) {
             _materiaSeleccionada = _disponibilidad!.keys.first;
           }
@@ -109,13 +133,14 @@ class _VerDisponibilidadDocentesScreenState
     }
 
     final bloques = _disponibilidad![_materiaSeleccionada!] ?? [];
-    
+
     final resultado = bloques.where((bloque) {
       return bloque['dia'] == dia;
     }).toList();
-    
-    resultado.sort((a, b) => (a['horaInicio'] ?? '').compareTo(b['horaInicio'] ?? ''));
-    
+
+    resultado.sort((a, b) =>
+        (a['horaInicio'] ?? '').compareTo(b['horaInicio'] ?? ''));
+
     return resultado;
   }
 
@@ -131,7 +156,6 @@ class _VerDisponibilidadDocentesScreenState
 
   @override
   Widget build(BuildContext context) {
-    // Detectar si es pantalla grande (tablet/desktop)
     final isLargeScreen = MediaQuery.of(context).size.width > 600;
 
     return Scaffold(
@@ -150,46 +174,35 @@ class _VerDisponibilidadDocentesScreenState
               )
             : null,
       ),
-      body: isLargeScreen
-          ? _buildDesktopLayout()
-          : _buildMobileLayout(),
+      body: isLargeScreen ? _buildDesktopLayout() : _buildMobileLayout(),
     );
   }
 
-  // ✅ LAYOUT PARA DESKTOP/TABLET (pantallas grandes)
+  // ✅ LAYOUT PARA DESKTOP/TABLET
   Widget _buildDesktopLayout() {
     return Row(
       children: [
-        // Panel izquierdo - Lista de docentes
         Container(
           width: 320,
           decoration: BoxDecoration(
             color: Colors.grey[100],
-            border: Border(
-              right: BorderSide(color: Colors.grey[300]!),
-            ),
+            border: Border(right: BorderSide(color: Colors.grey[300]!)),
           ),
           child: _buildListaDocentes(),
         ),
-
-        // Panel derecho - Detalles
-        Expanded(
-          child: _buildDetalleDocente(),
-        ),
+        Expanded(child: _buildDetalleDocente()),
       ],
     );
   }
 
-  // ✅ LAYOUT PARA MOBILE (pantallas pequeñas)
+  // ✅ LAYOUT PARA MOBILE
   Widget _buildMobileLayout() {
-    if (_mostrarListaDocentes) {
-      return _buildListaDocentes();
-    } else {
-      return _buildDetalleDocente();
-    }
+    return _mostrarListaDocentes
+        ? _buildListaDocentes()
+        : _buildDetalleDocente();
   }
 
-  // ✅ COMPONENTE: Lista de docentes
+  // ✅ COMPONENTE: Lista de docentes (con búsqueda)
   Widget _buildListaDocentes() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,10 +220,38 @@ class _VerDisponibilidadDocentesScreenState
             ),
           ),
         ),
+
+        // 🔍 Campo de búsqueda
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Buscar docente por nombre u oficina',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        _filtrarDocentes();
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              isDense: true,
+            ),
+            onChanged: (_) => _filtrarDocentes(),
+          ),
+        ),
+
+        // 📋 Lista de docentes
         Expanded(
           child: _isLoadingDocentes
               ? const Center(child: CircularProgressIndicator())
-              : _docentes.isEmpty
+              : _docentesFiltrados.isEmpty
                   ? const Center(
                       child: Text(
                         'No hay docentes disponibles',
@@ -218,12 +259,12 @@ class _VerDisponibilidadDocentesScreenState
                       ),
                     )
                   : ListView.builder(
-                      itemCount: _docentes.length,
+                      itemCount: _docentesFiltrados.length,
                       padding: const EdgeInsets.all(8),
                       itemBuilder: (context, index) {
-                        final docente = _docentes[index];
-                        final isSelected = _docenteSeleccionado?['_id'] ==
-                            docente['_id'];
+                        final docente = _docentesFiltrados[index];
+                        final isSelected =
+                            _docenteSeleccionado?['_id'] == docente['_id'];
 
                         return Card(
                           margin: const EdgeInsets.symmetric(
@@ -274,25 +315,18 @@ class _VerDisponibilidadDocentesScreenState
     );
   }
 
-  // ✅ COMPONENTE: Detalle del docente
+  // ✅ COMPONENTE: Detalle del docente (sin cambios)
   Widget _buildDetalleDocente() {
     if (_docenteSeleccionado == null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.person_search,
-              size: 80,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.person_search, size: 80, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
               'Selecciona un docente',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
             ),
           ],
         ),
@@ -305,7 +339,7 @@ class _VerDisponibilidadDocentesScreenState
 
     return Column(
       children: [
-        // Header con info del docente
+        // Header con info del docente + materia
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
@@ -328,8 +362,7 @@ class _VerDisponibilidadDocentesScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _docenteSeleccionado!['nombreDocente'] ??
-                              'Sin nombre',
+                          _docenteSeleccionado!['nombreDocente'] ?? 'Sin nombre',
                           style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -351,19 +384,14 @@ class _VerDisponibilidadDocentesScreenState
                   ),
                 ],
               ),
-              
-              // Selector de materia
-              if (_disponibilidad != null &&
-                  _disponibilidad!.isNotEmpty) ...[
+
+              if (_disponibilidad != null && _disponibilidad!.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 const Divider(),
                 const SizedBox(height: 8),
                 const Text(
                   'Materia:',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Container(
@@ -376,8 +404,7 @@ class _VerDisponibilidadDocentesScreenState
                     child: DropdownButton<String>(
                       value: _materiaSeleccionada,
                       isExpanded: true,
-                      items: _disponibilidad!.keys
-                          .map((materia) {
+                      items: _disponibilidad!.keys.map((materia) {
                         return DropdownMenuItem(
                           value: materia,
                           child: Text(
@@ -389,9 +416,7 @@ class _VerDisponibilidadDocentesScreenState
                       }).toList(),
                       onChanged: (value) {
                         if (value != null) {
-                          setState(() {
-                            _materiaSeleccionada = value;
-                          });
+                          setState(() => _materiaSeleccionada = value);
                         }
                       },
                     ),
@@ -402,27 +427,17 @@ class _VerDisponibilidadDocentesScreenState
           ),
         ),
 
-        // Horarios por día
+        // Horarios
         Expanded(
           child: _disponibilidad == null || _disponibilidad!.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.event_busy,
-                        size: 80,
-                        color: Colors.grey[400],
-                      ),
+                      Icon(Icons.event_busy, size: 80, color: Colors.grey[400]),
                       const SizedBox(height: 16),
-                      const Text(
-                        'Este docente no tiene',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      const Text(
-                        'horarios registrados',
-                        style: TextStyle(fontSize: 16),
-                      ),
+                      const Text('Este docente no tiene horarios registrados',
+                          style: TextStyle(fontSize: 16)),
                     ],
                   ),
                 )
@@ -430,33 +445,27 @@ class _VerDisponibilidadDocentesScreenState
                   padding: const EdgeInsets.all(16),
                   children: _diasSemana.map((dia) {
                     final bloques = _obtenerBloquesPorDia(dia);
-
                     return Card(
                       margin: const EdgeInsets.only(bottom: 16),
                       elevation: 2,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Header del día
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1565C0)
-                                  .withOpacity(0.1),
-                              borderRadius:
-                                  const BorderRadius.only(
+                              color:
+                                  const Color(0xFF1565C0).withOpacity(0.1),
+                              borderRadius: const BorderRadius.only(
                                 topLeft: Radius.circular(12),
                                 topRight: Radius.circular(12),
                               ),
                             ),
                             child: Row(
                               children: [
-                                const Icon(
-                                  Icons.calendar_today,
-                                  size: 18,
-                                  color: Color(0xFF1565C0),
-                                ),
+                                const Icon(Icons.calendar_today,
+                                    size: 18, color: Color(0xFF1565C0)),
                                 const SizedBox(width: 8),
                                 Text(
                                   dia,
@@ -489,8 +498,6 @@ class _VerDisponibilidadDocentesScreenState
                               ],
                             ),
                           ),
-                          
-                          // Lista de bloques
                           if (bloques.isEmpty)
                             const Padding(
                               padding: EdgeInsets.all(16),
@@ -513,13 +520,10 @@ class _VerDisponibilidadDocentesScreenState
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
                                     color: Colors.green.withOpacity(0.1),
-                                    borderRadius:
-                                        BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: const Icon(
-                                    Icons.schedule,
-                                    color: Colors.green,
-                                  ),
+                                  child: const Icon(Icons.schedule,
+                                      color: Colors.green),
                                 ),
                                 title: Text(
                                   '${bloque['horaInicio']} - ${bloque['horaFin']}',
@@ -532,11 +536,8 @@ class _VerDisponibilidadDocentesScreenState
                                   'Disponible para tutoría',
                                   style: TextStyle(fontSize: 12),
                                 ),
-                                trailing: const Icon(
-                                  Icons.check_circle,
-                                  color: Colors.green,
-                                  size: 20,
-                                ),
+                                trailing: const Icon(Icons.check_circle,
+                                    color: Colors.green, size: 20),
                               );
                             }),
                         ],

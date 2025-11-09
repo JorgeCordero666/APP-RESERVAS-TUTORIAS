@@ -458,51 +458,36 @@ const detalleDocente = async (req, res) => {
   }
 };
 
-// ========== ELIMINAR DOCENTE - LÍNEA 452 APROXIMADAMENTE ==========
-// ANTES: Solo cambiaba estadoDocente a false
-// AHORA: Elimina FÍSICAMENTE de la BD
 
+// ========== ELIMINAR DOCENTE - SOFT DELETE ==========
 const eliminarDocente = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    if (!req.body.salidaDocente) {
-      return res.status(400).json({ 
-        msg: "Lo sentimos, debes llenar todos los campos" 
-      });
-    }
-    
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json({ 
-        msg: `Lo sentimos, no existe el docente ${id}` 
-      });
-    }
-    
-    // ✅ OPCIÓN 1: ELIMINACIÓN FÍSICA (recomendado si realmente quieres borrar)
-    const docenteEliminado = await Docente.findByIdAndDelete(id);
-    
-    if (!docenteEliminado) {
-      return res.status(404).json({ 
-        msg: "Docente no encontrado" 
-      });
-    }
-    
-    console.log(`🗑️ Docente eliminado permanentemente: ${docenteEliminado.nombreDocente}`);
-    
-    res.status(200).json({ 
-      msg: "El docente fue eliminado permanentemente del sistema.",
-      eliminado: true
-    });
-    
-    // ✅ OPCIÓN 2: SOFT DELETE (si quieres mantener el historial)
-    // Descomenta esto si prefieres mantener el registro pero marcarlo como eliminado
-    /*
     const { salidaDocente } = req.body;
     
-    const docenteActualizado = await Docente.findByIdAndUpdate(id, {
-      salidaDocente: new Date(salidaDocente),
-      estadoDocente: false
-    }, { new: true });
+    // Validar que se proporcione fecha de salida
+    if (!salidaDocente) {
+      return res.status(400).json({ 
+        msg: "La fecha de salida es obligatoria" 
+      });
+    }
+    
+    // Validar formato de ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(404).json({ 
+        msg: "ID de docente inválido" 
+      });
+    }
+    
+    // Buscar y actualizar docente (soft delete)
+    const docenteActualizado = await Docente.findByIdAndUpdate(
+      id, 
+      {
+        salidaDocente: new Date(salidaDocente),
+        estadoDocente: false  // Marcar como inactivo
+      }, 
+      { new: true }
+    ).select('-passwordDocente -token');
     
     if (!docenteActualizado) {
       return res.status(404).json({ 
@@ -510,17 +495,32 @@ const eliminarDocente = async (req, res) => {
       });
     }
     
+    // Log para debugging
     console.log(`🔒 Docente deshabilitado: ${docenteActualizado.nombreDocente}`);
+    console.log(`   ID: ${docenteActualizado._id}`);
+    console.log(`   Fecha salida: ${docenteActualizado.salidaDocente}`);
+    console.log(`   Estado: ${docenteActualizado.estadoDocente}`);
     
+    // Respuesta exitosa
     res.status(200).json({ 
-      msg: "El registro fue deshabilitado con éxito.",
-      eliminado: false
+      success: true,
+      msg: "El docente fue deshabilitado exitosamente.",
+      eliminado: false,  // Indica que NO fue eliminación física
+      docente: {
+        id: docenteActualizado._id,
+        nombre: docenteActualizado.nombreDocente,
+        email: docenteActualizado.emailDocente,
+        estadoDocente: docenteActualizado.estadoDocente,
+        salidaDocente: docenteActualizado.salidaDocente,
+        oficinaDocente: docenteActualizado.oficinaDocente
+      }
     });
-    */
+    
   } catch (error) {
-    console.error("Error en eliminarDocente:", error);
+    console.error("❌ Error en eliminarDocente:", error);
     res.status(500).json({ 
-      msg: "Error al eliminar docente", 
+      success: false,
+      msg: "Error al deshabilitar docente", 
       error: error.message 
     });
   }
