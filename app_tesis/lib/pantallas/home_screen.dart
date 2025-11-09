@@ -1,15 +1,15 @@
-// lib/pantallas/home_screen.dart
+// lib/pantallas/home_screen.dart - VERSIÓN FINAL CORREGIDA
 import 'package:flutter/material.dart';
 import '../modelos/usuario.dart';
 import '../servicios/auth_service.dart';
 import '../config/routes.dart';
 import 'admin/gestion_usuarios_screen.dart';
 import 'admin/gestion_estudiantes_screen.dart';
+import 'admin/gestion_materias_screen.dart' as AdminMaterias;
 import 'perfil/perfil_screen.dart';
-import 'docente/gestion_materias_screen.dart';
+import 'docente/gestion_materias_screen.dart' as DocenteMaterias;
 import 'docente/gestion_horarios_screen.dart';
 import 'estudiante/ver_disponibilidad_docentes_screen.dart';
-
 
 class HomeScreen extends StatefulWidget {
   final Usuario usuario;
@@ -57,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
     } else if (_usuario.esDocente) {
       return [
         _buildDashboardDocente(),
-        GestionMateriasScreen(usuario: _usuario),
+        DocenteMaterias.GestionMateriasScreen(usuario: _usuario),
         GestionHorariosScreen(usuario: _usuario),
         PerfilScreen(usuario: _usuario),
       ];
@@ -172,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => GestionMateriasScreen(usuario: _usuario),
+                    builder: (context) => AdminMaterias.GestionMateriasScreen(usuario: _usuario),
                   ),
                 );
               },

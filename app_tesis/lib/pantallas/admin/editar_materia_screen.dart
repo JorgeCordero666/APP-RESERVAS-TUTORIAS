@@ -1,4 +1,4 @@
-// lib/pantallas/admin/editar_materia_screen.dart
+// lib/pantallas/admin/editar_materia_screen.dart - SIN LISTA PREDEFINIDA
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../modelos/materia.dart';
@@ -24,6 +24,7 @@ class _EditarMateriaScreenState extends State<EditarMateriaScreen> {
   String? _semestreSeleccionado;
   bool _isLoading = false;
 
+  // ✅ Lista de semestres (opciones estándar del sistema)
   final List<String> _semestres = [
     'Nivelación',
     'Primer Semestre',

@@ -1,4 +1,4 @@
-// lib/pantallas/admin/crear_materia_screen.dart
+// lib/pantallas/admin/crear_materia_screen.dart - SIN LISTA PREDEFINIDA
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../servicios/materia_service.dart';
@@ -21,6 +21,7 @@ class _CrearMateriaScreenState extends State<CrearMateriaScreen> {
   String? _semestreSeleccionado;
   bool _isLoading = false;
 
+  // ✅ LISTA DE SEMESTRES (mantener esto porque son opciones estándar del sistema)
   final List<String> _semestres = [
     'Nivelación',
     'Primer Semestre',
