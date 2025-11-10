@@ -1065,7 +1065,7 @@ export const listarTutoriasPendientes = async (req, res) => {
 
 
 // =====================================================
-// ✅ EXPORTAR TODAS LAS FUNCIONES
+// ✅ EXPORTAR TODAS LAS FUNCIONES (BLOQUE ÚNICO)
 // =====================================================
 export {
   // Tutorías
@@ -1085,11 +1085,7 @@ export {
   verDisponibilidadPorMateria,
   verDisponibilidadCompletaDocente,
   eliminarDisponibilidadMateria,
-  actualizarHorarios,
-  // Gestión de tutorías por parte del docente
-  aceptarTutoria,
-  rechazarTutoria,
-  listarTutoriasPendientes,
+  actualizarHorarios,   
   // Validaciones de horarios
   validarCrucesHorarios,
   validarCrucesEntreMaterias
