@@ -39,22 +39,15 @@ class MateriaService {
       );
 
       print('📬 Status: ${response.statusCode}');
-      print('📄 Response body: ${response.body}'); // ✅ DEBUGGING
+      print('📄 Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<dynamic> materiasJson = data['materias'] ?? [];
         
-        print('📚 Materias JSON recibidas: ${materiasJson.length}');
-        
         final materias = materiasJson
             .map((json) => Materia.fromJson(json))
             .toList();
-        
-        print('✅ Materias parseadas: ${materias.length}');
-        materias.forEach((m) {
-          print('   - ${m.nombre} (${m.codigo}) - ${m.semestre}');
-        });
         
         return materias;
       }
@@ -82,11 +75,6 @@ class MateriaService {
         return {'error': 'No hay sesión activa'};
       }
 
-      print('📝 Creando materia: $nombre');
-      print('   Código: $codigo');
-      print('   Semestre: $semestre');
-      print('   Créditos: $creditos');
-
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/materias'),
         headers: ApiConfig.getHeaders(token: token),
@@ -99,22 +87,11 @@ class MateriaService {
         }),
       );
 
-      print('📬 Status: ${response.statusCode}');
-      print('📄 Body: ${response.body}');
-
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        print('✅ Materia creada exitosamente');
-        
-        // ✅ Verificar que la materia se creó con ID
-        if (data['materia'] != null && data['materia']['_id'] != null) {
-          print('   ID asignado: ${data['materia']['_id']}');
-        }
-        
         return data;
       } else {
-        print('❌ Error: ${data['msg']}');
         return {'error': data['msg'] ?? 'Error al crear materia'};
       }
     } catch (e) {
@@ -140,8 +117,6 @@ class MateriaService {
         return {'error': 'No hay sesión activa'};
       }
 
-      print('📝 Actualizando materia: $id');
-
       final body = <String, dynamic>{};
       if (nombre != null) body['nombre'] = nombre;
       if (codigo != null) body['codigo'] = codigo.toUpperCase();
@@ -156,15 +131,11 @@ class MateriaService {
         body: jsonEncode(body),
       );
 
-      print('📬 Status: ${response.statusCode}');
-
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        print('✅ Materia actualizada');
         return data;
       } else {
-        print('❌ Error: ${data['msg']}');
         return {'error': data['msg'] ?? 'Error al actualizar materia'};
       }
     } catch (e) {
@@ -182,22 +153,16 @@ class MateriaService {
         return {'error': 'No hay sesión activa'};
       }
 
-      print('🗑️ Desactivando materia: $id');
-
       final response = await http.delete(
         Uri.parse('${ApiConfig.baseUrl}/materias/$id'),
         headers: ApiConfig.getHeaders(token: token),
       );
 
-      print('📬 Status: ${response.statusCode}');
-
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        print('✅ Materia desactivada');
         return data;
       } else {
-        print('❌ Error: ${data['msg']}');
         return {'error': data['msg'] ?? 'Error al eliminar materia'};
       }
     } catch (e) {
@@ -260,6 +225,35 @@ class MateriaService {
     } catch (e) {
       print('❌ Error buscando materias: $e');
       return [];
+    }
+  }
+
+  /// Obtener materias agrupadas por semestre (solo activas)
+  static Future<Map<String, List<String>>> obtenerMateriasAgrupadas() async {
+    try {
+      final materias = await listarMaterias(soloActivas: true);
+      
+      // Agrupar por semestre
+      Map<String, List<String>> materiasPorSemestre = {};
+      
+      for (var materia in materias) {
+        if (!materiasPorSemestre.containsKey(materia.semestre)) {
+          materiasPorSemestre[materia.semestre] = [];
+        }
+        materiasPorSemestre[materia.semestre]!.add(materia.nombre);
+      }
+      
+      // Ordenar las materias alfabéticamente dentro de cada semestre
+      materiasPorSemestre.forEach((semestre, materias) {
+        materias.sort();
+      });
+      
+      print('✅ Materias agrupadas por semestre: ${materiasPorSemestre.keys.join(", ")}');
+      
+      return materiasPorSemestre;
+    } catch (e) {
+      print('❌ Error agrupando materias: $e');
+      return {};
     }
   }
 }
