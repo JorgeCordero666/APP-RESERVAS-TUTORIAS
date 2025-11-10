@@ -13,7 +13,10 @@ import {
   verDisponibilidadPorMateria,
   verDisponibilidadCompletaDocente,
   eliminarDisponibilidadMateria,
-  actualizarHorarios
+  actualizarHorarios,
+  aceptarTutoria,
+  rechazarTutoria,
+  listarTutoriasPendientes, 
 } from "../controllers/tutorias_controller.js";
 
 import { verificarTokenJWT } from "../middlewares/JWT.js";
@@ -22,7 +25,7 @@ import verificarRol from "../middlewares/rol.js";
 const routerTutorias = Router();
 
 // =====================================================
-// ✅ GESTIÓN DE TUTORÍAS
+// GESTIÓN DE TUTORÍAS
 // =====================================================
 
 // Registrar tutoría (solo estudiantes)
@@ -66,7 +69,7 @@ routerTutorias.put(
 );
 
 // =====================================================
-// ✅ HISTORIAL DE TUTORÍAS (incluye canceladas)
+// HISTORIAL DE TUTORÍAS (incluye canceladas)
 // =====================================================
 
 // Historial completo del estudiante
@@ -134,7 +137,7 @@ routerTutorias.get(
 );
 
 // =====================================================
-// ✅ DISPONIBILIDAD GENERAL (LEGACY)
+// DISPONIBILIDAD GENERAL (LEGACY)
 // =====================================================
 
 // Registrar disponibilidad semanal (método antiguo)
@@ -162,7 +165,7 @@ routerTutorias.get(
 );
 
 // =====================================================
-// ✅ DISPONIBILIDAD POR MATERIA (USADO POR FLUTTER)
+// DISPONIBILIDAD POR MATERIA (USADO POR FLUTTER)
 // =====================================================
 
 // 🎯 MÉTODO 1: Ver disponibilidad de UNA materia específica
@@ -197,7 +200,7 @@ routerTutorias.get(
 );
 
 // =====================================================
-// ✅ OTRAS OPERACIONES DE DISPONIBILIDAD
+// OTRAS OPERACIONES DE DISPONIBILIDAD
 // =====================================================
 
 // Registrar/actualizar disponibilidad por materia y día (un día a la vez)
@@ -217,7 +220,7 @@ routerTutorias.delete(
 );
 
 // =====================================================
-// ✅ VALIDACIONES (OPCIONAL - para validación previa)
+// VALIDACIONES (OPCIONAL - para validación previa)
 // =====================================================
 
 // Validar cruces internos de horarios
@@ -301,7 +304,7 @@ routerTutorias.post(
 );
 
 // =====================================================
-// ✅ DEBUGGING (OPCIONAL - comentar en producción)
+// DEBUGGING (OPCIONAL - comentar en producción)
 // =====================================================
 
 // Ver todas las disponibilidades del sistema
@@ -331,6 +334,34 @@ routerTutorias.get(
       });
     }
   }
+);
+
+// =====================================================
+// GESTIÓN DE SOLICITUDES (DOCENTE)
+// =====================================================
+
+// Listar tutorías pendientes de confirmación
+routerTutorias.get(
+  "/tutorias/pendientes",
+  verificarTokenJWT,
+  verificarRol(["Docente"]),
+  listarTutoriasPendientes
+);
+
+// Aceptar solicitud de tutoría
+routerTutorias.put(
+  "/tutoria/aceptar/:id",
+  verificarTokenJWT,
+  verificarRol(["Docente"]),
+  aceptarTutoria
+);
+
+// Rechazar solicitud de tutoría
+routerTutorias.put(
+  "/tutoria/rechazar/:id",
+  verificarTokenJWT,
+  verificarRol(["Docente"]),
+  rechazarTutoria
 );
 
 export default routerTutorias;

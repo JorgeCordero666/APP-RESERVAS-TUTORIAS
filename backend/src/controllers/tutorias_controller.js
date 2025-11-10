@@ -887,6 +887,182 @@ const actualizarHorarios = async (req, res) => {
   }
 };
 
+// =====================================================
+// ✅ ACEPTAR SOLICITUD DE TUTORÍA (DOCENTE)
+// =====================================================
+export const aceptarTutoria = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const docente = req.docenteBDD?._id;
+
+    if (!docente) {
+      return res.status(401).json({ 
+        success: false,
+        msg: "Docente no autenticado" 
+      });
+    }
+
+    const tutoria = await Tutoria.findById(id);
+
+    if (!tutoria) {
+      return res.status(404).json({ 
+        success: false,
+        msg: 'Tutoría no encontrada' 
+      });
+    }
+
+    // Verificar que sea el docente correcto
+    if (tutoria.docente.toString() !== docente.toString()) {
+      return res.status(403).json({ 
+        success: false,
+        msg: 'No tienes permiso para gestionar esta tutoría' 
+      });
+    }
+
+    // Validar estado actual
+    if (tutoria.estado !== 'pendiente') {
+      return res.status(400).json({ 
+        success: false,
+        msg: `Esta tutoría ya fue ${tutoria.estado}` 
+      });
+    }
+
+    // Actualizar estado
+    tutoria.estado = 'confirmada';
+    await tutoria.save();
+
+    console.log(`✅ Tutoría aceptada: ${tutoria._id}`);
+
+    res.status(200).json({ 
+      success: true,
+      msg: 'Tutoría aceptada exitosamente', 
+      tutoria: {
+        _id: tutoria._id,
+        estado: tutoria.estado,
+        estudiante: tutoria.estudiante,
+        fecha: tutoria.fecha,
+        horaInicio: tutoria.horaInicio,
+        horaFin: tutoria.horaFin
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error aceptando tutoría:", error);
+    res.status(500).json({ 
+      success: false,
+      msg: 'Error al aceptar la tutoría', 
+      error: error.message 
+    });
+  }
+};
+
+// =====================================================
+// ✅ RECHAZAR SOLICITUD DE TUTORÍA (DOCENTE)
+// =====================================================
+export const rechazarTutoria = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { motivoRechazo } = req.body;
+    const docente = req.docenteBDD?._id;
+
+    if (!docente) {
+      return res.status(401).json({ 
+        success: false,
+        msg: "Docente no autenticado" 
+      });
+    }
+
+    const tutoria = await Tutoria.findById(id);
+
+    if (!tutoria) {
+      return res.status(404).json({ 
+        success: false,
+        msg: 'Tutoría no encontrada' 
+      });
+    }
+
+    // Verificar que sea el docente correcto
+    if (tutoria.docente.toString() !== docente.toString()) {
+      return res.status(403).json({ 
+        success: false,
+        msg: 'No tienes permiso para gestionar esta tutoría' 
+      });
+    }
+
+    // Validar estado actual
+    if (tutoria.estado !== 'pendiente') {
+      return res.status(400).json({ 
+        success: false,
+        msg: `Esta tutoría ya fue ${tutoria.estado}` 
+      });
+    }
+
+    // Actualizar estado
+    tutoria.estado = 'rechazada';
+    tutoria.motivoRechazo = motivoRechazo || 'Sin motivo especificado';
+    await tutoria.save();
+
+    console.log(`❌ Tutoría rechazada: ${tutoria._id}`);
+
+    res.status(200).json({ 
+      success: true,
+      msg: 'Tutoría rechazada', 
+      tutoria: {
+        _id: tutoria._id,
+        estado: tutoria.estado,
+        motivoRechazo: tutoria.motivoRechazo
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error rechazando tutoría:", error);
+    res.status(500).json({ 
+      success: false,
+      msg: 'Error al rechazar la tutoría', 
+      error: error.message 
+    });
+  }
+};
+
+// =====================================================
+// ✅ LISTAR TUTORÍAS PENDIENTES (SOLO DOCENTE)
+// =====================================================
+export const listarTutoriasPendientes = async (req, res) => {
+  try {
+    const docente = req.docenteBDD?._id;
+
+    if (!docente) {
+      return res.status(401).json({ 
+        success: false,
+        msg: "Docente no autenticado" 
+      });
+    }
+
+    const tutorias = await Tutoria.find({
+      docente: docente,
+      estado: 'pendiente'
+    })
+    .populate("estudiante", "nombreEstudiante emailEstudiante fotoPerfil")
+    .sort({ fecha: 1, horaInicio: 1 });
+
+    console.log(`📋 Tutorías pendientes: ${tutorias.length}`);
+
+    res.status(200).json({
+      success: true,
+      total: tutorias.length,
+      tutorias
+    });
+
+  } catch (error) {
+    console.error("❌ Error listando tutorías pendientes:", error);
+    res.status(500).json({ 
+      success: false,
+      msg: "Error al listar tutorías", 
+      error: error.message 
+    });
+  }
+};
+
 
 // =====================================================
 // ✅ EXPORTAR TODAS LAS FUNCIONES
@@ -910,6 +1086,10 @@ export {
   verDisponibilidadCompletaDocente,
   eliminarDisponibilidadMateria,
   actualizarHorarios,
+  // Gestión de tutorías por parte del docente
+  aceptarTutoria,
+  rechazarTutoria,
+  listarTutoriasPendientes,
   // Validaciones de horarios
   validarCrucesHorarios,
   validarCrucesEntreMaterias
