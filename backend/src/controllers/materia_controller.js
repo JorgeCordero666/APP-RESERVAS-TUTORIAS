@@ -1,4 +1,4 @@
-// backend/src/controllers/materia_controller.js
+// backend/src/controllers/materia_controller.js - VERSIÓN CORREGIDA
 import Materia from '../models/materia.js';
 import mongoose from 'mongoose';
 
@@ -9,12 +9,10 @@ const listarMaterias = async (req, res) => {
     
     let filtro = {};
     
-    // Filtrar por estado
     if (activas === 'true') {
       filtro.activa = true;
     }
     
-    // Filtrar por semestre
     if (semestre) {
       filtro.semestre = semestre;
     }
@@ -22,13 +20,13 @@ const listarMaterias = async (req, res) => {
     console.log('🔍 Listando materias con filtro:', filtro);
     
     const materias = await Materia.find(filtro)
-      .select('-__v') // ✅ Excluir solo __v
+      .select('-__v')
       .sort({ semestre: 1, nombre: 1 })
-      .lean(); // ✅ Convertir a objetos planos
+      .lean();
     
     console.log(`📚 Materias encontradas: ${materias.length}`);
     
-    // ✅ Convertir creadoPor a String si es ObjectId
+    // ✅ Asegurar que creadoPor sea string
     const materiasFormateadas = materias.map(materia => ({
       ...materia,
       creadoPor: materia.creadoPor ? materia.creadoPor.toString() : ''
@@ -50,13 +48,27 @@ const listarMaterias = async (req, res) => {
   }
 };
 
-// ========== CREAR MATERIA (SOLO ADMIN) ========== 
+// ========== CREAR MATERIA ========== 
 const crearMateria = async (req, res) => {
   try {
     const { nombre, codigo, semestre, creditos, descripcion } = req.body;
-    const administradorId = req.administradorBDD._id;
     
-    console.log('📝 Creando materia:', { nombre, codigo, semestre });
+    // ✅ CORRECCIÓN CRÍTICA: Obtener ID del admin correctamente
+    const administradorId = req.administradorBDD?._id;
+    
+    if (!administradorId) {
+      return res.status(401).json({
+        success: false,
+        msg: 'Administrador no autenticado'
+      });
+    }
+    
+    console.log('📝 Creando materia:', { 
+      nombre, 
+      codigo, 
+      semestre,
+      adminId: administradorId 
+    });
     
     // Validaciones
     if (!nombre || !codigo || !semestre || !creditos) {
@@ -90,25 +102,24 @@ const crearMateria = async (req, res) => {
       });
     }
     
-    // Crear materia
+    // ✅ CREAR MATERIA CON ADMIN ID
     const nuevaMateria = new Materia({
       nombre: nombre.trim(),
       codigo: codigo.toUpperCase().trim(),
       semestre,
-      creditos,
+      creditos: parseInt(creditos),
       descripcion: descripcion?.trim() || '',
-      creadoPor: administradorId,
-      activa: true,
-      creadaEn: new Date(),
-      actualizadaEn: new Date()
+      creadoPor: administradorId, // ✅ Incluir admin
+      activa: true
     });
     
     await nuevaMateria.save();
     
-    console.log(`✅ Materia creada: ${nuevaMateria.nombre} (${nuevaMateria.codigo})`);
+    console.log(`✅ Materia creada: ${nuevaMateria.nombre}`);
     console.log(`   ID: ${nuevaMateria._id}`);
+    console.log(`   Creada por: ${nuevaMateria.creadoPor}`);
     
-    // ✅ OPCIÓN 1: Enviar solo el ID (recomendado para Flutter)
+    // ✅ Respuesta con datos completos
     res.status(201).json({
       success: true,
       msg: 'Materia creada exitosamente',
@@ -120,7 +131,7 @@ const crearMateria = async (req, res) => {
         creditos: nuevaMateria.creditos,
         descripcion: nuevaMateria.descripcion,
         activa: nuevaMateria.activa,
-        creadoPor: nuevaMateria.creadoPor.toString(), // ✅ Convertir a String
+        creadoPor: nuevaMateria.creadoPor.toString(),
         creadaEn: nuevaMateria.creadaEn,
         actualizadaEn: nuevaMateria.actualizadaEn
       }
@@ -144,7 +155,7 @@ const crearMateria = async (req, res) => {
   }
 };
 
-// ========== ACTUALIZAR MATERIA (SOLO ADMIN) ==========
+// ========== ACTUALIZAR MATERIA ==========
 const actualizarMateria = async (req, res) => {
   try {
     const { id } = req.params;
@@ -204,7 +215,7 @@ const actualizarMateria = async (req, res) => {
     
     // Actualizar campos
     if (semestre) materia.semestre = semestre;
-    if (creditos !== undefined) materia.creditos = creditos;
+    if (creditos !== undefined) materia.creditos = parseInt(creditos);
     if (descripcion !== undefined) materia.descripcion = descripcion.trim();
     if (activa !== undefined) materia.activa = activa;
     
@@ -215,7 +226,18 @@ const actualizarMateria = async (req, res) => {
     res.status(200).json({
       success: true,
       msg: 'Materia actualizada exitosamente',
-      materia
+      materia: {
+        _id: materia._id,
+        nombre: materia.nombre,
+        codigo: materia.codigo,
+        semestre: materia.semestre,
+        creditos: materia.creditos,
+        descripcion: materia.descripcion,
+        activa: materia.activa,
+        creadoPor: materia.creadoPor.toString(),
+        creadaEn: materia.creadaEn,
+        actualizadaEn: materia.actualizadaEn
+      }
     });
     
   } catch (error) {
@@ -228,12 +250,12 @@ const actualizarMateria = async (req, res) => {
   }
 };
 
-// ========== ELIMINAR MATERIA (SOFT DELETE - SOLO ADMIN) ==========
+// ========== ELIMINAR MATERIA (SOFT DELETE) ==========
 const eliminarMateria = async (req, res) => {
   try {
     const { id } = req.params;
     
-    console.log(`🗑️ Eliminando materia: ${id}`);
+    console.log(`🗑️ Desactivando materia: ${id}`);
     
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
@@ -251,7 +273,7 @@ const eliminarMateria = async (req, res) => {
       });
     }
     
-    // Soft delete (desactivar en lugar de eliminar)
+    // Soft delete
     materia.activa = false;
     await materia.save();
     
@@ -260,7 +282,11 @@ const eliminarMateria = async (req, res) => {
     res.status(200).json({
       success: true,
       msg: 'Materia desactivada exitosamente',
-      materia
+      materia: {
+        _id: materia._id,
+        nombre: materia.nombre,
+        activa: materia.activa
+      }
     });
     
   } catch (error) {
@@ -273,7 +299,7 @@ const eliminarMateria = async (req, res) => {
   }
 };
 
-// ========== OBTENER DETALLE DE MATERIA ==========
+// ========== OBTENER DETALLE ==========
 const detalleMateria = async (req, res) => {
   try {
     const { id } = req.params;
@@ -286,7 +312,8 @@ const detalleMateria = async (req, res) => {
     }
     
     const materia = await Materia.findById(id)
-      .populate('creadoPor', 'nombreAdministrador email');
+      .select('-__v')
+      .lean();
     
     if (!materia) {
       return res.status(404).json({
@@ -294,6 +321,9 @@ const detalleMateria = async (req, res) => {
         msg: 'Materia no encontrada'
       });
     }
+    
+    // Formatear creadoPor
+    materia.creadoPor = materia.creadoPor ? materia.creadoPor.toString() : '';
     
     res.status(200).json({
       success: true,
@@ -330,15 +360,23 @@ const buscarMaterias = async (req, res) => {
         { descripcion: { $regex: q, $options: 'i' } }
       ]
     })
+    .select('-__v')
     .sort({ nombre: 1 })
-    .limit(20);
+    .limit(20)
+    .lean();
     
-    console.log(`🔍 Búsqueda "${q}": ${materias.length} resultados`);
+    // Formatear resultados
+    const materiasFormateadas = materias.map(m => ({
+      ...m,
+      creadoPor: m.creadoPor ? m.creadoPor.toString() : ''
+    }));
+    
+    console.log(`🔍 Búsqueda "${q}": ${materiasFormateadas.length} resultados`);
     
     res.status(200).json({
       success: true,
-      total: materias.length,
-      materias
+      total: materiasFormateadas.length,
+      materias: materiasFormateadas
     });
     
   } catch (error) {

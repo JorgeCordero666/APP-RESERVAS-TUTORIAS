@@ -24,7 +24,6 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
   String _filtroSemestre = 'Todos';
   String _filtroEstado = 'Activas';
 
-  // Semestres disponibles
   final List<String> _semestres = [
     'Todos',
     'Nivelación',
@@ -50,9 +49,10 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
     super.dispose();
   }
 
+  // ✅ CORRECCIÓN: Cargar materias con logs detallados
   Future<void> _cargarMaterias() async {
-    print('\n🔄 Cargando materias...');
-    print('   Filtro estado actual: $_filtroEstado');
+    print('\n🔄 === CARGANDO MATERIAS ===');
+    print('   Filtro estado: $_filtroEstado');
     
     setState(() => _isLoading = true);
 
@@ -62,19 +62,25 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
       );
       
       print('📦 Materias recibidas del servicio: ${materias.length}');
-      materias.forEach((m) {
-        print('   - ${m.nombre} (${m.codigo}) - Activa: ${m.activa}');
-      });
+      
+      if (materias.isEmpty) {
+        print('⚠️ No hay materias en la base de datos');
+      } else {
+        print('📋 Primeras materias:');
+        materias.take(3).forEach((m) {
+          print('   - ${m.nombre} (${m.codigo}) - Activa: ${m.activa}');
+        });
+      }
       
       if (mounted) {
         setState(() {
           _materias = materias;
           _aplicarFiltros();
-          print('✅ Estado actualizado. Total materias: ${_materias.length}');
+          print('✅ Estado actualizado. Total: ${_materias.length}');
         });
       }
     } catch (e) {
-      print('❌ Error al cargar materias: $e');
+      print('❌ ERROR al cargar materias: $e');
       if (mounted) {
         _mostrarError('Error al cargar materias: $e');
       }
@@ -83,6 +89,8 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
         setState(() => _isLoading = false);
       }
     }
+    
+    print('=== FIN CARGA ===\n');
   }
 
   void _filtrarMaterias() {
@@ -97,27 +105,22 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
     print('   Query: "$query"');
     print('   Semestre: $_filtroSemestre');
     print('   Estado: $_filtroEstado');
-    print('   Total materias antes de filtrar: ${_materias.length}');
+    print('   Total antes: ${_materias.length}');
     
     setState(() {
       _materiasFiltradas = _materias.where((materia) {
-        // Filtro por búsqueda
         final nombreMatch = materia.nombre.toLowerCase().contains(query);
         final codigoMatch = materia.codigo.toLowerCase().contains(query);
         final cumpleBusqueda = query.isEmpty || nombreMatch || codigoMatch;
         
-        // Filtro por semestre
         final cumpleSemestre = _filtroSemestre == 'Todos' ||
             materia.semestre == _filtroSemestre;
         
-        // Filtro por estado
         final cumpleEstado = _filtroEstado == 'Todas' ||
             (_filtroEstado == 'Activas' && materia.activa) ||
             (_filtroEstado == 'Inactivas' && !materia.activa);
         
-        final cumple = cumpleBusqueda && cumpleSemestre && cumpleEstado;
-        
-        return cumple;
+        return cumpleBusqueda && cumpleSemestre && cumpleEstado;
       }).toList();
       
       print('✅ Materias filtradas: ${_materiasFiltradas.length}');
@@ -190,8 +193,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
       _mostrarError(resultado['error']);
     } else {
       _mostrarExito('Materia desactivada exitosamente');
-      // ✅ Recargar lista después de desactivar
-      await _cargarMaterias();
+      await _cargarMaterias(); // ✅ Recargar después de desactivar
     }
   }
 
@@ -351,7 +353,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
                                 );
                               },
                               onEditar: () async {
-                                print('📝 Navegando a editar materia: ${materia.nombre}');
+                                print('📝 Navegando a editar: ${materia.nombre}');
                                 final resultado = await Navigator.push<bool>(
                                   context,
                                   MaterialPageRoute(
@@ -362,7 +364,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
                                 );
 
                                 if (resultado == true && mounted) {
-                                  print('✅ Materia editada, recargando lista...');
+                                  print('✅ Editada, recargando...');
                                   _cargarMaterias();
                                 }
                               },
@@ -383,12 +385,10 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
             ),
           );
 
-          print('🔙 Retorno de CrearMateriaScreen: $resultado');
+          print('🔙 Retorno: $resultado');
           if (resultado == true && mounted) {
-            print('✅ Materia creada exitosamente, recargando lista...');
+            print('✅ Materia creada, recargando...');
             await _cargarMaterias();
-          } else {
-            print('⚠️ No se creó materia o mounted=false');
           }
         },
         backgroundColor: const Color(0xFF1565C0),
@@ -430,7 +430,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Intenta con otro criterio de búsqueda',
+              'Intenta con otro criterio',
               style: TextStyle(fontSize: 14, color: Colors.grey[500]),
             ),
           ],
@@ -440,7 +440,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
   }
 }
 
-// Widget para la tarjeta de materia
+// Widget para tarjeta de materia
 class _MateriaCard extends StatelessWidget {
   final Materia materia;
   final VoidCallback onDesactivar;
@@ -579,7 +579,7 @@ class _MateriaCard extends StatelessWidget {
   }
 }
 
-// Widget para los chips de filtro
+// Widget para chips de filtro
 class _FiltroChip extends StatelessWidget {
   final String label;
   final bool isSelected;
