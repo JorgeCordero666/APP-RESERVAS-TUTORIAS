@@ -1,4 +1,4 @@
-// lib/pantallas/docente/gestion_horarios_screen.dart - VERSIÓN CORREGIDA
+// lib/pantallas/docente/gestion_horarios_screen.dart - CON RECARGA AUTOMÁTICA
 import 'package:app_tesis/servicios/auth_service.dart';
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
@@ -13,7 +13,9 @@ class GestionHorariosScreen extends StatefulWidget {
   State<GestionHorariosScreen> createState() => _GestionHorariosScreenState();
 }
 
-class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
+class _GestionHorariosScreenState extends State<GestionHorariosScreen> 
+    with AutomaticKeepAliveClientMixin {  // ✅ AGREGADO
+  
   final List<String> _diasSemana = [
     'Lunes',
     'Martes',
@@ -37,34 +39,86 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
   bool _hasChanges = false;
   List<String> _materiasDocente = [];
 
+  // ✅ NUEVO: Para evitar que se destruya el estado
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   void initState() {
     super.initState();
     _cargarMateriasDocente();
   }
 
-  void _cargarMateriasDocente() {
-    AuthService.getUsuarioActual().then((usuarioActualizado) {
-      if (usuarioActualizado != null && mounted) {
-        final materiasActualizadas = usuarioActualizado.asignaturas ?? [];
-        
-        if (materiasActualizadas.isNotEmpty) {
-          setState(() {
-            _materiasDocente = List.from(materiasActualizadas);
-            
-            for (var materia in _materiasDocente) {
-              _horariosPorMateria[materia] = [];
-            }
-            
-            _materiaSeleccionada = _materiasDocente.first;
-            _cargarHorariosExistentes();
-          });
-          
-          print('✅ Materias recargadas en GestionHorariosScreen');
-          print('   Materias: ${_materiasDocente.join(", ")}');
-        }
+  // ✅ NUEVO: Detectar cuando la pantalla vuelve a ser visible
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Solo recargar si ya habíamos cargado materias antes
+    if (_materiasDocente.isNotEmpty) {
+      _cargarMateriasDocente();
+    }
+  }
+
+  void _cargarMateriasDocente() async {
+    print('🔄 Recargando materias del docente...');
+    
+    final usuarioActualizado = await AuthService.getUsuarioActual();
+    
+    if (usuarioActualizado != null && mounted) {
+      final materiasActualizadas = usuarioActualizado.asignaturas ?? [];
+      
+      print('📚 Materias actualizadas: ${materiasActualizadas.join(", ")}');
+      
+      // ✅ Verificar si hubo cambios en las materias
+      final materiasAntiguas = Set.from(_materiasDocente);
+      final materiasNuevas = Set.from(materiasActualizadas);
+      
+      final materiasEliminadas = materiasAntiguas.difference(materiasNuevas);
+      final materiasAgregadas = materiasNuevas.difference(materiasAntiguas);
+      
+      if (materiasEliminadas.isNotEmpty) {
+        print('🗑️ Materias eliminadas: ${materiasEliminadas.join(", ")}');
       }
-    });
+      if (materiasAgregadas.isNotEmpty) {
+        print('➕ Materias agregadas: ${materiasAgregadas.join(", ")}');
+      }
+      
+      setState(() {
+        _materiasDocente = List.from(materiasActualizadas);
+        
+        // ✅ Limpiar horarios de materias eliminadas
+        _horariosPorMateria.removeWhere((materia, _) => 
+          !_materiasDocente.contains(materia)
+        );
+        
+        // ✅ Inicializar horarios de materias nuevas
+        for (var materia in _materiasDocente) {
+          if (!_horariosPorMateria.containsKey(materia)) {
+            _horariosPorMateria[materia] = [];
+          }
+        }
+        
+        // ✅ Si la materia seleccionada fue eliminada, seleccionar la primera disponible
+        if (_materiaSeleccionada != null && 
+            !_materiasDocente.contains(_materiaSeleccionada)) {
+          print('⚠️ Materia "$_materiaSeleccionada" ya no está disponible');
+          _materiaSeleccionada = _materiasDocente.isNotEmpty 
+              ? _materiasDocente.first 
+              : null;
+          _hasChanges = false;
+        }
+        
+        // ✅ Si no hay materia seleccionada pero hay materias, seleccionar la primera
+        if (_materiaSeleccionada == null && _materiasDocente.isNotEmpty) {
+          _materiaSeleccionada = _materiasDocente.first;
+        }
+      });
+      
+      // ✅ Cargar horarios de la materia seleccionada
+      if (_materiaSeleccionada != null) {
+        _cargarHorariosExistentes();
+      }
+    }
   }
 
   Future<void> _cargarHorariosExistentes() async {
@@ -185,20 +239,17 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
       print('💾 Guardando horarios de: $_materiaSeleccionada');
       print('   Total bloques: ${_horariosPorMateria[_materiaSeleccionada!]!.length}');
       
-      // ✅ CORRECCIÓN: actualizarHorarios ahora retorna Map<String, dynamic>
       final resultado = await HorarioService.actualizarHorarios(
         docenteId: widget.usuario.id,
         materia: _materiaSeleccionada!,
         bloques: _horariosPorMateria[_materiaSeleccionada!]!,
-        validarAntes: true, // ✅ Validar antes de guardar
+        validarAntes: true,
       );
 
       if (mounted) {
-        // ✅ Verificar el campo 'success' en lugar de usar bool directamente
         if (resultado['success'] == true) {
           _mostrarExito(resultado['mensaje'] ?? 'Horarios guardados correctamente');
           
-          // ✅ Mostrar estadísticas opcionales
           if (resultado.containsKey('eliminados') && resultado.containsKey('creados')) {
             print('   📊 Eliminados: ${resultado['eliminados']}, Creados: ${resultado['creados']}');
           }
@@ -259,6 +310,8 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // ✅ REQUERIDO por AutomaticKeepAliveClientMixin
+    
     if (_materiasDocente.isEmpty) {
       return Scaffold(
         appBar: AppBar(
@@ -304,6 +357,12 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
         title: const Text('Gestión de Horarios'),
         backgroundColor: const Color(0xFF1565C0),
         actions: [
+          // ✅ NUEVO: Botón para recargar materias manualmente
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _cargarMateriasDocente,
+            tooltip: 'Actualizar materias',
+          ),
           if (_hasChanges && !_isLoading)
             IconButton(
               icon: const Icon(Icons.save),
@@ -322,13 +381,27 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Materia',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1565C0),
-                  ),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Materia',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1565C0),
+                        ),
+                      ),
+                    ),
+                    // ✅ NUEVO: Indicador de materias actualizadas
+                    Text(
+                      '${_materiasDocente.length} ${_materiasDocente.length == 1 ? "materia" : "materias"}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 Container(
@@ -533,9 +606,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen> {
   }
 }
 
-// =====================================================
-// ✅ Dialog para agregar bloque
-// =====================================================
+// Dialog para agregar bloque (sin cambios)
 class _DialogAgregarBloque extends StatefulWidget {
   final List<String> diasDisponibles;
   final List<String> horasDisponibles;
