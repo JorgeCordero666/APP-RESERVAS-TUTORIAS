@@ -18,12 +18,12 @@ const materiaSchema = new Schema({
   semestre: {
     type: String,
     enum: [
-      'Nivelación', 
-      'Primer Semestre', 
-      'Segundo Semestre', 
-      'Tercer Semestre', 
-      'Cuarto Semestre', 
-      'Quinto Semestre', 
+      'Nivelación',
+      'Primer Semestre',
+      'Segundo Semestre',
+      'Tercer Semestre',
+      'Cuarto Semestre',
+      'Quinto Semestre',
       'Sexto Semestre'
     ],
     required: true
@@ -67,14 +67,17 @@ materiaSchema.index({ semestre: 1 });
 materiaSchema.index({ activa: 1 });
 
 // Middleware para actualizar fecha de modificación
-materiaSchema.pre('save', function(next) {
+materiaSchema.pre('save', function (next) {
   this.actualizadaEn = new Date();
   next();
 });
 
-// Método para buscar materias activas
-materiaSchema.statics.findActivas = function() {
-  return this.find({ activa: true }).sort({ semestre: 1, nombre: 1 });
-};
+// ✅ SOLUCIÓN: Verificar si el modelo ya existe antes de compilarlo
+let Materia;
+try {
+  Materia = model('Materia');
+} catch {
+  Materia = model('Materia', materiaSchema);
+}
 
-export default model('Materia', materiaSchema);
+export default Materia;

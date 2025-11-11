@@ -3,6 +3,7 @@ import '../../modelos/usuario.dart';
 import '../../servicios/perfil_service.dart';
 import '../../servicios/auth_service.dart';
 import '../../servicios/materia_service.dart';
+import '../../servicios/docente_service.dart';
 
 class GestionMateriasScreen extends StatefulWidget {
   final Usuario usuario;
@@ -14,16 +15,12 @@ class GestionMateriasScreen extends StatefulWidget {
 }
 
 class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
-  // ✅ Materias cargadas dinámicamente desde el backend
   Map<String, List<String>> _materiasDisponibles = {};
-  
   List<String> _materiasSeleccionadas = [];
   bool _isLoading = false;
   bool _hasChanges = false;
   bool _cargandoMaterias = true;
   late Usuario _usuarioActual;
-
-  // ✅ Filtro de búsqueda
   String _searchQuery = '';
   final _searchController = TextEditingController();
 
@@ -31,8 +28,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
   void initState() {
     super.initState();
     _usuarioActual = widget.usuario;
-    _cargarMateriasActuales();
-    _cargarMateriasDisponibles();
+    _inicializarPantalla();
   }
 
   @override
@@ -41,26 +37,99 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
     super.dispose();
   }
 
-  void _cargarMateriasActuales() {
-    if (_usuarioActual.asignaturas != null) {
-      _materiasSeleccionadas = List.from(_usuarioActual.asignaturas!);
+  // ✅ PASO 1: Inicialización con validación
+  Future<void> _inicializarPantalla() async {
+    print('\n🚀 === INICIALIZANDO PANTALLA DE MATERIAS ===');
+    
+    // 1. Validar materias actuales del docente
+    await _validarMateriasDocente();
+    
+    // 2. Cargar materias disponibles de la BD
+    await _cargarMateriasDisponibles();
+    
+    print('=== FIN INICIALIZACIÓN ===\n');
+  }
+
+  // ✅ PASO 2: Validar que las materias del docente existan
+  Future<void> _validarMateriasDocente() async {
+    print('🔍 Validando materias del docente...');
+    
+    final resultado = await DocenteService.validarMaterias(_usuarioActual.id);
+    
+    if (resultado != null && !resultado.containsKey('error')) {
+      final List<dynamic> materiasValidas = resultado['materiasValidas'] ?? [];
+      final bool fueronEliminadas = resultado['fueronEliminadas'] ?? false;
+      
+      if (fueronEliminadas) {
+        print('⚠️ Se detectaron materias eliminadas, sincronizando...');
+        
+        // Actualizar localmente
+        _materiasSeleccionadas = materiasValidas.map((m) => m.toString()).toList();
+        
+        // Obtener perfil actualizado del backend
+        final usuarioActualizado = await AuthService.obtenerPerfil();
+        
+        if (usuarioActualizado != null) {
+          await AuthService.actualizarUsuario(usuarioActualizado);
+          _usuarioActual = usuarioActualizado;
+          
+          if (mounted) {
+            _mostrarInfo('Se eliminaron materias que ya no existen en el sistema');
+          }
+        }
+      } else {
+        _materiasSeleccionadas = materiasValidas.map((m) => m.toString()).toList();
+      }
+      
+      print('✅ Materias validadas: ${_materiasSeleccionadas.join(", ")}');
+    } else {
+      // Cargar desde el usuario actual
+      _materiasSeleccionadas = List.from(_usuarioActual.asignaturas ?? []);
+      print('⚠️ No se pudo validar, usando materias locales');
     }
   }
 
-  // ✅ Cargar materias desde el backend
+  // ✅ PASO 3: Cargar SOLO materias activas de la BD
   Future<void> _cargarMateriasDisponibles() async {
     setState(() => _cargandoMaterias = true);
 
     try {
-      print('📚 Cargando materias desde el backend...');
+      print('📚 Cargando materias activas de la BD...');
       
+      // ✅ CRÍTICO: Solo traer materias ACTIVAS
       final materiasAgrupadas = await MateriaService.obtenerMateriasAgrupadas();
       
       if (materiasAgrupadas.isEmpty) {
-        print('⚠️ No hay materias disponibles en el sistema');
-        _mostrarError('No hay materias disponibles. Contacta al administrador.');
+        print('⚠️ No hay materias activas en el sistema');
+        if (mounted) {
+          _mostrarError('No hay materias disponibles. Contacta al administrador.');
+        }
       } else {
-        print('✅ Materias cargadas: ${materiasAgrupadas.keys.join(", ")}');
+        print('✅ Materias disponibles cargadas:');
+        materiasAgrupadas.forEach((semestre, materias) {
+          print('   $semestre: ${materias.length} materias');
+        });
+        
+        // ✅ VALIDAR: Eliminar materias seleccionadas que ya no existen
+        final todasLasMaterias = materiasAgrupadas.values
+            .expand((lista) => lista)
+            .toSet();
+        
+        final materiasInvalidas = _materiasSeleccionadas
+            .where((m) => !todasLasMaterias.contains(m))
+            .toList();
+        
+        if (materiasInvalidas.isNotEmpty) {
+          print('⚠️ Materias inválidas detectadas: ${materiasInvalidas.join(", ")}');
+          
+          _materiasSeleccionadas.removeWhere((m) => materiasInvalidas.contains(m));
+          
+          if (mounted) {
+            _mostrarAdvertencia(
+              'Se eliminaron ${materiasInvalidas.length} materia(s) que ya no están disponibles'
+            );
+          }
+        }
       }
 
       if (mounted) {
@@ -89,7 +158,6 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
     });
   }
 
-  // ✅ Obtener todas las materias en una lista plana
   List<MapEntry<String, String>> _obtenerTodasLasMateriasConSemestre() {
     List<MapEntry<String, String>> resultado = [];
     
@@ -99,13 +167,11 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
       }
     });
     
-    // Ordenar alfabéticamente por materia
     resultado.sort((a, b) => a.value.compareTo(b.value));
     
     return resultado;
   }
 
-  // ✅ Filtrar materias por búsqueda
   List<MapEntry<String, String>> _filtrarMaterias() {
     final todasMaterias = _obtenerTodasLasMateriasConSemestre();
     
@@ -119,9 +185,30 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
     }).toList();
   }
 
+  // ✅ PASO 4: Guardar con validación final
   Future<void> _guardarCambios() async {
     if (_materiasSeleccionadas.isEmpty) {
       _mostrarError('Debes seleccionar al menos una materia');
+      return;
+    }
+
+    print('\n💾 === GUARDANDO CAMBIOS ===');
+    print('   Materias seleccionadas: ${_materiasSeleccionadas.join(", ")}');
+
+    // ✅ VALIDACIÓN PRE-GUARDADO: Verificar que todas las materias existan
+    final todasLasMaterias = _materiasDisponibles.values
+        .expand((lista) => lista)
+        .toSet();
+    
+    final materiasInvalidas = _materiasSeleccionadas
+        .where((m) => !todasLasMaterias.contains(m))
+        .toList();
+    
+    if (materiasInvalidas.isNotEmpty) {
+      print('❌ Materias inválidas detectadas: ${materiasInvalidas.join(", ")}');
+      _mostrarError(
+        'Las siguientes materias ya no existen: ${materiasInvalidas.join(", ")}'
+      );
       return;
     }
 
@@ -142,22 +229,23 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
       } else {
         _mostrarExito('Materias actualizadas correctamente');
         
-        // Actualizar usuario en SharedPreferences
+        // ✅ Actualizar usuario en memoria y SharedPreferences
         final usuarioActualizado = await AuthService.obtenerPerfil();
         
         if (usuarioActualizado != null && mounted) {
+          await AuthService.actualizarUsuario(usuarioActualizado);
+          
           setState(() {
             _usuarioActual = usuarioActualizado;
             _hasChanges = false;
-            
-            if (_usuarioActual.asignaturas != null) {
-              _materiasSeleccionadas = List.from(_usuarioActual.asignaturas!);
-            }
+            _materiasSeleccionadas = List.from(usuarioActualizado.asignaturas ?? []);
           });
           
           print('✅ Usuario actualizado en memoria y SharedPreferences');
-          print('   Materias: ${_usuarioActual.asignaturas}');
+          print('   Materias finales: ${_usuarioActual.asignaturas}');
         }
+        
+        print('=== FIN GUARDADO ===\n');
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -168,9 +256,16 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
   void _mostrarError(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(mensaje),
+        content: Row(
+          children: [
+            const Icon(Icons.error, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(mensaje)),
+          ],
+        ),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -178,9 +273,48 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
   void _mostrarExito(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(mensaje),
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(mensaje)),
+          ],
+        ),
         backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _mostrarInfo(String mensaje) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.info, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(mensaje)),
+          ],
+        ),
+        backgroundColor: Colors.blue,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _mostrarAdvertencia(String mensaje) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.warning, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(mensaje)),
+          ],
+        ),
+        backgroundColor: Colors.orange,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -226,10 +360,12 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
           title: const Text('Mis Materias'),
           backgroundColor: const Color(0xFF1565C0),
           actions: [
-            // Botón para recargar materias
             IconButton(
               icon: const Icon(Icons.refresh),
-              onPressed: _cargandoMaterias ? null : _cargarMateriasDisponibles,
+              onPressed: _cargandoMaterias ? null : () {
+                _validarMateriasDocente();
+                _cargarMateriasDisponibles();
+              },
               tooltip: 'Recargar materias',
             ),
             if (_hasChanges && !_isLoading)
@@ -280,7 +416,10 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
                         ),
                         const SizedBox(height: 24),
                         ElevatedButton.icon(
-                          onPressed: _cargarMateriasDisponibles,
+                          onPressed: () {
+                            _validarMateriasDocente();
+                            _cargarMateriasDisponibles();
+                          },
                           icon: const Icon(Icons.refresh),
                           label: const Text('Reintentar'),
                           style: ElevatedButton.styleFrom(
@@ -292,7 +431,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
                   )
                 : Column(
                     children: [
-                      // ✅ Header con información
+                      // Header
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
@@ -306,7 +445,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    'Selecciona todas las materias que impartes',
+                                    'Selecciona las materias que impartes este semestre',
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: Colors.blue[900],
@@ -339,7 +478,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
                         ),
                       ),
 
-                      // ✅ Buscador
+                      // Buscador
                       Padding(
                         padding: const EdgeInsets.all(16),
                         child: TextField(
@@ -370,7 +509,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
                         ),
                       ),
 
-                      // ✅ Lista de materias
+                      // Lista
                       Expanded(
                         child: materiasFiltradas.isEmpty
                             ? Center(
@@ -445,7 +584,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
                               ),
                       ),
 
-                      // ✅ Botón guardar (siempre visible si hay cambios)
+                      // Botón guardar
                       if (_hasChanges)
                         Container(
                           padding: const EdgeInsets.all(16),

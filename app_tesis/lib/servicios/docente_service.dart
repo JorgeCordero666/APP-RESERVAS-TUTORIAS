@@ -4,7 +4,45 @@ import '../config/api_config.dart';
 import '../servicios/auth_service.dart';
 
 class DocenteService {
-  /// Registrar un nuevo docente (solo Admin)
+  
+  // ========== VALIDAR MATERIAS DEL DOCENTE ==========
+  /// ✅ NUEVO: Valida que las materias asignadas existan y estén activas
+  static Future<Map<String, dynamic>?> validarMaterias(String docenteId) async {
+    try {
+      final token = await AuthService.getToken();
+      
+      if (token == null) {
+        return {'error': 'No hay sesión activa'};
+      }
+
+      print('🔍 Validando materias del docente: $docenteId');
+
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/docente/validar-materias/$docenteId'),
+        headers: ApiConfig.getHeaders(token: token),
+      );
+
+      print('📬 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        print('✅ Materias validadas:');
+        print('   Válidas: ${data['materiasValidas']}');
+        print('   Fueron eliminadas: ${data['fueronEliminadas']}');
+        
+        return data;
+      } else {
+        final error = jsonDecode(response.body);
+        return {'error': error['msg'] ?? 'Error al validar materias'};
+      }
+    } catch (e) {
+      print('❌ Error en validarMaterias: $e');
+      return {'error': 'Error de conexión: $e'};
+    }
+  }
+
+  // ========== REGISTRAR DOCENTE ==========
   static Future<Map<String, dynamic>?> registrarDocente({
     required String nombreDocente,
     required String cedulaDocente,
@@ -50,7 +88,7 @@ class DocenteService {
     }
   }
 
-  /// Listar todos los docentes
+  // ========== LISTAR DOCENTES ==========
   static Future<List<Map<String, dynamic>>> listarDocentes() async {
     try {
       final token = await AuthService.getToken();
@@ -76,7 +114,7 @@ class DocenteService {
     }
   }
 
-  /// Obtener detalle de un docente
+  // ========== DETALLE DOCENTE ==========
   static Future<Map<String, dynamic>?> detalleDocente(String id) async {
     try {
       final token = await AuthService.getToken();
@@ -103,7 +141,7 @@ class DocenteService {
     }
   }
 
-  /// Eliminar docente (deshabilitar)
+  // ========== ELIMINAR DOCENTE ==========
   static Future<Map<String, dynamic>?> eliminarDocente({
     required String id,
     required String salidaDocente,
@@ -136,7 +174,7 @@ class DocenteService {
     }
   }
 
-  /// Actualizar docente
+  // ========== ACTUALIZAR DOCENTE ==========
   static Future<Map<String, dynamic>?> actualizarDocente({
     required String id,
     required String nombreDocente,

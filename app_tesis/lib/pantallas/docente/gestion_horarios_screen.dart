@@ -1,5 +1,6 @@
 // lib/pantallas/docente/gestion_horarios_screen.dart - CON RECARGA AUTOMÁTICA
 import 'package:app_tesis/servicios/auth_service.dart';
+import 'package:app_tesis/servicios/docente_service.dart';
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/horario_service.dart';
@@ -59,67 +60,78 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
     }
   }
 
-  void _cargarMateriasDocente() async {
-    print('🔄 Recargando materias del docente...');
-    
-    final usuarioActualizado = await AuthService.getUsuarioActual();
-    
-    if (usuarioActualizado != null && mounted) {
-      final materiasActualizadas = usuarioActualizado.asignaturas ?? [];
-      
-      print('📚 Materias actualizadas: ${materiasActualizadas.join(", ")}');
-      
-      // ✅ Verificar si hubo cambios en las materias
-      final materiasAntiguas = Set.from(_materiasDocente);
-      final materiasNuevas = Set.from(materiasActualizadas);
-      
-      final materiasEliminadas = materiasAntiguas.difference(materiasNuevas);
-      final materiasAgregadas = materiasNuevas.difference(materiasAntiguas);
-      
-      if (materiasEliminadas.isNotEmpty) {
-        print('🗑️ Materias eliminadas: ${materiasEliminadas.join(", ")}');
-      }
-      if (materiasAgregadas.isNotEmpty) {
-        print('➕ Materias agregadas: ${materiasAgregadas.join(", ")}');
-      }
-      
-      setState(() {
-        _materiasDocente = List.from(materiasActualizadas);
-        
-        // ✅ Limpiar horarios de materias eliminadas
-        _horariosPorMateria.removeWhere((materia, _) => 
-          !_materiasDocente.contains(materia)
-        );
-        
-        // ✅ Inicializar horarios de materias nuevas
-        for (var materia in _materiasDocente) {
-          if (!_horariosPorMateria.containsKey(materia)) {
-            _horariosPorMateria[materia] = [];
-          }
-        }
-        
-        // ✅ Si la materia seleccionada fue eliminada, seleccionar la primera disponible
-        if (_materiaSeleccionada != null && 
-            !_materiasDocente.contains(_materiaSeleccionada)) {
-          print('⚠️ Materia "$_materiaSeleccionada" ya no está disponible');
-          _materiaSeleccionada = _materiasDocente.isNotEmpty 
-              ? _materiasDocente.first 
-              : null;
-          _hasChanges = false;
-        }
-        
-        // ✅ Si no hay materia seleccionada pero hay materias, seleccionar la primera
-        if (_materiaSeleccionada == null && _materiasDocente.isNotEmpty) {
-          _materiaSeleccionada = _materiasDocente.first;
-        }
-      });
-      
-      // ✅ Cargar horarios de la materia seleccionada
-      if (_materiaSeleccionada != null) {
-        _cargarHorariosExistentes();
-      }
+void _cargarMateriasDocente() async {
+  print('🔄 Recargando materias del docente...');
+
+  // ✅ PRIMERO: Validar materias con el backend
+  final validacion = await DocenteService.validarMaterias(widget.usuario.id);
+
+  if (validacion != null && !validacion.containsKey('error')) {
+    if (validacion['fueronEliminadas'] == true) {
+      print('⚠️ Materias desactualizadas detectadas, sincronizando...');
+      _mostrarError('Algunas materias fueron eliminadas del sistema');
     }
   }
+
+  // ✅ LUEGO: Obtener usuario actualizado
+  final usuarioActualizado = await AuthService.getUsuarioActual();
+
+  if (usuarioActualizado != null && mounted) {
+    final materiasActualizadas = usuarioActualizado.asignaturas ?? [];
+
+    print('📚 Materias actualizadas: ${materiasActualizadas.join(", ")}');
+
+    // ✅ Verificar si hubo cambios en las materias
+    final materiasAntiguas = Set.from(_materiasDocente);
+    final materiasNuevas = Set.from(materiasActualizadas);
+
+    final materiasEliminadas = materiasAntiguas.difference(materiasNuevas);
+    final materiasAgregadas = materiasNuevas.difference(materiasAntiguas);
+
+    if (materiasEliminadas.isNotEmpty) {
+      print('🗑️ Materias eliminadas: ${materiasEliminadas.join(", ")}');
+    }
+    if (materiasAgregadas.isNotEmpty) {
+      print('➕ Materias agregadas: ${materiasAgregadas.join(", ")}');
+    }
+
+    setState(() {
+      _materiasDocente = List.from(materiasActualizadas);
+
+      // ✅ Limpiar horarios de materias eliminadas
+      _horariosPorMateria.removeWhere((materia, _) =>
+          !_materiasDocente.contains(materia));
+
+      // ✅ Inicializar horarios de materias nuevas
+      for (var materia in _materiasDocente) {
+        if (!_horariosPorMateria.containsKey(materia)) {
+          _horariosPorMateria[materia] = [];
+        }
+      }
+
+      // ✅ Si la materia seleccionada fue eliminada, seleccionar la primera disponible
+      if (_materiaSeleccionada != null &&
+          !_materiasDocente.contains(_materiaSeleccionada)) {
+        print('⚠️ Materia "$_materiaSeleccionada" ya no está disponible');
+        _materiaSeleccionada = _materiasDocente.isNotEmpty
+            ? _materiasDocente.first
+            : null;
+        _hasChanges = false;
+      }
+
+      // ✅ Si no hay materia seleccionada pero hay materias, seleccionar la primera
+      if (_materiaSeleccionada == null && _materiasDocente.isNotEmpty) {
+        _materiaSeleccionada = _materiasDocente.first;
+      }
+    });
+
+    // ✅ Cargar horarios de la materia seleccionada
+    if (_materiaSeleccionada != null) {
+      _cargarHorariosExistentes();
+    }
+  }
+}
+
 
   Future<void> _cargarHorariosExistentes() async {
     if (_materiaSeleccionada == null) return;
