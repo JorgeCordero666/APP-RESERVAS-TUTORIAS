@@ -4,6 +4,8 @@ import 'package:app_tesis/servicios/docente_service.dart';
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/horario_service.dart';
+import '../../servicios/notification_service.dart';
+import 'dart:async'; // Para StreamSubscription
 
 class GestionHorariosScreen extends StatefulWidget {
   final Usuario usuario;
@@ -14,23 +16,41 @@ class GestionHorariosScreen extends StatefulWidget {
   State<GestionHorariosScreen> createState() => _GestionHorariosScreenState();
 }
 
-class _GestionHorariosScreenState extends State<GestionHorariosScreen> 
-    with AutomaticKeepAliveClientMixin {  // ✅ AGREGADO
-  
+class _GestionHorariosScreenState extends State<GestionHorariosScreen>
+    with AutomaticKeepAliveClientMixin {
+  // ✅ AGREGADO
+
   final List<String> _diasSemana = [
     'Lunes',
     'Martes',
     'Miércoles',
     'Jueves',
-    'Viernes'
+    'Viernes',
   ];
 
   final List<String> _horasDisponibles = [
-    '07:00', '07:40', '08:20', '09:00', '09:40',
-    '10:20', '11:00', '11:40', '12:20', '13:00',
-    '13:40', '14:20', '15:00', '15:40', '16:20',
-    '17:00', '17:40', '18:20', '19:00', '19:40',
-    '20:20', '21:00'
+    '07:00',
+    '07:40',
+    '08:20',
+    '09:00',
+    '09:40',
+    '10:20',
+    '11:00',
+    '11:40',
+    '12:20',
+    '13:00',
+    '13:40',
+    '14:20',
+    '15:00',
+    '15:40',
+    '16:20',
+    '17:00',
+    '17:40',
+    '18:20',
+    '19:00',
+    '19:40',
+    '20:20',
+    '21:00',
   ];
 
   Map<String, List<Map<String, dynamic>>> _horariosPorMateria = {};
@@ -40,15 +60,12 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
   bool _hasChanges = false;
   List<String> _materiasDocente = [];
 
+  // ✅ AGREGAR ESTA VARIABLE
+  StreamSubscription? _materiasSubscription;
+
   // ✅ NUEVO: Para evitar que se destruya el estado
   @override
   bool get wantKeepAlive => true;
-
-  @override
-  void initState() {
-    super.initState();
-    _cargarMateriasDocente();
-  }
 
   // ✅ NUEVO: Detectar cuando la pantalla vuelve a ser visible
   @override
@@ -60,78 +77,109 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
     }
   }
 
-void _cargarMateriasDocente() async {
-  print('🔄 Recargando materias del docente...');
+  // ✅ REEMPLAZAR initState
+  @override
+  void initState() {
+    super.initState();
+    _cargarMateriasDocente();
 
-  // ✅ PRIMERO: Validar materias con el backend
-  final validacion = await DocenteService.validarMaterias(widget.usuario.id);
-
-  if (validacion != null && !validacion.containsKey('error')) {
-    if (validacion['fueronEliminadas'] == true) {
-      print('⚠️ Materias desactualizadas detectadas, sincronizando...');
-      _mostrarError('Algunas materias fueron eliminadas del sistema');
-    }
-  }
-
-  // ✅ LUEGO: Obtener usuario actualizado
-  final usuarioActualizado = await AuthService.getUsuarioActual();
-
-  if (usuarioActualizado != null && mounted) {
-    final materiasActualizadas = usuarioActualizado.asignaturas ?? [];
-
-    print('📚 Materias actualizadas: ${materiasActualizadas.join(", ")}');
-
-    // ✅ Verificar si hubo cambios en las materias
-    final materiasAntiguas = Set.from(_materiasDocente);
-    final materiasNuevas = Set.from(materiasActualizadas);
-
-    final materiasEliminadas = materiasAntiguas.difference(materiasNuevas);
-    final materiasAgregadas = materiasNuevas.difference(materiasAntiguas);
-
-    if (materiasEliminadas.isNotEmpty) {
-      print('🗑️ Materias eliminadas: ${materiasEliminadas.join(", ")}');
-    }
-    if (materiasAgregadas.isNotEmpty) {
-      print('➕ Materias agregadas: ${materiasAgregadas.join(", ")}');
-    }
-
-    setState(() {
-      _materiasDocente = List.from(materiasActualizadas);
-
-      // ✅ Limpiar horarios de materias eliminadas
-      _horariosPorMateria.removeWhere((materia, _) =>
-          !_materiasDocente.contains(materia));
-
-      // ✅ Inicializar horarios de materias nuevas
-      for (var materia in _materiasDocente) {
-        if (!_horariosPorMateria.containsKey(materia)) {
-          _horariosPorMateria[materia] = [];
-        }
-      }
-
-      // ✅ Si la materia seleccionada fue eliminada, seleccionar la primera disponible
-      if (_materiaSeleccionada != null &&
-          !_materiasDocente.contains(_materiaSeleccionada)) {
-        print('⚠️ Materia "$_materiaSeleccionada" ya no está disponible');
-        _materiaSeleccionada = _materiasDocente.isNotEmpty
-            ? _materiasDocente.first
-            : null;
-        _hasChanges = false;
-      }
-
-      // ✅ Si no hay materia seleccionada pero hay materias, seleccionar la primera
-      if (_materiaSeleccionada == null && _materiasDocente.isNotEmpty) {
-        _materiaSeleccionada = _materiasDocente.first;
+    // ✅ ESCUCHAR CAMBIOS EN MATERIAS
+    _materiasSubscription = notificationService.materiasActualizadas.listen((
+      _,
+    ) {
+      print(
+        '🔔 GestionHorarios: Recibida notificación de materias actualizadas',
+      );
+      if (mounted) {
+        _cargarMateriasDocente();
       }
     });
+  }
 
-    // ✅ Cargar horarios de la materia seleccionada
-    if (_materiaSeleccionada != null) {
-      _cargarHorariosExistentes();
+  // ✅ REEMPLAZAR dispose
+  @override
+  void dispose() {
+    _materiasSubscription?.cancel(); // ✅ Cancelar suscripción
+    super.dispose();
+  }
+
+  // ✅ AGREGAR MÉTODO PÚBLICO PARA REFRESCAR MANUALMENTE
+  Future<void> refrescarMaterias() async {
+    _cargarMateriasDocente();
+  }
+
+  void _cargarMateriasDocente() async {
+    print('🔄 Recargando materias del docente...');
+
+    // ✅ PRIMERO: Validar materias con el backend
+    final validacion = await DocenteService.validarMaterias(widget.usuario.id);
+
+    if (validacion != null && !validacion.containsKey('error')) {
+      if (validacion['fueronEliminadas'] == true) {
+        print('⚠️ Materias desactualizadas detectadas, sincronizando...');
+        _mostrarError('Algunas materias fueron eliminadas del sistema');
+      }
+    }
+
+    // ✅ LUEGO: Obtener usuario actualizado
+    final usuarioActualizado = await AuthService.getUsuarioActual();
+
+    if (usuarioActualizado != null && mounted) {
+      final materiasActualizadas = usuarioActualizado.asignaturas ?? [];
+
+      print('📚 Materias actualizadas: ${materiasActualizadas.join(", ")}');
+
+      // ✅ Verificar si hubo cambios en las materias
+      final materiasAntiguas = Set.from(_materiasDocente);
+      final materiasNuevas = Set.from(materiasActualizadas);
+
+      final materiasEliminadas = materiasAntiguas.difference(materiasNuevas);
+      final materiasAgregadas = materiasNuevas.difference(materiasAntiguas);
+
+      if (materiasEliminadas.isNotEmpty) {
+        print('🗑️ Materias eliminadas: ${materiasEliminadas.join(", ")}');
+      }
+      if (materiasAgregadas.isNotEmpty) {
+        print('➕ Materias agregadas: ${materiasAgregadas.join(", ")}');
+      }
+
+      setState(() {
+        _materiasDocente = List.from(materiasActualizadas);
+
+        // ✅ Limpiar horarios de materias eliminadas
+        _horariosPorMateria.removeWhere(
+          (materia, _) => !_materiasDocente.contains(materia),
+        );
+
+        // ✅ Inicializar horarios de materias nuevas
+        for (var materia in _materiasDocente) {
+          if (!_horariosPorMateria.containsKey(materia)) {
+            _horariosPorMateria[materia] = [];
+          }
+        }
+
+        // ✅ Si la materia seleccionada fue eliminada, seleccionar la primera disponible
+        if (_materiaSeleccionada != null &&
+            !_materiasDocente.contains(_materiaSeleccionada)) {
+          print('⚠️ Materia "$_materiaSeleccionada" ya no está disponible');
+          _materiaSeleccionada = _materiasDocente.isNotEmpty
+              ? _materiasDocente.first
+              : null;
+          _hasChanges = false;
+        }
+
+        // ✅ Si no hay materia seleccionada pero hay materias, seleccionar la primera
+        if (_materiaSeleccionada == null && _materiasDocente.isNotEmpty) {
+          _materiaSeleccionada = _materiasDocente.first;
+        }
+      });
+
+      // ✅ Cargar horarios de la materia seleccionada
+      if (_materiaSeleccionada != null) {
+        _cargarHorariosExistentes();
+      }
     }
   }
-}
-
 
   Future<void> _cargarHorariosExistentes() async {
     if (_materiaSeleccionada == null) return;
@@ -140,7 +188,7 @@ void _cargarMateriasDocente() async {
 
     try {
       print('📥 Cargando horarios de: $_materiaSeleccionada');
-      
+
       final horarios = await HorarioService.obtenerHorariosPorMateria(
         docenteId: widget.usuario.id,
         materia: _materiaSeleccionada!,
@@ -151,7 +199,7 @@ void _cargarMateriasDocente() async {
           _horariosPorMateria[_materiaSeleccionada!] = horarios;
           _hasChanges = false;
         });
-        
+
         print('✅ Horarios cargados: ${horarios.length} bloques');
       } else {
         print('ℹ️ No hay horarios previos o hubo error');
@@ -177,16 +225,17 @@ void _cargarMateriasDocente() async {
         horasDisponibles: _horasDisponibles,
         onAgregar: (dia, horaInicio, horaFin) {
           final yaExiste = _horariosPorMateria[_materiaSeleccionada!]!.any(
-            (b) => b['dia'] == dia && 
-                   b['horaInicio'] == horaInicio && 
-                   b['horaFin'] == horaFin
+            (b) =>
+                b['dia'] == dia &&
+                b['horaInicio'] == horaInicio &&
+                b['horaFin'] == horaFin,
           );
-          
+
           if (yaExiste) {
             _mostrarError('Este bloque ya existe en tu horario');
             return;
           }
-          
+
           setState(() {
             _horariosPorMateria[_materiaSeleccionada!]!.add({
               'dia': dia,
@@ -195,7 +244,7 @@ void _cargarMateriasDocente() async {
             });
             _hasChanges = true;
           });
-          
+
           print('➕ Bloque agregado: $dia $horaInicio-$horaFin');
         },
       ),
@@ -204,13 +253,13 @@ void _cargarMateriasDocente() async {
 
   void _eliminarBloque(int index) {
     final bloque = _horariosPorMateria[_materiaSeleccionada!]![index];
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Eliminar bloque'),
         content: Text(
-          '¿Eliminar el bloque ${bloque['dia']} ${bloque['horaInicio']}-${bloque['horaFin']}?'
+          '¿Eliminar el bloque ${bloque['dia']} ${bloque['horaInicio']}-${bloque['horaFin']}?',
         ),
         actions: [
           TextButton(
@@ -249,8 +298,10 @@ void _cargarMateriasDocente() async {
 
     try {
       print('💾 Guardando horarios de: $_materiaSeleccionada');
-      print('   Total bloques: ${_horariosPorMateria[_materiaSeleccionada!]!.length}');
-      
+      print(
+        '   Total bloques: ${_horariosPorMateria[_materiaSeleccionada!]!.length}',
+      );
+
       final resultado = await HorarioService.actualizarHorarios(
         docenteId: widget.usuario.id,
         materia: _materiaSeleccionada!,
@@ -260,12 +311,17 @@ void _cargarMateriasDocente() async {
 
       if (mounted) {
         if (resultado['success'] == true) {
-          _mostrarExito(resultado['mensaje'] ?? 'Horarios guardados correctamente');
-          
-          if (resultado.containsKey('eliminados') && resultado.containsKey('creados')) {
-            print('   📊 Eliminados: ${resultado['eliminados']}, Creados: ${resultado['creados']}');
+          _mostrarExito(
+            resultado['mensaje'] ?? 'Horarios guardados correctamente',
+          );
+
+          if (resultado.containsKey('eliminados') &&
+              resultado.containsKey('creados')) {
+            print(
+              '   📊 Eliminados: ${resultado['eliminados']}, Creados: ${resultado['creados']}',
+            );
           }
-          
+
           setState(() => _hasChanges = false);
         } else {
           _mostrarError(resultado['mensaje'] ?? 'Error al guardar horarios');
@@ -283,7 +339,7 @@ void _cargarMateriasDocente() async {
 
   List<Map<String, dynamic>> _obtenerBloquesPorDia(String dia) {
     if (_materiaSeleccionada == null) return [];
-    
+
     return _horariosPorMateria[_materiaSeleccionada!]!
         .where((bloque) => bloque['dia'] == dia)
         .toList()
@@ -313,17 +369,14 @@ void _cargarMateriasDocente() async {
 
   void _mostrarInfo(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(mensaje),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(mensaje), behavior: SnackBarBehavior.floating),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context); // ✅ REQUERIDO por AutomaticKeepAliveClientMixin
-    
+
     if (_materiasDocente.isEmpty) {
       return Scaffold(
         appBar: AppBar(
@@ -369,10 +422,15 @@ void _cargarMateriasDocente() async {
         title: const Text('Gestión de Horarios'),
         backgroundColor: const Color(0xFF1565C0),
         actions: [
-          // ✅ NUEVO: Botón para recargar materias manualmente
+          // ✅ BOTÓN DE RECARGA MANUAL
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _cargarMateriasDocente,
+            onPressed: _isLoading
+                ? null
+                : () {
+                    print('🔄 Recarga manual solicitada');
+                    _cargarMateriasDocente();
+                  },
             tooltip: 'Actualizar materias',
           ),
           if (_hasChanges && !_isLoading)
@@ -405,13 +463,37 @@ void _cargarMateriasDocente() async {
                         ),
                       ),
                     ),
-                    // ✅ NUEVO: Indicador de materias actualizadas
-                    Text(
-                      '${_materiasDocente.length} ${_materiasDocente.length == 1 ? "materia" : "materias"}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                    // ✅ INDICADOR DE MATERIAS CON BOTÓN
+                    Row(
+                      children: [
+                        Text(
+                          '${_materiasDocente.length} ${_materiasDocente.length == 1 ? "materia" : "materias"}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // ✅ BOTÓN PEQUEÑO DE RECARGA
+                        InkWell(
+                          onTap: _isLoading ? null : _cargarMateriasDocente,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.blue[100],
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.refresh,
+                              size: 16,
+                              color: _isLoading
+                                  ? Colors.grey
+                                  : const Color(0xFF1565C0),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -427,7 +509,10 @@ void _cargarMateriasDocente() async {
                     child: DropdownButton<String>(
                       value: _materiaSeleccionada,
                       isExpanded: true,
-                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF1565C0)),
+                      icon: const Icon(
+                        Icons.arrow_drop_down,
+                        color: Color(0xFF1565C0),
+                      ),
                       items: _materiasDocente.map((materia) {
                         return DropdownMenuItem(
                           value: materia,
@@ -457,7 +542,11 @@ void _cargarMateriasDocente() async {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.warning_amber, color: Colors.orange[700], size: 20),
+                        Icon(
+                          Icons.warning_amber,
+                          color: Colors.orange[700],
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -525,85 +614,85 @@ void _cargarMateriasDocente() async {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _materiaSeleccionada == null
-                    ? const Center(child: Text('Selecciona una materia'))
-                    : () {
-                        final bloques = _obtenerBloquesPorDia(_diaSeleccionado);
-                        
-                        if (bloques.isEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.event_busy,
-                                  size: 80,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No hay horarios para $_diaSeleccionado',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Presiona el botón + para agregar',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[500],
-                                  ),
-                                ),
-                              ],
+                ? const Center(child: Text('Selecciona una materia'))
+                : () {
+                    final bloques = _obtenerBloquesPorDia(_diaSeleccionado);
+
+                    if (bloques.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.event_busy,
+                              size: 80,
+                              color: Colors.grey[400],
                             ),
-                          );
-                        }
-
-                        return ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: bloques.length,
-                          itemBuilder: (context, index) {
-                            final bloque = bloques[index];
-                            final indexGlobal = _horariosPorMateria[
-                                    _materiaSeleccionada!]!
-                                .indexOf(bloque);
-
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              child: ListTile(
-                                leading: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF1565C0)
-                                        .withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(
-                                    Icons.access_time,
-                                    color: Color(0xFF1565C0),
-                                  ),
-                                ),
-                                title: Text(
-                                  '${bloque['horaInicio']} - ${bloque['horaFin']}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  bloque['dia'],
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.red),
-                                  onPressed: () => _eliminarBloque(indexGlobal),
-                                ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No hay horarios para $_diaSeleccionado',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[600],
                               ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Presiona el botón + para agregar',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: bloques.length,
+                      itemBuilder: (context, index) {
+                        final bloque = bloques[index];
+                        final indexGlobal =
+                            _horariosPorMateria[_materiaSeleccionada!]!.indexOf(
+                              bloque,
                             );
-                          },
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1565C0).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.access_time,
+                                color: Color(0xFF1565C0),
+                              ),
+                            ),
+                            title: Text(
+                              '${bloque['horaInicio']} - ${bloque['horaFin']}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            subtitle: Text(
+                              bloque['dia'],
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _eliminarBloque(indexGlobal),
+                            ),
+                          ),
                         );
-                      }(),
+                      },
+                    );
+                  }(),
           ),
         ],
       ),
