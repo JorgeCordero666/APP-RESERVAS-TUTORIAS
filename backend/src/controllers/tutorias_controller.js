@@ -459,13 +459,13 @@ const bloquesOcupadosDocente = async (req, res) => {
  * Verifica que no haya solapamiento entre bloques del mismo día
  */
 const validarCrucesHorarios = (bloques) => {
-  // Convertir a minutos para comparar
+  // Convertir hora a minutos
   const convertirAMinutos = (hora) => {
     const [h, m] = hora.split(':').map(Number);
     return h * 60 + m;
   };
 
-  // Ordenar bloques por hora de inicio
+  // Ordenar por hora de inicio
   const bloquesOrdenados = bloques
     .map(b => ({
       inicio: convertirAMinutos(b.horaInicio),
@@ -475,12 +475,11 @@ const validarCrucesHorarios = (bloques) => {
     }))
     .sort((a, b) => a.inicio - b.inicio);
 
-  // Verificar solapamientos
+  // Verificar solapamientos consecutivos
   for (let i = 0; i < bloquesOrdenados.length - 1; i++) {
     const bloqueActual = bloquesOrdenados[i];
     const bloqueSiguiente = bloquesOrdenados[i + 1];
 
-    // Si el fin del bloque actual es mayor que el inicio del siguiente
     if (bloqueActual.fin > bloqueSiguiente.inicio) {
       return {
         valido: false,
@@ -489,6 +488,59 @@ const validarCrucesHorarios = (bloques) => {
     }
   }
 
+  return { valido: true };
+};
+/**
+ * ✅ VALIDACIÓN 2: Cruces locales POR DÍA
+ * CAMBIO CRÍTICO: Agrupa por día ANTES de validar
+ */
+const validarCrucesLocales = ({ bloques }) => {
+  console.log('🔍 Validación local de cruces');
+  
+  // ✅ PASO 1: Agrupar bloques POR DÍA
+  const bloquesPorDia = {};
+  
+  for (const bloque of bloques) {
+    const dia = bloque.dia.toString().toLowerCase();
+    
+    if (!bloquesPorDia[dia]) {
+      bloquesPorDia[dia] = [];
+    }
+    
+    bloquesPorDia[dia].push(bloque);
+  }
+  
+  console.log(`   Días a validar: ${Object.keys(bloquesPorDia).join(', ')}`);
+  
+  // ✅ PASO 2: Validar cruces DENTRO de cada día
+  for (const [dia, bloquesDelDia] of Object.entries(bloquesPorDia)) {
+    console.log(`   Validando ${dia}: ${bloquesDelDia.length} bloques`);
+    
+    // Ordenar por hora de inicio
+    bloquesDelDia.sort((a, b) => {
+      const aInicio = _convertirAMinutos(a.horaInicio);
+      const bInicio = _convertirAMinutos(b.horaInicio);
+      return aInicio - bInicio;
+    });
+    
+    // Verificar solapamientos entre bloques consecutivos
+    for (let i = 0; i < bloquesDelDia.length - 1; i++) {
+      const bloqueActual = bloquesDelDia[i];
+      const bloqueSiguiente = bloquesDelDia[i + 1];
+      
+      const finActual = _convertirAMinutos(bloqueActual.horaFin);
+      const inicioSiguiente = _convertirAMinutos(bloqueSiguiente.horaInicio);
+      
+      if (finActual > inicioSiguiente) {
+        return {
+          valido: false,
+          mensaje: `Cruce en ${dia}: ${bloqueActual.horaInicio}-${bloqueActual.horaFin} se solapa con ${bloqueSiguiente.horaInicio}-${bloqueSiguiente.horaFin}`
+        };
+      }
+    }
+  }
+  
+  console.log('   ✅ Sin cruces locales');
   return { valido: true };
 };
 
@@ -504,21 +556,40 @@ const validarCrucesEntreMaterias = async (docenteId, materia, diaSemana, bloques
     console.log('   Día:', diaSemana);
     console.log('   Bloques nuevos:', bloquesNuevos.length);
 
-    // ✅ CRÍTICO: Obtener bloques de OTRAS materias SOLO del MISMO DÍA
+    // Normalizar día
+    let diaNormalizado = diaSemana
+      .toLowerCase()
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+    const mapaValidos = {
+      'lunes': 'lunes',
+      'martes': 'martes',
+      'miercoles': 'miércoles',
+      'miércoles': 'miércoles',
+      'jueves': 'jueves',
+      'viernes': 'viernes'
+    };
+    
+    diaNormalizado = mapaValidos[diaNormalizado] || diaNormalizado;
+    console.log(`   Día normalizado: "${diaNormalizado}"`);
+
+    // ✅ BUSCAR SOLO BLOQUES DEL MISMO DÍA Y OTRAS MATERIAS
     const disponibilidadesExistentes = await disponibilidadDocente.find({
       docente: docenteId,
-      diaSemana: diaSemana.toLowerCase(), // ✅ FILTRAR POR DÍA
-      materia: { $ne: materia } // Excluir la materia actual
+      diaSemana: diaNormalizado,
+      materia: { $ne: materia }
     });
 
-    console.log('   Disponibilidades existentes en ese día:', disponibilidadesExistentes.length);
+    console.log(`   Disponibilidades en "${diaNormalizado}":`, disponibilidadesExistentes.length);
 
     if (disponibilidadesExistentes.length === 0) {
       console.log('   ✅ No hay otras materias en este día');
       return { valido: true };
     }
 
-    // Recopilar todos los bloques existentes de otras materias EN EL MISMO DÍA
+    // Recopilar bloques existentes
     const bloquesExistentes = [];
     disponibilidadesExistentes.forEach(disp => {
       console.log(`   📚 Materia existente: ${disp.materia} (${disp.bloques.length} bloques)`);
@@ -531,30 +602,15 @@ const validarCrucesEntreMaterias = async (docenteId, materia, diaSemana, bloques
       });
     });
 
-    console.log('   Total bloques a comparar:', bloquesExistentes.length);
-
-    // Convertir a minutos para comparar
-    const convertirAMinutos = (hora) => {
-      const [h, m] = hora.split(':').map(Number);
-      return h * 60 + m;
-    };
-
-    // ✅ VERIFICAR CADA BLOQUE NUEVO CONTRA LOS EXISTENTES
+    // Verificar solapamientos
     for (const bloqueNuevo of bloquesNuevos) {
-      const nuevoInicio = convertirAMinutos(bloqueNuevo.horaInicio);
-      const nuevoFin = convertirAMinutos(bloqueNuevo.horaFin);
-
-      console.log(`   🔍 Comparando: ${bloqueNuevo.horaInicio}-${bloqueNuevo.horaFin}`);
+      const nuevoInicio = _convertirAMinutos(bloqueNuevo.horaInicio);
+      const nuevoFin = _convertirAMinutos(bloqueNuevo.horaFin);
 
       for (const bloqueExistente of bloquesExistentes) {
-        const existenteInicio = convertirAMinutos(bloqueExistente.horaInicio);
-        const existenteFin = convertirAMinutos(bloqueExistente.horaFin);
+        const existenteInicio = _convertirAMinutos(bloqueExistente.horaInicio);
+        const existenteFin = _convertirAMinutos(bloqueExistente.horaFin);
 
-        // ✅ DETECTAR SOLAPAMIENTO
-        // Hay cruce si:
-        // - El nuevo inicio está dentro del existente, O
-        // - El nuevo fin está dentro del existente, O
-        // - El nuevo bloque contiene completamente al existente
         const haySolapamiento = 
           (nuevoInicio < existenteFin && nuevoFin > existenteInicio);
 
@@ -564,11 +620,7 @@ const validarCrucesEntreMaterias = async (docenteId, materia, diaSemana, bloques
                          `el día ${diaSemana}`;
           
           console.log(`   ❌ CRUCE DETECTADO: ${mensaje}`);
-          
-          return {
-            valido: false,
-            mensaje: mensaje
-          };
+          return { valido: false, mensaje };
         }
       }
     }
@@ -585,6 +637,40 @@ const validarCrucesEntreMaterias = async (docenteId, materia, diaSemana, bloques
   }
 };
 
+/**
+ * ✅ FUNCIÓN AUXILIAR: Convertir hora a minutos
+ */
+const _convertirAMinutos = (hora) => {
+  try {
+    const [h, m] = hora.split(':').map(Number);
+    return h * 60 + m;
+  } catch (e) {
+    console.log('⚠️ Error convirtiendo hora:', hora);
+    return 0;
+  }
+};
+
+/**
+ * ✅ FUNCIÓN AUXILIAR: Agrupar bloques por día
+ */
+const _agruparPorDia = (bloques) => {
+  const resultado = {};
+  
+  for (const bloque of bloques) {
+    const dia = bloque.dia.toString().toLowerCase();
+    
+    if (!resultado[dia]) {
+      resultado[dia] = [];
+    }
+    
+    resultado[dia].push({
+      horaInicio: bloque.horaInicio,
+      horaFin: bloque.horaFin
+    });
+  }
+  
+  return resultado;
+};
 // =====================================================
 // ✅ REGISTRAR/ACTUALIZAR DISPONIBILIDAD POR MATERIA
 // =====================================================
@@ -1225,5 +1311,8 @@ export {
   actualizarHorarios,   
   // Validaciones de horarios
   validarCrucesHorarios,
-  validarCrucesEntreMaterias
+  validarCrucesLocales,
+  validarCrucesEntreMaterias,
+  _convertirAMinutos,
+  _agruparPorDia
 };

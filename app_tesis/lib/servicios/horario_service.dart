@@ -192,178 +192,178 @@ class HorarioService {
     }
   }
 
-  /// ✅ VALIDACIÓN LOCAL RÁPIDA
-  static Map<String, dynamic> validarCrucesLocales({
-    required List<Map<String, dynamic>> bloques,
-  }) {
-    print('🔍 Validación local de cruces');
-    
-    Map<String, List<Map<String, dynamic>>> bloquesPorDia = {};
-    
-    for (var bloque in bloques) {
-      final dia = bloque['dia'].toString().toLowerCase();
-      if (!bloquesPorDia.containsKey(dia)) {
-        bloquesPorDia[dia] = [];
-      }
-      bloquesPorDia[dia]!.add(bloque);
+/// ✅ VALIDACIÓN LOCAL RÁPIDA (CORREGIDA - POR DÍA)
+static Map<String, dynamic> validarCrucesLocales({
+  required List<Map<String, dynamic>> bloques,
+}) {
+  print('🔍 Validación local de cruces');
+  
+  // ✅ PASO 1: Agrupar por día
+  Map<String, List<Map<String, dynamic>>> bloquesPorDia = {};
+  
+  for (var bloque in bloques) {
+    final dia = bloque['dia'].toString().toLowerCase();
+    if (!bloquesPorDia.containsKey(dia)) {
+      bloquesPorDia[dia] = [];
     }
-    
-    for (var entrada in bloquesPorDia.entries) {
-      final dia = entrada.key;
-      final bloquesDelDia = entrada.value;
-      
-      bloquesDelDia.sort((a, b) {
-        final aInicio = _convertirAMinutos(a['horaInicio']);
-        final bInicio = _convertirAMinutos(b['horaInicio']);
-        return aInicio.compareTo(bInicio);
-      });
-      
-      for (int i = 0; i < bloquesDelDia.length - 1; i++) {
-        final bloqueActual = bloquesDelDia[i];
-        final bloqueSiguiente = bloquesDelDia[i + 1];
-        
-        final finActual = _convertirAMinutos(bloqueActual['horaFin']);
-        final inicioSiguiente = _convertirAMinutos(bloqueSiguiente['horaInicio']);
-        
-        if (finActual > inicioSiguiente) {
-          return {
-            'valido': false,
-            'mensaje': 'Cruce en $dia: ${bloqueActual['horaInicio']}-${bloqueActual['horaFin']} '
-                      'se solapa con ${bloqueSiguiente['horaInicio']}-${bloqueSiguiente['horaFin']}'
-          };
-        }
-      }
-    }
-    
-    return {'valido': true};
+    bloquesPorDia[dia]!.add(bloque);
   }
-
-  /// ✅ ACTUALIZAR HORARIOS CON VALIDACIÓN COMPLETA
-  static Future<Map<String, dynamic>> actualizarHorarios({
-    required String docenteId,
-    required String materia,
-    required List<Map<String, dynamic>> bloques,
-    bool validarAntes = true,
-  }) async {
-    try {
-      final token = await AuthService.getToken();
+  
+  print('   Días a validar: ${bloquesPorDia.keys.join(", ")}');
+  
+  // ✅ PASO 2: Validar cruces DENTRO de cada día
+  for (var entrada in bloquesPorDia.entries) {
+    final dia = entrada.key;
+    final bloquesDelDia = entrada.value;
+    
+    print('   Validando $dia: ${bloquesDelDia.length} bloques');
+    
+    // Ordenar por hora de inicio
+    bloquesDelDia.sort((a, b) {
+      final aInicio = _convertirAMinutos(a['horaInicio']);
+      final bInicio = _convertirAMinutos(b['horaInicio']);
+      return aInicio.compareTo(bInicio);
+    });
+    
+    // Verificar solapamientos
+    for (int i = 0; i < bloquesDelDia.length - 1; i++) {
+      final bloqueActual = bloquesDelDia[i];
+      final bloqueSiguiente = bloquesDelDia[i + 1];
       
-      if (token == null) {
+      final finActual = _convertirAMinutos(bloqueActual['horaFin']);
+      final inicioSiguiente = _convertirAMinutos(bloqueSiguiente['horaInicio']);
+      
+      if (finActual > inicioSiguiente) {
         return {
-          'success': false,
-          'mensaje': 'No hay token de autenticación'
+          'valido': false,
+          'mensaje': 'Cruce en $dia: ${bloqueActual['horaInicio']}-${bloqueActual['horaFin']} '
+                    'se solapa con ${bloqueSiguiente['horaInicio']}-${bloqueSiguiente['horaFin']}'
         };
       }
+    }
+  }
+  
+  print('   ✅ Sin cruces locales');
+  return {'valido': true};
+}
 
-      print('🔄 Actualizando horarios:');
-      print('   Materia: $materia');
-      print('   Bloques: ${bloques.length}');
-      print('   Validar antes: $validarAntes');
-
-      if (validarAntes && bloques.isNotEmpty) {
-        print('🔍 Ejecutando validaciones previas...');
-        
-        print('   1️⃣ Validando cruces locales...');
-        final validacionLocal = validarCrucesLocales(bloques: bloques);
-        
-        if (!validacionLocal['valido']) {
-          print('❌ Validación local falló: ${validacionLocal['mensaje']}');
-          return {
-            'success': false,
-            'mensaje': validacionLocal['mensaje']
-          };
-        }
-        print('   ✅ Sin cruces locales');
-        
-        print('   2️⃣ Validando cruces internos...');
-        final validacionInterna = await validarCrucesInternos(bloques: bloques);
-        
-        if (!validacionInterna['valido']) {
-          print('❌ Validación interna falló: ${validacionInterna['mensaje']}');
-          return {
-            'success': false,
-            'mensaje': validacionInterna['mensaje']
-          };
-        }
-        print('   ✅ Sin cruces internos');
-        
-        print('   3️⃣ Validando cruces entre materias...');
-        final bloquesPorDia = _agruparPorDia(bloques);
-        
-        for (var entrada in bloquesPorDia.entries) {
-          final dia = entrada.key;
-          final bloquesDelDia = entrada.value;
-          
-          print('      Validando día: $dia (${bloquesDelDia.length} bloques)');
-          
-          final validacionMaterias = await validarCrucesEntreMaterias(
-            materia: materia,
-            diaSemana: dia,
-            bloques: bloquesDelDia,
-          );
-          
-          if (!validacionMaterias['valido']) {
-            print('❌ Validación en $dia falló: ${validacionMaterias['mensaje']}');
-            return {
-              'success': false,
-              'mensaje': validacionMaterias['mensaje']
-            };
-          }
-        }
-        
-        print('   ✅ Sin cruces con otras materias');
-      }
-
-      final url = '${ApiConfig.baseUrl}/tutorias/actualizar-horarios-materia';
-      
-      final body = {
-        'materia': materia,
-        'bloques': bloques.map((b) => {
-          'dia': b['dia'].toString().toLowerCase(),
-          'horaInicio': b['horaInicio'].toString(),
-          'horaFin': b['horaFin'].toString(),
-        }).toList(),
-      };
-
-      print('📤 Enviando al backend...');
-
-      final response = await http.put(
-        Uri.parse(url),
-        headers: ApiConfig.getHeaders(token: token),
-        body: jsonEncode(body),
-      );
-
-      print('📬 Status: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        print('✅ Horarios actualizados exitosamente');
-        print('   Eliminados: ${data['registrosEliminados']}');
-        print('   Creados: ${data['registrosCreados']}');
-        
-        return {
-          'success': true,
-          'mensaje': data['msg'] ?? 'Horarios actualizados correctamente',
-          'eliminados': data['registrosEliminados'],
-          'creados': data['registrosCreados'],
-        };
-      } else {
-        final error = jsonDecode(response.body);
-        print('❌ Error del backend: ${error['msg']}');
-        return {
-          'success': false,
-          'mensaje': error['msg'] ?? 'Error al actualizar horarios'
-        };
-      }
-      
-    } catch (e) {
-      print('❌ Exception en actualizarHorarios: $e');
+/// ✅ ACTUALIZAR HORARIOS CON VALIDACIÓN COMPLETA (CORREGIDO)
+static Future<Map<String, dynamic>> actualizarHorarios({
+  required String docenteId,
+  required String materia,
+  required List<Map<String, dynamic>> bloques,
+  bool validarAntes = true,
+}) async {
+  try {
+    final token = await AuthService.getToken();
+    
+    if (token == null) {
       return {
         'success': false,
-        'mensaje': 'Error de conexión: $e'
+        'mensaje': 'No hay token de autenticación'
       };
     }
+
+    print('🔄 Actualizando horarios:');
+    print('   Materia: $materia');
+    print('   Bloques: ${bloques.length}');
+    print('   Validar antes: $validarAntes');
+
+    if (validarAntes && bloques.isNotEmpty) {
+      print('🔍 Ejecutando validaciones previas...');
+      
+      // ✅ VALIDACIÓN 1: Cruces locales (POR DÍA)
+      print('   1️⃣ Validando cruces locales (por día)...');
+      final validacionLocal = validarCrucesLocales(bloques: bloques);
+      
+      if (!validacionLocal['valido']) {
+        print('❌ Validación local falló: ${validacionLocal['mensaje']}');
+        return {
+          'success': false,
+          'mensaje': validacionLocal['mensaje']
+        };
+      }
+      print('   ✅ Sin cruces locales');
+      
+      // ✅ VALIDACIÓN 2: Cruces entre materias (POR DÍA)
+      print('   2️⃣ Validando cruces con otras materias (por día)...');
+      final bloquesPorDia = _agruparPorDia(bloques);
+      
+      for (var entrada in bloquesPorDia.entries) {
+        final dia = entrada.key;
+        final bloquesDelDia = entrada.value;
+        
+        print('      Validando día: $dia (${bloquesDelDia.length} bloques)');
+        
+        final validacionMaterias = await validarCrucesEntreMaterias(
+          materia: materia,
+          diaSemana: dia,
+          bloques: bloquesDelDia,
+        );
+        
+        if (!validacionMaterias['valido']) {
+          print('❌ Validación en $dia falló: ${validacionMaterias['mensaje']}');
+          return {
+            'success': false,
+            'mensaje': validacionMaterias['mensaje']
+          };
+        }
+      }
+      
+      print('   ✅ Sin cruces con otras materias');
+    }
+
+    // ✅ GUARDAR EN EL BACKEND
+    final url = '${ApiConfig.baseUrl}/tutorias/actualizar-horarios-materia';
+    
+    final body = {
+      'materia': materia,
+      'bloques': bloques.map((b) => {
+        'dia': b['dia'].toString().toLowerCase(),
+        'horaInicio': b['horaInicio'].toString(),
+        'horaFin': b['horaFin'].toString(),
+      }).toList(),
+    };
+
+    print('📤 Enviando al backend...');
+
+    final response = await http.put(
+      Uri.parse(url),
+      headers: ApiConfig.getHeaders(token: token),
+      body: jsonEncode(body),
+    );
+
+    print('📬 Status: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print('✅ Horarios actualizados exitosamente');
+      print('   Eliminados: ${data['registrosEliminados']}');
+      print('   Creados: ${data['registrosCreados']}');
+      
+      return {
+        'success': true,
+        'mensaje': data['msg'] ?? 'Horarios actualizados correctamente',
+        'eliminados': data['registrosEliminados'],
+        'creados': data['registrosCreados'],
+      };
+    } else {
+      final error = jsonDecode(response.body);
+      print('❌ Error del backend: ${error['msg']}');
+      return {
+        'success': false,
+        'mensaje': error['msg'] ?? 'Error al actualizar horarios'
+      };
+    }
+    
+  } catch (e) {
+    print('❌ Exception en actualizarHorarios: $e');
+    return {
+      'success': false,
+      'mensaje': 'Error de conexión: $e'
+    };
   }
+}
 
   /// ✅ OBTENER DISPONIBILIDAD COMPLETA - VALIDACIÓN CORRECTA POR DOCENTE
   static Future<Map<String, List<Map<String, dynamic>>>?> obtenerDisponibilidadCompleta({
