@@ -199,78 +199,76 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
   }
 
   // ✅ PASO 4: Guardar con validación final
-  Future<void> _guardarCambios() async {
-    if (_materiasSeleccionadas.isEmpty) {
-      _mostrarError('Debes seleccionar al menos una materia');
-      return;
-    }
-
-    print('\n💾 === GUARDANDO CAMBIOS ===');
-    print('   Materias seleccionadas: ${_materiasSeleccionadas.join(", ")}');
-
-    // Validación pre-guardado
-    final todasLasMaterias = _materiasDisponibles.values
-        .expand((lista) => lista)
-        .toSet();
-
-    final materiasInvalidas = _materiasSeleccionadas
-        .where((m) => !todasLasMaterias.contains(m))
-        .toList();
-
-    if (materiasInvalidas.isNotEmpty) {
-      print('❌ Materias inválidas detectadas: ${materiasInvalidas.join(", ")}');
-      _mostrarError(
-        'Las siguientes materias ya no existen: ${materiasInvalidas.join(", ")}',
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      final resultado = await PerfilService.actualizarPerfilDocente(
-        id: _usuarioActual.id,
-        asignaturas: _materiasSeleccionadas,
-      );
-
-      setState(() => _isLoading = false);
-
-      if (!mounted) return;
-
-      if (resultado != null && resultado.containsKey('error')) {
-        _mostrarError(resultado['error']);
-      } else {
-        _mostrarExito('Materias actualizadas correctamente');
-
-        // Actualizar usuario en memoria y SharedPreferences
-        final usuarioActualizado = await AuthService.obtenerPerfil();
-
-        if (usuarioActualizado != null && mounted) {
-          await AuthService.actualizarUsuario(usuarioActualizado);
-
-          setState(() {
-            _usuarioActual = usuarioActualizado;
-            _hasChanges = false;
-            _materiasSeleccionadas = List.from(
-              usuarioActualizado.asignaturas ?? [],
-            );
-          });
-
-          print('✅ Usuario actualizado en memoria y SharedPreferences');
-          print('   Materias finales: ${_usuarioActual.asignaturas}');
-
-          // ✅ NUEVO: Notificar a otras pantallas
-          notificationService.notificarMateriasActualizadas();
-          print('🔔 Notificación enviada: materias actualizadas');
-        }
-
-        print('=== FIN GUARDADO ===\n');
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      _mostrarError('Error al guardar: $e');
-    }
+Future<void> _guardarCambios() async {
+  if (_materiasSeleccionadas.isEmpty) {
+    _mostrarError('Debes seleccionar al menos una materia');
+    return;
   }
+
+  print('\n💾 === GUARDANDO CAMBIOS ===');
+  print('   Materias seleccionadas: ${_materiasSeleccionadas.join(", ")}');
+
+  // Validación pre-guardado
+  final todasLasMaterias = _materiasDisponibles.values
+      .expand((lista) => lista)
+      .toSet();
+  
+  final materiasInvalidas = _materiasSeleccionadas
+      .where((m) => !todasLasMaterias.contains(m))
+      .toList();
+  
+  if (materiasInvalidas.isNotEmpty) {
+    print('❌ Materias inválidas detectadas: ${materiasInvalidas.join(", ")}');
+    _mostrarError(
+      'Las siguientes materias ya no existen: ${materiasInvalidas.join(", ")}'
+    );
+    return;
+  }
+
+  setState(() => _isLoading = true);
+
+  try {
+    final resultado = await PerfilService.actualizarPerfilDocente(
+      id: _usuarioActual.id,
+      asignaturas: _materiasSeleccionadas,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (!mounted) return;
+
+    if (resultado != null && resultado.containsKey('error')) {
+      _mostrarError(resultado['error']);
+    } else {
+      _mostrarExito('Materias actualizadas correctamente');
+      
+      // Actualizar usuario en memoria y SharedPreferences
+      final usuarioActualizado = await AuthService.obtenerPerfil();
+      
+      if (usuarioActualizado != null && mounted) {
+        await AuthService.actualizarUsuario(usuarioActualizado);
+        
+        setState(() {
+          _usuarioActual = usuarioActualizado;
+          _hasChanges = false;
+          _materiasSeleccionadas = List.from(usuarioActualizado.asignaturas ?? []);
+        });
+        
+        print('✅ Usuario actualizado en memoria y SharedPreferences');
+        print('   Materias finales: ${_usuarioActual.asignaturas}');
+        
+        // ✅ NUEVO: Notificar a otras pantallas
+        notificationService.notificarMateriasActualizadas();
+        print('🔔 Notificación enviada: materias actualizadas');
+      }
+      
+      print('=== FIN GUARDADO ===\n');
+    }
+  } catch (e) {
+    setState(() => _isLoading = false);
+    _mostrarError('Error al guardar: $e');
+  }
+}
 
   void _mostrarError(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(

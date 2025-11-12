@@ -108,7 +108,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
     _cargarMateriasDocente();
   }
 
-  void _cargarMateriasDocente() async {
+  Future<void> _cargarMateriasDocente() async {
     print('🔄 Recargando materias del docente...');
 
     // ✅ PRIMERO: Validar materias con el backend
@@ -364,10 +364,13 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
     );
   }
 
+  // ====================================================
+  // ✅ MÉTODO BUILD REEMPLAZADO CON LA NUEVA VERSIÓN
+  // ====================================================
   @override
   Widget build(BuildContext context) {
     super.build(context); // ✅ REQUERIDO por AutomaticKeepAliveClientMixin
-
+    
     // ====================================================
     // PANTALLA CUANDO NO HAY MATERIAS SELECCIONADAS
     // ====================================================
@@ -426,11 +429,16 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
         title: const Text('Gestión de Horarios'),
         backgroundColor: const Color(0xFF1565C0),
         actions: [
+          // ✅ SOLO UN BOTÓN DE ACTUALIZAR (en el AppBar)
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _isLoading ? null : _cargarMateriasDocente,
+            onPressed: _isLoading ? null : () async {
+              print('🔄 Recarga manual solicitada');
+              await _cargarMateriasDocente();
+            },
             tooltip: 'Actualizar materias',
           ),
+          // Botón de guardar (solo si hay cambios)
           if (_hasChanges && !_isLoading)
             IconButton(
               icon: const Icon(Icons.save),
@@ -449,6 +457,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ✅ HEADER SIN BOTÓN DUPLICADO
                 Row(
                   children: [
                     const Expanded(
@@ -461,13 +470,19 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
                         ),
                       ),
                     ),
+                    // Solo mostrar cantidad de materias
                     Text(
                       '${_materiasDocente.length} ${_materiasDocente.length == 1 ? "materia" : "materias"}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
+                
+                // Dropdown de materias
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
@@ -479,10 +494,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
                     child: DropdownButton<String>(
                       value: _materiaSeleccionada,
                       isExpanded: true,
-                      icon: const Icon(
-                        Icons.arrow_drop_down,
-                        color: Color(0xFF1565C0),
-                      ),
+                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF1565C0)),
                       items: _materiasDocente.map((materia) {
                         return DropdownMenuItem(
                           value: materia,
@@ -501,6 +513,8 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
                     ),
                   ),
                 ),
+                
+                // Advertencia de cambios sin guardar
                 if (_hasChanges) ...[
                   const SizedBox(height: 8),
                   Container(
@@ -512,11 +526,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.warning_amber,
-                          color: Colors.orange[700],
-                          size: 20,
-                        ),
+                        Icon(Icons.warning_amber, color: Colors.orange[700], size: 20),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -584,8 +594,85 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _materiaSeleccionada == null
-                ? const Center(child: Text('Selecciona una materia'))
-                : _buildListaBloques(),
+                    ? const Center(child: Text('Selecciona una materia'))
+                    : () {
+                        final bloques = _obtenerBloquesPorDia(_diaSeleccionado);
+                        
+                        if (bloques.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.event_busy,
+                                  size: 80,
+                                  color: Colors.grey[400],
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No hay horarios para $_diaSeleccionado',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Presiona el botón + para agregar',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: bloques.length,
+                          itemBuilder: (context, index) {
+                            final bloque = bloques[index];
+                            final indexGlobal = _horariosPorMateria[
+                                    _materiaSeleccionada!]!
+                                .indexOf(bloque);
+
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              child: ListTile(
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1565C0)
+                                        .withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.access_time,
+                                    color: Color(0xFF1565C0),
+                                  ),
+                                ),
+                                title: Text(
+                                  '${bloque['horaInicio']} - ${bloque['horaFin']}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  bloque['dia'],
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  onPressed: () => _eliminarBloque(indexGlobal),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      }(),
           ),
         ],
       ),
@@ -606,22 +693,32 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
   /// Construye la lista de bloques para el día seleccionado
   Widget _buildListaBloques() {
     final bloques = _obtenerBloquesPorDia(_diaSeleccionado);
-
+    
     if (bloques.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.event_busy, size: 80, color: Colors.grey[400]),
+            Icon(
+              Icons.event_busy,
+              size: 80,
+              color: Colors.grey[400],
+            ),
             const SizedBox(height: 16),
             Text(
               'No hay horarios para $_diaSeleccionado',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               'Presiona el botón + para agregar',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
             ),
           ],
         ),
@@ -633,9 +730,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
       itemCount: bloques.length,
       itemBuilder: (context, index) {
         final bloque = bloques[index];
-        final indexGlobal = _horariosPorMateria[_materiaSeleccionada!]!.indexOf(
-          bloque,
-        );
+        final indexGlobal = _horariosPorMateria[_materiaSeleccionada!]!.indexOf(bloque);
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
@@ -646,13 +741,22 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
                 color: const Color(0xFF1565C0).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.access_time, color: Color(0xFF1565C0)),
+              child: const Icon(
+                Icons.access_time,
+                color: Color(0xFF1565C0),
+              ),
             ),
             title: Text(
               '${bloque['horaInicio']} - ${bloque['horaFin']}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
-            subtitle: Text(bloque['dia'], style: const TextStyle(fontSize: 14)),
+            subtitle: Text(
+              bloque['dia'],
+              style: const TextStyle(fontSize: 14),
+            ),
             trailing: IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
               onPressed: () => _eliminarBloque(indexGlobal),
@@ -674,7 +778,9 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
   }
 }
 
-// Dialog para agregar bloque (sin cambios)
+// ====================================================
+// DIALOG PARA AGREGAR BLOQUE
+// ====================================================
 class _DialogAgregarBloque extends StatefulWidget {
   final List<String> diasDisponibles;
   final List<String> horasDisponibles;
