@@ -1,9 +1,10 @@
-// lib/servicios/horario_service.dart - VERSIÓN MEJORADA CON TODAS LAS FUNCIONES
+// lib/servicios/horario_service.dart - VERSIÓN CORREGIDA CON VALIDACIÓN POR DOCENTE
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../servicios/auth_service.dart';
-import '../servicios/materia_service.dart'; // ✅ NUEVO: Para validar materias
+import '../servicios/materia_service.dart';
+import '../servicios/docente_service.dart'; // ✅ NUEVO
 
 class HorarioService {
   
@@ -130,8 +131,7 @@ class HorarioService {
     }
   }
 
-  /// 🔍 VALIDAR CRUCES ENTRE MATERIAS (CORREGIDO)
-  /// Valida que no haya solapamiento con otras materias EN EL MISMO DÍA
+  /// 🔍 VALIDAR CRUCES ENTRE MATERIAS
   static Future<Map<String, dynamic>> validarCrucesEntreMaterias({
     required String materia,
     required String diaSemana,
@@ -192,14 +192,12 @@ class HorarioService {
     }
   }
 
-  /// ✅ VALIDACIÓN LOCAL RÁPIDA (antes de enviar al backend)
-  /// Detecta cruces entre bloques del mismo día
+  /// ✅ VALIDACIÓN LOCAL RÁPIDA
   static Map<String, dynamic> validarCrucesLocales({
     required List<Map<String, dynamic>> bloques,
   }) {
     print('🔍 Validación local de cruces');
     
-    // Agrupar bloques por día
     Map<String, List<Map<String, dynamic>>> bloquesPorDia = {};
     
     for (var bloque in bloques) {
@@ -210,19 +208,16 @@ class HorarioService {
       bloquesPorDia[dia]!.add(bloque);
     }
     
-    // Validar cada día por separado
     for (var entrada in bloquesPorDia.entries) {
       final dia = entrada.key;
       final bloquesDelDia = entrada.value;
       
-      // Ordenar por hora de inicio
       bloquesDelDia.sort((a, b) {
         final aInicio = _convertirAMinutos(a['horaInicio']);
         final bInicio = _convertirAMinutos(b['horaInicio']);
         return aInicio.compareTo(bInicio);
       });
       
-      // Verificar solapamientos
       for (int i = 0; i < bloquesDelDia.length - 1; i++) {
         final bloqueActual = bloquesDelDia[i];
         final bloqueSiguiente = bloquesDelDia[i + 1];
@@ -268,7 +263,6 @@ class HorarioService {
       if (validarAntes && bloques.isNotEmpty) {
         print('🔍 Ejecutando validaciones previas...');
         
-        // 1. Validación local rápida
         print('   1️⃣ Validando cruces locales...');
         final validacionLocal = validarCrucesLocales(bloques: bloques);
         
@@ -281,7 +275,6 @@ class HorarioService {
         }
         print('   ✅ Sin cruces locales');
         
-        // 2. Validar cruces internos (mismo día, misma materia)
         print('   2️⃣ Validando cruces internos...');
         final validacionInterna = await validarCrucesInternos(bloques: bloques);
         
@@ -294,7 +287,6 @@ class HorarioService {
         }
         print('   ✅ Sin cruces internos');
         
-        // 3. Validar cruces entre materias por día
         print('   3️⃣ Validando cruces entre materias...');
         final bloquesPorDia = _agruparPorDia(bloques);
         
@@ -322,7 +314,6 @@ class HorarioService {
         print('   ✅ Sin cruces con otras materias');
       }
 
-      // ✅ GUARDAR EN EL BACKEND
       final url = '${ApiConfig.baseUrl}/tutorias/actualizar-horarios-materia';
       
       final body = {
@@ -374,7 +365,7 @@ class HorarioService {
     }
   }
 
-  /// ✅ OBTENER DISPONIBILIDAD COMPLETA CON VALIDACIÓN DE MATERIAS ACTIVAS
+  /// ✅ OBTENER DISPONIBILIDAD COMPLETA - VALIDACIÓN CORRECTA POR DOCENTE
   static Future<Map<String, List<Map<String, dynamic>>>?> obtenerDisponibilidadCompleta({
     required String docenteId,
   }) async {
@@ -386,20 +377,65 @@ class HorarioService {
         return null;
       }
 
-      // ✅ PASO 1: Obtener lista de materias activas del sistema
-      print('🔍 [Paso 1] Obteniendo materias activas del sistema...');
+      // ✅ PASO 1: Obtener información actualizada del docente
+      print('🔍 [Paso 1] Obteniendo información del docente...');
+      final detalleDocente = await DocenteService.detalleDocente(docenteId);
+      
+      if (detalleDocente == null || detalleDocente.containsKey('error')) {
+        print('❌ No se pudo obtener información del docente');
+        return null;
+      }
+
+      // ✅ EXTRAER MATERIAS ASIGNADAS AL DOCENTE
+      List<String> materiasDocente = [];
+      
+      if (detalleDocente['asignaturas'] != null) {
+        if (detalleDocente['asignaturas'] is List) {
+          materiasDocente = List<String>.from(detalleDocente['asignaturas']);
+        } else if (detalleDocente['asignaturas'] is String) {
+          final stringValue = detalleDocente['asignaturas'] as String;
+          if (stringValue.isNotEmpty && stringValue != '[]') {
+            try {
+              final parsed = jsonDecode(stringValue);
+              if (parsed is List) {
+                materiasDocente = List<String>.from(parsed);
+              }
+            } catch (e) {
+              print('⚠️ Error parseando asignaturas: $e');
+            }
+          }
+        }
+      }
+
+      print('📚 Materias del docente: ${materiasDocente.isEmpty ? "ninguna" : materiasDocente.join(", ")}');
+
+      if (materiasDocente.isEmpty) {
+        print('⚠️ El docente no tiene materias asignadas');
+        return {};
+      }
+
+      // ✅ PASO 2: Validar que las materias estén activas
+      print('🔍 [Paso 2] Validando materias activas...');
       final materiasActivas = await MateriaService.listarMaterias(soloActivas: true);
       final nombresMateriasActivas = materiasActivas.map((m) => m.nombre).toSet();
       
       print('📚 Materias activas en el sistema: ${nombresMateriasActivas.length}');
-      if (nombresMateriasActivas.isEmpty) {
-        print('⚠️ No hay materias activas en el sistema');
+
+      // ✅ FILTRAR: Solo materias que estén asignadas Y activas
+      final materiasValidas = materiasDocente
+          .where((m) => nombresMateriasActivas.contains(m))
+          .toSet();
+
+      if (materiasValidas.isEmpty) {
+        print('⚠️ Ninguna materia del docente está activa');
         return {};
       }
 
-      // ✅ PASO 2: Obtener disponibilidad del backend
+      print('✅ Materias válidas para mostrar: ${materiasValidas.join(", ")}');
+
+      // ✅ PASO 3: Obtener disponibilidad del backend
       final url = '${ApiConfig.baseUrl}/ver-disponibilidad-completa/$docenteId';
-      print('🔍 [Paso 2] Solicitando disponibilidad: $url');
+      print('🔍 [Paso 3] Solicitando disponibilidad: $url');
 
       final response = await http.get(
         Uri.parse(url),
@@ -423,13 +459,13 @@ class HorarioService {
         Map<String, List<Map<String, dynamic>>> resultado = {};
         int materiasEliminadasCount = 0;
         
-        // ✅ PASO 3: Filtrar solo materias que estén activas
+        // ✅ PASO 4: Filtrar solo materias válidas (asignadas Y activas)
         materias.forEach((materia, diasList) {
-          // ✅ VALIDACIÓN: Solo incluir si la materia está activa
-          if (!nombresMateriasActivas.contains(materia)) {
-            print('⚠️ Materia "$materia" NO está activa, OMITIENDO');
+          // ✅ VALIDACIÓN: Solo incluir si está en materiasValidas
+          if (!materiasValidas.contains(materia)) {
+            print('⚠️ Materia "$materia" NO es válida, OMITIENDO');
             materiasEliminadasCount++;
-            return; // Saltar esta materia
+            return;
           }
           
           List<Map<String, dynamic>> bloquesMat = [];
@@ -451,15 +487,15 @@ class HorarioService {
           
           if (bloquesMat.isNotEmpty) {
             resultado[materia] = bloquesMat;
-            print('   ✅ $materia: ${bloquesMat.length} bloques (ACTIVA)');
+            print('   ✅ $materia: ${bloquesMat.length} bloques (VÁLIDA)');
           }
         });
         
         if (materiasEliminadasCount > 0) {
-          print('🗑️ Se omitieron $materiasEliminadasCount materias inactivas');
+          print('🗑️ Se omitieron $materiasEliminadasCount materias no válidas');
         }
         
-        print('✅ Total materias válidas: ${resultado.length}');
+        print('✅ Total materias a mostrar: ${resultado.length}');
         
         return resultado;
         
