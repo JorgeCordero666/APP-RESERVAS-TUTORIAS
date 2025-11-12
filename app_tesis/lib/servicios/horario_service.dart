@@ -1,4 +1,4 @@
-// lib/servicios/horario_service.dart - VERSIÓN DEFINITIVA CON VALIDACIONES
+// lib/servicios/horario_service.dart - VERSIÓN CON VALIDACIONES CORREGIDAS
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
@@ -6,7 +6,7 @@ import '../servicios/auth_service.dart';
 
 class HorarioService {
   
-  /// ✅ MÉTODO 1: Obtener horarios de UNA materia específica
+  /// ✅ OBTENER HORARIOS DE UNA MATERIA ESPECÍFICA
   static Future<List<Map<String, dynamic>>?> obtenerHorariosPorMateria({
     required String docenteId,
     required String materia,
@@ -129,7 +129,8 @@ class HorarioService {
     }
   }
 
-  /// 🔍 VALIDAR CRUCES ENTRE MATERIAS
+  /// 🔍 VALIDAR CRUCES ENTRE MATERIAS (CORREGIDO)
+  /// Valida que no haya solapamiento con otras materias EN EL MISMO DÍA
   static Future<Map<String, dynamic>> validarCrucesEntreMaterias({
     required String materia,
     required String diaSemana,
@@ -155,6 +156,7 @@ class HorarioService {
       print('🔍 Validando cruces con otras materias:');
       print('   Materia: $materia');
       print('   Día: $diaSemana');
+      print('   Bloques: ${bloquesFormateados.length}');
 
       final response = await http.post(
         Uri.parse(url),
@@ -189,12 +191,63 @@ class HorarioService {
     }
   }
 
-  /// ✅ MÉTODO 2: Actualizar horarios CON VALIDACIÓN PREVIA
+  /// ✅ VALIDACIÓN LOCAL RÁPIDA (antes de enviar al backend)
+  /// Detecta cruces entre bloques del mismo día
+  static Map<String, dynamic> validarCrucesLocales({
+    required List<Map<String, dynamic>> bloques,
+  }) {
+    print('🔍 Validación local de cruces');
+    
+    // Agrupar bloques por día
+    Map<String, List<Map<String, dynamic>>> bloquesPorDia = {};
+    
+    for (var bloque in bloques) {
+      final dia = bloque['dia'].toString().toLowerCase();
+      if (!bloquesPorDia.containsKey(dia)) {
+        bloquesPorDia[dia] = [];
+      }
+      bloquesPorDia[dia]!.add(bloque);
+    }
+    
+    // Validar cada día por separado
+    for (var entrada in bloquesPorDia.entries) {
+      final dia = entrada.key;
+      final bloquesDelDia = entrada.value;
+      
+      // Ordenar por hora de inicio
+      bloquesDelDia.sort((a, b) {
+        final aInicio = _convertirAMinutos(a['horaInicio']);
+        final bInicio = _convertirAMinutos(b['horaInicio']);
+        return aInicio.compareTo(bInicio);
+      });
+      
+      // Verificar solapamientos
+      for (int i = 0; i < bloquesDelDia.length - 1; i++) {
+        final bloqueActual = bloquesDelDia[i];
+        final bloqueSiguiente = bloquesDelDia[i + 1];
+        
+        final finActual = _convertirAMinutos(bloqueActual['horaFin']);
+        final inicioSiguiente = _convertirAMinutos(bloqueSiguiente['horaInicio']);
+        
+        if (finActual > inicioSiguiente) {
+          return {
+            'valido': false,
+            'mensaje': 'Cruce en $dia: ${bloqueActual['horaInicio']}-${bloqueActual['horaFin']} '
+                      'se solapa con ${bloqueSiguiente['horaInicio']}-${bloqueSiguiente['horaFin']}'
+          };
+        }
+      }
+    }
+    
+    return {'valido': true};
+  }
+
+  /// ✅ ACTUALIZAR HORARIOS CON VALIDACIÓN COMPLETA
   static Future<Map<String, dynamic>> actualizarHorarios({
     required String docenteId,
     required String materia,
     required List<Map<String, dynamic>> bloques,
-    bool validarAntes = true, // ✅ Opción para validar antes de guardar
+    bool validarAntes = true,
   }) async {
     try {
       final token = await AuthService.getToken();
@@ -211,11 +264,24 @@ class HorarioService {
       print('   Bloques: ${bloques.length}');
       print('   Validar antes: $validarAntes');
 
-      // ✅ VALIDACIÓN OPCIONAL ANTES DE GUARDAR
       if (validarAntes && bloques.isNotEmpty) {
         print('🔍 Ejecutando validaciones previas...');
         
-        // 1. Validar cruces internos (mismo día)
+        // 1. Validación local rápida
+        print('   1️⃣ Validando cruces locales...');
+        final validacionLocal = validarCrucesLocales(bloques: bloques);
+        
+        if (!validacionLocal['valido']) {
+          print('❌ Validación local falló: ${validacionLocal['mensaje']}');
+          return {
+            'success': false,
+            'mensaje': validacionLocal['mensaje']
+          };
+        }
+        print('   ✅ Sin cruces locales');
+        
+        // 2. Validar cruces internos (mismo día, misma materia)
+        print('   2️⃣ Validando cruces internos...');
         final validacionInterna = await validarCrucesInternos(bloques: bloques);
         
         if (!validacionInterna['valido']) {
@@ -225,15 +291,17 @@ class HorarioService {
             'mensaje': validacionInterna['mensaje']
           };
         }
+        print('   ✅ Sin cruces internos');
         
-        print('✅ Sin cruces internos');
-        
-        // 2. Validar cruces entre materias por día
+        // 3. Validar cruces entre materias por día
+        print('   3️⃣ Validando cruces entre materias...');
         final bloquesPorDia = _agruparPorDia(bloques);
         
         for (var entrada in bloquesPorDia.entries) {
           final dia = entrada.key;
           final bloquesDelDia = entrada.value;
+          
+          print('      Validando día: $dia (${bloquesDelDia.length} bloques)');
           
           final validacionMaterias = await validarCrucesEntreMaterias(
             materia: materia,
@@ -250,10 +318,10 @@ class HorarioService {
           }
         }
         
-        print('✅ Sin cruces con otras materias');
+        print('   ✅ Sin cruces con otras materias');
       }
 
-      // ✅ GUARDAR EN EL BACKEND (usa el endpoint atómico)
+      // ✅ GUARDAR EN EL BACKEND
       final url = '${ApiConfig.baseUrl}/tutorias/actualizar-horarios-materia';
       
       final body = {
@@ -305,7 +373,7 @@ class HorarioService {
     }
   }
 
-  /// ✅ MÉTODO 3: Obtener disponibilidad completa (TODAS las materias)
+  /// ✅ OBTENER DISPONIBILIDAD COMPLETA (TODAS LAS MATERIAS)
   static Future<Map<String, List<Map<String, dynamic>>>?> obtenerDisponibilidadCompleta({
     required String docenteId,
   }) async {
@@ -397,6 +465,19 @@ class HorarioService {
     }
     
     return resultado;
+  }
+
+  /// 🔧 MÉTODO AUXILIAR: Convertir hora a minutos
+  static int _convertirAMinutos(String hora) {
+    try {
+      final partes = hora.split(':');
+      final horas = int.parse(partes[0]);
+      final minutos = int.parse(partes[1]);
+      return horas * 60 + minutos;
+    } catch (e) {
+      print('⚠️ Error convirtiendo hora: $hora');
+      return 0;
+    }
   }
 
   /// 🔧 MÉTODO AUXILIAR: Capitalizar día

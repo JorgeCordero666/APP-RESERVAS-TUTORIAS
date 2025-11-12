@@ -493,25 +493,36 @@ const validarCrucesHorarios = (bloques) => {
 };
 
 /**
- * ✅ VALIDAR CRUCES ENTRE MATERIAS
- * Verifica que no haya cruces entre diferentes materias del mismo día
+ * ✅ VALIDAR CRUCES ENTRE MATERIAS (CORREGIDO)
+ * Verifica que no haya cruces entre diferentes materias DEL MISMO DÍA
  */
 const validarCrucesEntreMaterias = async (docenteId, materia, diaSemana, bloquesNuevos) => {
   try {
-    // Obtener TODOS los bloques del docente para ese día (excepto la materia actual)
+    console.log('🔍 Validando cruces entre materias:');
+    console.log('   Docente:', docenteId);
+    console.log('   Materia actual:', materia);
+    console.log('   Día:', diaSemana);
+    console.log('   Bloques nuevos:', bloquesNuevos.length);
+
+    // ✅ CRÍTICO: Obtener TODOS los bloques del docente para ese día 
+    // (excluyendo la materia que estamos editando)
     const disponibilidadesExistentes = await disponibilidadDocente.find({
       docente: docenteId,
       diaSemana: diaSemana.toLowerCase(),
-      materia: { $ne: materia } // Excluir la materia que estamos editando
+      materia: { $ne: materia } // ✅ Excluir la materia actual
     });
 
+    console.log('   Disponibilidades existentes en ese día:', disponibilidadesExistentes.length);
+
     if (disponibilidadesExistentes.length === 0) {
+      console.log('   ✅ No hay otras materias en este día');
       return { valido: true };
     }
 
-    // Recopilar todos los bloques existentes
+    // Recopilar todos los bloques existentes de otras materias
     const bloquesExistentes = [];
     disponibilidadesExistentes.forEach(disp => {
+      console.log(`   📚 Materia existente: ${disp.materia} (${disp.bloques.length} bloques)`);
       disp.bloques.forEach(b => {
         bloquesExistentes.push({
           materia: disp.materia,
@@ -521,37 +532,52 @@ const validarCrucesEntreMaterias = async (docenteId, materia, diaSemana, bloques
       });
     });
 
-    // Convertir a minutos
+    console.log('   Total bloques a comparar:', bloquesExistentes.length);
+
+    // Convertir a minutos para comparar
     const convertirAMinutos = (hora) => {
       const [h, m] = hora.split(':').map(Number);
       return h * 60 + m;
     };
 
-    // Verificar cada bloque nuevo contra los existentes
+    // ✅ VERIFICAR CADA BLOQUE NUEVO CONTRA LOS EXISTENTES
     for (const bloqueNuevo of bloquesNuevos) {
       const nuevoInicio = convertirAMinutos(bloqueNuevo.horaInicio);
       const nuevoFin = convertirAMinutos(bloqueNuevo.horaFin);
+
+      console.log(`   🔍 Comparando: ${bloqueNuevo.horaInicio}-${bloqueNuevo.horaFin}`);
 
       for (const bloqueExistente of bloquesExistentes) {
         const existenteInicio = convertirAMinutos(bloqueExistente.horaInicio);
         const existenteFin = convertirAMinutos(bloqueExistente.horaFin);
 
-        // Detectar solapamiento
+        // ✅ DETECTAR SOLAPAMIENTO
+        // Hay cruce si:
+        // - El nuevo inicio está dentro del existente, O
+        // - El nuevo fin está dentro del existente, O
+        // - El nuevo bloque contiene completamente al existente
         const haySolapamiento = 
           (nuevoInicio < existenteFin && nuevoFin > existenteInicio);
 
         if (haySolapamiento) {
+          const mensaje = `El bloque ${bloqueNuevo.horaInicio}-${bloqueNuevo.horaFin} de "${materia}" ` +
+                         `se cruza con ${bloqueExistente.horaInicio}-${bloqueExistente.horaFin} de "${bloqueExistente.materia}"`;
+          
+          console.log(`   ❌ CRUCE DETECTADO: ${mensaje}`);
+          
           return {
             valido: false,
-            mensaje: `El bloque ${bloqueNuevo.horaInicio}-${bloqueNuevo.horaFin} de "${materia}" se cruza con ${bloqueExistente.horaInicio}-${bloqueExistente.horaFin} de "${bloqueExistente.materia}"`
+            mensaje: mensaje
           };
         }
       }
     }
 
+    console.log('   ✅ No se detectaron cruces');
     return { valido: true };
+    
   } catch (error) {
-    console.error('Error validando cruces entre materias:', error);
+    console.error('❌ Error validando cruces entre materias:', error);
     return { 
       valido: false, 
       mensaje: 'Error al validar cruces de horarios' 
@@ -870,9 +896,9 @@ const eliminarDisponibilidadMateria = async (req, res) => {
   }
 };
 
-// =====================================================
-// ✅ ACTUALIZAR HORARIOS CON ELIMINACIÓN REAL
-// =====================================================
+/**
+ * ✅ ACTUALIZAR HORARIOS CON VALIDACIÓN COMPLETA (MÉTODO CORREGIDO)
+ */
 const actualizarHorarios = async (req, res) => {
   try {
     const { materia, bloques } = req.body;
@@ -898,15 +924,7 @@ const actualizarHorarios = async (req, res) => {
     console.log(`🔄 Actualizando horarios completos de: ${materia}`);
     console.log(`   Bloques recibidos: ${bloques.length}`);
 
-    // ✅ PASO 1: ELIMINAR FÍSICAMENTE TODOS LOS REGISTROS ANTERIORES
-    const eliminados = await disponibilidadDocente.deleteMany({
-      docente: docente,
-      materia: materia
-    });
-
-    console.log(`🗑️ Registros eliminados: ${eliminados.deletedCount}`);
-
-    // ✅ PASO 2: AGRUPAR BLOQUES POR DÍA
+    // ✅ PASO 1: AGRUPAR BLOQUES POR DÍA
     const bloquesPorDia = {};
     
     for (const bloque of bloques) {
@@ -924,8 +942,9 @@ const actualizarHorarios = async (req, res) => {
 
     console.log(`📋 Días a guardar: ${Object.keys(bloquesPorDia).join(', ')}`);
 
-    // ✅ PASO 3: VALIDAR CRUCES INTERNOS POR DÍA
+    // ✅ PASO 2: VALIDAR CRUCES INTERNOS POR DÍA
     for (const [dia, bloquesDelDia] of Object.entries(bloquesPorDia)) {
+      console.log(`   Validando cruces internos en ${dia}...`);
       const validacion = validarCrucesHorarios(bloquesDelDia);
       if (!validacion.valido) {
         return res.status(400).json({
@@ -933,9 +952,12 @@ const actualizarHorarios = async (req, res) => {
         });
       }
     }
+    console.log('   ✅ Sin cruces internos');
 
-    // ✅ PASO 4: VALIDAR CRUCES ENTRE MATERIAS
+    // ✅ PASO 3: VALIDAR CRUCES ENTRE MATERIAS (POR DÍA)
     for (const [dia, bloquesDelDia] of Object.entries(bloquesPorDia)) {
+      console.log(`   Validando cruces con otras materias en ${dia}...`);
+      
       const validacion = await validarCrucesEntreMaterias(
         docente,
         materia,
@@ -949,6 +971,15 @@ const actualizarHorarios = async (req, res) => {
         });
       }
     }
+    console.log('   ✅ Sin cruces con otras materias');
+
+    // ✅ PASO 4: ELIMINAR FÍSICAMENTE TODOS LOS REGISTROS ANTERIORES
+    const eliminados = await disponibilidadDocente.deleteMany({
+      docente: docente,
+      materia: materia
+    });
+
+    console.log(`🗑️ Registros eliminados: ${eliminados.deletedCount}`);
 
     // ✅ PASO 5: CREAR NUEVOS REGISTROS
     const registrosCreados = [];
