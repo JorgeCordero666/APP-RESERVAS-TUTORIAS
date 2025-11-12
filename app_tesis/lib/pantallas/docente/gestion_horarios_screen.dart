@@ -337,15 +337,6 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
     }
   }
 
-  List<Map<String, dynamic>> _obtenerBloquesPorDia(String dia) {
-    if (_materiaSeleccionada == null) return [];
-
-    return _horariosPorMateria[_materiaSeleccionada!]!
-        .where((bloque) => bloque['dia'] == dia)
-        .toList()
-      ..sort((a, b) => a['horaInicio'].compareTo(b['horaInicio']));
-  }
-
   void _mostrarError(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -377,11 +368,21 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
   Widget build(BuildContext context) {
     super.build(context); // ✅ REQUERIDO por AutomaticKeepAliveClientMixin
 
+    // ====================================================
+    // PANTALLA CUANDO NO HAY MATERIAS SELECCIONADAS
+    // ====================================================
     if (_materiasDocente.isEmpty) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Gestión de Horarios'),
           backgroundColor: const Color(0xFF1565C0),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _isLoading ? null : _cargarMateriasDocente,
+              tooltip: 'Actualizar materias',
+            ),
+          ],
         ),
         body: Center(
           child: Column(
@@ -417,20 +418,17 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
       );
     }
 
+    // ====================================================
+    // PANTALLA NORMAL (cuando hay materias)
+    // ====================================================
     return Scaffold(
       appBar: AppBar(
         title: const Text('Gestión de Horarios'),
         backgroundColor: const Color(0xFF1565C0),
         actions: [
-          // ✅ BOTÓN DE RECARGA MANUAL
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _isLoading
-                ? null
-                : () {
-                    print('🔄 Recarga manual solicitada');
-                    _cargarMateriasDocente();
-                  },
+            onPressed: _isLoading ? null : _cargarMateriasDocente,
             tooltip: 'Actualizar materias',
           ),
           if (_hasChanges && !_isLoading)
@@ -463,37 +461,9 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
                         ),
                       ),
                     ),
-                    // ✅ INDICADOR DE MATERIAS CON BOTÓN
-                    Row(
-                      children: [
-                        Text(
-                          '${_materiasDocente.length} ${_materiasDocente.length == 1 ? "materia" : "materias"}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // ✅ BOTÓN PEQUEÑO DE RECARGA
-                        InkWell(
-                          onTap: _isLoading ? null : _cargarMateriasDocente,
-                          borderRadius: BorderRadius.circular(20),
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.blue[100],
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.refresh,
-                              size: 16,
-                              color: _isLoading
-                                  ? Colors.grey
-                                  : const Color(0xFF1565C0),
-                            ),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      '${_materiasDocente.length} ${_materiasDocente.length == 1 ? "materia" : "materias"}',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                   ],
                 ),
@@ -615,84 +585,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
                 ? const Center(child: CircularProgressIndicator())
                 : _materiaSeleccionada == null
                 ? const Center(child: Text('Selecciona una materia'))
-                : () {
-                    final bloques = _obtenerBloquesPorDia(_diaSeleccionado);
-
-                    if (bloques.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.event_busy,
-                              size: 80,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No hay horarios para $_diaSeleccionado',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Presiona el botón + para agregar',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    return ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: bloques.length,
-                      itemBuilder: (context, index) {
-                        final bloque = bloques[index];
-                        final indexGlobal =
-                            _horariosPorMateria[_materiaSeleccionada!]!.indexOf(
-                              bloque,
-                            );
-
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            leading: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1565C0).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.access_time,
-                                color: Color(0xFF1565C0),
-                              ),
-                            ),
-                            title: Text(
-                              '${bloque['horaInicio']} - ${bloque['horaFin']}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            subtitle: Text(
-                              bloque['dia'],
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _eliminarBloque(indexGlobal),
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  }(),
+                : _buildListaBloques(),
           ),
         ],
       ),
@@ -704,6 +597,80 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
               child: const Icon(Icons.add),
             ),
     );
+  }
+
+  // ====================================================
+  // MÉTODOS AUXILIARES
+  // ====================================================
+
+  /// Construye la lista de bloques para el día seleccionado
+  Widget _buildListaBloques() {
+    final bloques = _obtenerBloquesPorDia(_diaSeleccionado);
+
+    if (bloques.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.event_busy, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'No hay horarios para $_diaSeleccionado',
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Presiona el botón + para agregar',
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: bloques.length,
+      itemBuilder: (context, index) {
+        final bloque = bloques[index];
+        final indexGlobal = _horariosPorMateria[_materiaSeleccionada!]!.indexOf(
+          bloque,
+        );
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1565C0).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.access_time, color: Color(0xFF1565C0)),
+            ),
+            title: Text(
+              '${bloque['horaInicio']} - ${bloque['horaFin']}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            subtitle: Text(bloque['dia'], style: const TextStyle(fontSize: 14)),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () => _eliminarBloque(indexGlobal),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Obtiene los bloques de horario filtrados por día
+  List<Map<String, dynamic>> _obtenerBloquesPorDia(String dia) {
+    if (_materiaSeleccionada == null) return [];
+
+    return _horariosPorMateria[_materiaSeleccionada!]!
+        .where((bloque) => bloque['dia'] == dia)
+        .toList()
+      ..sort((a, b) => a['horaInicio'].compareTo(b['horaInicio']));
   }
 }
 
