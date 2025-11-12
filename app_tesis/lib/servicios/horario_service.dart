@@ -1,8 +1,9 @@
-// lib/servicios/horario_service.dart - VERSIÓN CON VALIDACIONES CORREGIDAS
+// lib/servicios/horario_service.dart - VERSIÓN MEJORADA CON TODAS LAS FUNCIONES
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../servicios/auth_service.dart';
+import '../servicios/materia_service.dart'; // ✅ NUEVO: Para validar materias
 
 class HorarioService {
   
@@ -373,7 +374,7 @@ class HorarioService {
     }
   }
 
-  /// ✅ OBTENER DISPONIBILIDAD COMPLETA (TODAS LAS MATERIAS)
+  /// ✅ OBTENER DISPONIBILIDAD COMPLETA CON VALIDACIÓN DE MATERIAS ACTIVAS
   static Future<Map<String, List<Map<String, dynamic>>>?> obtenerDisponibilidadCompleta({
     required String docenteId,
   }) async {
@@ -385,9 +386,20 @@ class HorarioService {
         return null;
       }
 
-      final url = '${ApiConfig.baseUrl}/ver-disponibilidad-completa/$docenteId';
+      // ✅ PASO 1: Obtener lista de materias activas del sistema
+      print('🔍 [Paso 1] Obteniendo materias activas del sistema...');
+      final materiasActivas = await MateriaService.listarMaterias(soloActivas: true);
+      final nombresMateriasActivas = materiasActivas.map((m) => m.nombre).toSet();
+      
+      print('📚 Materias activas en el sistema: ${nombresMateriasActivas.length}');
+      if (nombresMateriasActivas.isEmpty) {
+        print('⚠️ No hay materias activas en el sistema');
+        return {};
+      }
 
-      print('🔍 [Disponibilidad Completa] URL: $url');
+      // ✅ PASO 2: Obtener disponibilidad del backend
+      final url = '${ApiConfig.baseUrl}/ver-disponibilidad-completa/$docenteId';
+      print('🔍 [Paso 2] Solicitando disponibilidad: $url');
 
       final response = await http.get(
         Uri.parse(url),
@@ -406,11 +418,20 @@ class HorarioService {
 
         final Map<String, dynamic> materias = data['materias'] ?? {};
         
-        print('📚 Materias recibidas: ${materias.keys.join(", ")}');
+        print('📦 Materias recibidas del backend: ${materias.keys.join(", ")}');
         
         Map<String, List<Map<String, dynamic>>> resultado = {};
+        int materiasEliminadasCount = 0;
         
+        // ✅ PASO 3: Filtrar solo materias que estén activas
         materias.forEach((materia, diasList) {
+          // ✅ VALIDACIÓN: Solo incluir si la materia está activa
+          if (!nombresMateriasActivas.contains(materia)) {
+            print('⚠️ Materia "$materia" NO está activa, OMITIENDO');
+            materiasEliminadasCount++;
+            return; // Saltar esta materia
+          }
+          
           List<Map<String, dynamic>> bloquesMat = [];
           
           if (diasList is List) {
@@ -428,9 +449,17 @@ class HorarioService {
             }
           }
           
-          resultado[materia] = bloquesMat;
-          print('   📖 $materia: ${bloquesMat.length} bloques');
+          if (bloquesMat.isNotEmpty) {
+            resultado[materia] = bloquesMat;
+            print('   ✅ $materia: ${bloquesMat.length} bloques (ACTIVA)');
+          }
         });
+        
+        if (materiasEliminadasCount > 0) {
+          print('🗑️ Se omitieron $materiasEliminadasCount materias inactivas');
+        }
+        
+        print('✅ Total materias válidas: ${resultado.length}');
         
         return resultado;
         
