@@ -493,7 +493,7 @@ const validarCrucesHorarios = (bloques) => {
 };
 
 /**
- * ✅ VALIDAR CRUCES ENTRE MATERIAS (CORREGIDO)
+ * ✅ VALIDAR CRUCES ENTRE MATERIAS (CORREGIDO - SOLO MISMO DÍA)
  * Verifica que no haya cruces entre diferentes materias DEL MISMO DÍA
  */
 const validarCrucesEntreMaterias = async (docenteId, materia, diaSemana, bloquesNuevos) => {
@@ -504,12 +504,11 @@ const validarCrucesEntreMaterias = async (docenteId, materia, diaSemana, bloques
     console.log('   Día:', diaSemana);
     console.log('   Bloques nuevos:', bloquesNuevos.length);
 
-    // ✅ CRÍTICO: Obtener TODOS los bloques del docente para ese día 
-    // (excluyendo la materia que estamos editando)
+    // ✅ CRÍTICO: Obtener bloques de OTRAS materias SOLO del MISMO DÍA
     const disponibilidadesExistentes = await disponibilidadDocente.find({
       docente: docenteId,
-      diaSemana: diaSemana.toLowerCase(),
-      materia: { $ne: materia } // ✅ Excluir la materia actual
+      diaSemana: diaSemana.toLowerCase(), // ✅ FILTRAR POR DÍA
+      materia: { $ne: materia } // Excluir la materia actual
     });
 
     console.log('   Disponibilidades existentes en ese día:', disponibilidadesExistentes.length);
@@ -519,7 +518,7 @@ const validarCrucesEntreMaterias = async (docenteId, materia, diaSemana, bloques
       return { valido: true };
     }
 
-    // Recopilar todos los bloques existentes de otras materias
+    // Recopilar todos los bloques existentes de otras materias EN EL MISMO DÍA
     const bloquesExistentes = [];
     disponibilidadesExistentes.forEach(disp => {
       console.log(`   📚 Materia existente: ${disp.materia} (${disp.bloques.length} bloques)`);
@@ -561,7 +560,8 @@ const validarCrucesEntreMaterias = async (docenteId, materia, diaSemana, bloques
 
         if (haySolapamiento) {
           const mensaje = `El bloque ${bloqueNuevo.horaInicio}-${bloqueNuevo.horaFin} de "${materia}" ` +
-                         `se cruza con ${bloqueExistente.horaInicio}-${bloqueExistente.horaFin} de "${bloqueExistente.materia}"`;
+                         `se cruza con ${bloqueExistente.horaInicio}-${bloqueExistente.horaFin} de "${bloqueExistente.materia}" ` +
+                         `el día ${diaSemana}`;
           
           console.log(`   ❌ CRUCE DETECTADO: ${mensaje}`);
           
@@ -897,7 +897,8 @@ const eliminarDisponibilidadMateria = async (req, res) => {
 };
 
 /**
- * ✅ ACTUALIZAR HORARIOS CON VALIDACIÓN COMPLETA (MÉTODO CORREGIDO)
+ * ✅ ACTUALIZAR HORARIOS CON VALIDACIÓN COMPLETA (CORREGIDO)
+ * Permite horarios iguales en días diferentes, solo valida cruces en el mismo día
  */
 const actualizarHorarios = async (req, res) => {
   try {
@@ -943,6 +944,7 @@ const actualizarHorarios = async (req, res) => {
     console.log(`📋 Días a guardar: ${Object.keys(bloquesPorDia).join(', ')}`);
 
     // ✅ PASO 2: VALIDAR CRUCES INTERNOS POR DÍA
+    // (Esto valida cruces dentro de la misma materia en el mismo día)
     for (const [dia, bloquesDelDia] of Object.entries(bloquesPorDia)) {
       console.log(`   Validando cruces internos en ${dia}...`);
       const validacion = validarCrucesHorarios(bloquesDelDia);
@@ -954,14 +956,16 @@ const actualizarHorarios = async (req, res) => {
     }
     console.log('   ✅ Sin cruces internos');
 
-    // ✅ PASO 3: VALIDAR CRUCES ENTRE MATERIAS (POR DÍA)
+    // ✅ PASO 3: VALIDAR CRUCES ENTRE MATERIAS (SOLO POR DÍA)
+    // IMPORTANTE: Cada día se valida independientemente
     for (const [dia, bloquesDelDia] of Object.entries(bloquesPorDia)) {
       console.log(`   Validando cruces con otras materias en ${dia}...`);
       
+      // ✅ CLAVE: Solo validamos los bloques de ESE día específico
       const validacion = await validarCrucesEntreMaterias(
         docente,
         materia,
-        dia,
+        dia, // ✅ Solo valida contra bloques del mismo día
         bloquesDelDia
       );
 
@@ -973,7 +977,7 @@ const actualizarHorarios = async (req, res) => {
     }
     console.log('   ✅ Sin cruces con otras materias');
 
-    // ✅ PASO 4: ELIMINAR FÍSICAMENTE TODOS LOS REGISTROS ANTERIORES
+    // ✅ PASO 4: ELIMINAR FÍSICAMENTE TODOS LOS REGISTROS ANTERIORES DE ESTA MATERIA
     const eliminados = await disponibilidadDocente.deleteMany({
       docente: docente,
       materia: materia
@@ -981,7 +985,7 @@ const actualizarHorarios = async (req, res) => {
 
     console.log(`🗑️ Registros eliminados: ${eliminados.deletedCount}`);
 
-    // ✅ PASO 5: CREAR NUEVOS REGISTROS
+    // ✅ PASO 5: CREAR NUEVOS REGISTROS (UN DOCUMENTO POR DÍA)
     const registrosCreados = [];
 
     for (const [dia, bloquesDelDia] of Object.entries(bloquesPorDia)) {
