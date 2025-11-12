@@ -7,42 +7,63 @@ import moment from 'moment';
 // =====================================================
 // ✅ REGISTRAR TUTORIA
 // =====================================================
+// backend/src/controllers/tutorias_controller.js
+
 const registrarTutoria = async (req, res) => {
   try {
     const { docente, fecha, horaInicio, horaFin } = req.body;
-
-    // Obtener el ID del estudiante 
     const estudiante = req.estudianteBDD?._id;
+
     if (!estudiante) {
       return res.status(401).json({ msg: "Estudiante no autenticado" });
     }
 
-    // 1. Verificar si ya existe una tutoría ocupando ese espacio
-    const existe = await Tutoria.findOne({
+    // ✅ VALIDACIÓN 1: Verificar que no exista tutoría en ese horario
+    const tutoriaExistente = await Tutoria.findOne({
       docente,
       fecha,
-      horaInicio,
-      horaFin,
       estado: { $in: ['pendiente', 'confirmada'] },
       $or: [
         {
-          horaInicio: { $lt: horaFin },
-          horaFin: { $gt: horaInicio }
+          $and: [
+            { horaInicio: { $lte: horaInicio } },
+            { horaFin: { $gt: horaInicio } }
+          ]
+        },
+        {
+          $and: [
+            { horaInicio: { $lt: horaFin } },
+            { horaFin: { $gte: horaFin } }
+          ]
+        },
+        {
+          $and: [
+            { horaInicio: { $gte: horaInicio } },
+            { horaFin: { $lte: horaFin } }
+          ]
         }
       ]
     });
 
-    if (existe) {
-      return res.status(400).json({ msg: "Este horario no se encuentra disponible. Elija otro." });
+    if (tutoriaExistente) {
+      return res.status(400).json({ 
+        msg: "Este horario ya está ocupado. Por favor, elige otro." 
+      });
     }
 
-    // 2. Validar que el bloque esté en la disponibilidad del docente
-    const fechaUTC = new Date(fecha + 'T05:00:00Z'); // Ecuador
+    // ✅ VALIDACIÓN 2: Verificar que el bloque esté en la disponibilidad del docente
+    const fechaUTC = new Date(fecha + 'T05:00:00Z');
     const diaSemana = fechaUTC.toLocaleDateString('es-EC', { weekday: 'long' }).toLowerCase();
 
-    const disponibilidad = await disponibilidadDocente.findOne({ docente, diaSemana });
+    const disponibilidad = await disponibilidadDocente.findOne({ 
+      docente, 
+      diaSemana 
+    });
+
     if (!disponibilidad) {
-      return res.status(400).json({ msg: "El docente no tiene disponibilidad registrada para ese día." });
+      return res.status(400).json({ 
+        msg: "El docente no tiene disponibilidad registrada para ese día." 
+      });
     }
 
     const bloqueValido = disponibilidad.bloques.some(
@@ -50,10 +71,49 @@ const registrarTutoria = async (req, res) => {
     );
 
     if (!bloqueValido) {
-      return res.status(400).json({ msg: "Ese bloque no está dentro del horario disponible del docente." });
+      return res.status(400).json({ 
+        msg: "Ese bloque no está en el horario disponible del docente." 
+      });
     }
 
-    // 3. Registrar la tutoría
+    // ✅ VALIDACIÓN 3: No permitir agendar en el pasado
+    const hoy = moment().startOf('day');
+    const fechaTutoria = moment(fecha, 'YYYY-MM-DD').startOf('day');
+
+    if (fechaTutoria.isBefore(hoy)) {
+      return res.status(400).json({ 
+        msg: "No puedes agendar tutorías en fechas pasadas." 
+      });
+    }
+
+    // ✅ VALIDACIÓN 4: Verificar que el estudiante no tenga otra tutoría a la misma hora
+    const tutoriaEstudianteExistente = await Tutoria.findOne({
+      estudiante,
+      fecha,
+      estado: { $in: ['pendiente', 'confirmada'] },
+      $or: [
+        {
+          $and: [
+            { horaInicio: { $lte: horaInicio } },
+            { horaFin: { $gt: horaInicio } }
+          ]
+        },
+        {
+          $and: [
+            { horaInicio: { $lt: horaFin } },
+            { horaFin: { $gte: horaFin } }
+          ]
+        }
+      ]
+    });
+
+    if (tutoriaEstudianteExistente) {
+      return res.status(400).json({ 
+        msg: "Ya tienes una tutoría agendada en ese horario." 
+      });
+    }
+
+    // ✅ REGISTRAR TUTORÍA
     const nuevaTutoria = new Tutoria({
       estudiante,
       docente,
@@ -65,18 +125,33 @@ const registrarTutoria = async (req, res) => {
 
     await nuevaTutoria.save();
 
-    const { motivoCancelacion, observacionesDocente, __v, ...tutoria } = nuevaTutoria.toObject();
+    // Poblar datos para respuesta
+    await nuevaTutoria.populate('docente', 'nombreDocente emailDocente avatarDocente');
+    await nuevaTutoria.populate('estudiante', 'nombreEstudiante emailEstudiante fotoPerfil');
 
-    res.status(201).json({ msg: "Tutoria registrada con éxito!", nuevaTutoria: tutoria });
+    console.log(`✅ Tutoría registrada: ${nuevaTutoria._id}`);
+
+    res.status(201).json({ 
+      success: true,
+      msg: "Solicitud de tutoría enviada correctamente. El docente la revisará pronto.",
+      tutoria: nuevaTutoria
+    });
 
   } catch (error) {
-    res.status(500).json({ mensaje: 'Error al agendar tutoría.', error });
+    console.error("❌ Error registrando tutoría:", error);
+    res.status(500).json({ 
+      success: false,
+      msg: 'Error al agendar tutoría.', 
+      error: error.message 
+    });
   }
 };
 
 // =====================================================
 // ✅ LISTAR TUTORIAS
 // =====================================================
+// backend/src/controllers/tutorias_controller.js
+
 const listarTutorias = async (req, res) => {
   try {
     let filtro = {};
@@ -89,37 +164,64 @@ const listarTutorias = async (req, res) => {
     }
 
     // Extraer parámetros de consulta
-    const { fecha, estado, incluirCanceladas } = req.query;
+    const { fecha, estado, incluirCanceladas, soloSemanaActual } = req.query;
 
-    // Filtrar por fecha específica o rango semanal
-    if (fecha) {
-      filtro.fecha = fecha;
-    } else {
+    console.log('📋 [listarTutorias] Parámetros:', { 
+      fecha, 
+      estado, 
+      incluirCanceladas, 
+      soloSemanaActual,
+      usuario: req.estudianteBDD?._id || req.docenteBDD?._id
+    });
+
+    // ✅ CORRECCIÓN: Solo filtrar por semana si se solicita explícitamente
+    if (soloSemanaActual === 'true') {
       const inicioSemana = moment().startOf('isoWeek').format("YYYY-MM-DD");
       const finSemana = moment().endOf('isoWeek').format("YYYY-MM-DD");
       filtro.fecha = { $gte: inicioSemana, $lte: finSemana };
+      console.log('📅 Filtrando por semana actual:', { inicioSemana, finSemana });
+    } else if (fecha) {
+      // Filtrar por fecha específica
+      filtro.fecha = fecha;
+      console.log('📅 Filtrando por fecha específica:', fecha);
     }
+    // ✅ Si no se especifica, traer TODAS las fechas
 
-    // ✅ CLAVE: Excluir canceladas por defecto
-    if (incluirCanceladas !== 'true') {
-      filtro.estado = { 
-        $nin: ['cancelada_por_estudiante', 'cancelada_por_docente'] 
-      };
-    }
-
-    // Si se especifica un estado concreto, usarlo (solo si no se piden canceladas)
-    if (estado && incluirCanceladas !== 'true') {
+    // Filtrar por estado específico
+    if (estado) {
       filtro.estado = estado;
+      console.log('🏷️ Filtrando por estado:', estado);
+    } else {
+      // ✅ Excluir canceladas por defecto (a menos que se pidan explícitamente)
+      if (incluirCanceladas !== 'true') {
+        filtro.estado = { 
+          $nin: ['cancelada_por_estudiante', 'cancelada_por_docente'] 
+        };
+        console.log('🚫 Excluyendo canceladas');
+      } else {
+        console.log('✅ Incluyendo todas (incluso canceladas)');
+      }
     }
 
-    console.log(`📋 Listando tutorías con filtro:`, JSON.stringify(filtro, null, 2));
+    console.log('🔍 Filtro final:', JSON.stringify(filtro, null, 2));
 
+    // Buscar tutorías con populate
     const tutorias = await Tutoria.find(filtro)
       .populate("estudiante", "nombreEstudiante emailEstudiante fotoPerfil")
-      .populate("docente", "nombreDocente emailDocente avatarDocente")
-      .sort({ fecha: 1, horaInicio: 1 }); // ✅ Ordenar por fecha y hora
+      .populate("docente", "nombreDocente emailDocente avatarDocente oficinaDocente")
+      .sort({ fecha: -1, horaInicio: 1 }); // ✅ Ordenar por fecha DESC, hora ASC
 
-    console.log(`✅ Tutorías encontradas (activas): ${tutorias.length}`);
+    console.log(`✅ Tutorías encontradas: ${tutorias.length}`);
+
+    // Log detallado para debugging
+    if (tutorias.length > 0) {
+      console.log('📊 Estados encontrados:', 
+        tutorias.reduce((acc, t) => {
+          acc[t.estado] = (acc[t.estado] || 0) + 1;
+          return acc;
+        }, {})
+      );
+    }
 
     res.status(200).json({
       success: true,

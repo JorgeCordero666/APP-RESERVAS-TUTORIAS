@@ -1,5 +1,6 @@
 // lib/pantallas/home_screen.dart - VERSIÓN FINAL CORREGIDA
 import 'package:app_tesis/pantallas/docente/solicitudes_tutorias_screen.dart';
+import 'package:app_tesis/pantallas/estudiante/mis_tutorias_screen.dart';
 import 'package:flutter/material.dart';
 import '../modelos/usuario.dart';
 import '../servicios/auth_service.dart';
@@ -272,7 +273,7 @@ Widget _buildDashboardEstudiante() {
           ),
           const SizedBox(height: 16),
           // Nuevo botón agregado
-          /*_buildQuickAccessCard(
+          _buildQuickAccessCard(
             title: 'Mis Tutorías',
             subtitle: 'Ver tutorías agendadas',
             icon: Icons.event_note,
@@ -285,7 +286,7 @@ Widget _buildDashboardEstudiante() {
                 ),
               );
             },
-          ),*/
+          ),
         ],
       ),
     ),

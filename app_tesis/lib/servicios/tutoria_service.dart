@@ -56,35 +56,65 @@ class TutoriaService {
   }
 
   /// ✅ LISTAR TUTORÍAS (DOCENTE O ESTUDIANTE)
-  static Future<List<Map<String, dynamic>>> listarTutorias() async {
-    try {
-      final token = await AuthService.getToken();
-      
-      if (token == null) {
-        print('❌ No hay token');
-        return [];
-      }
-
-      final url = '${ApiConfig.baseUrl}/tutorias';
-
-      final response = await http.get(
-        Uri.parse(url),
-        headers: ApiConfig.getHeaders(token: token),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final List<dynamic> tutorias = data['tutorias'] ?? [];
-        
-        return tutorias.map((t) => t as Map<String, dynamic>).toList();
-      }
-      
-      return [];
-    } catch (e) {
-      print('❌ Error en listarTutorias: $e');
+/// ✅ LISTAR TUTORÍAS DEL USUARIO AUTENTICADO (CORREGIDO)
+static Future<List<Map<String, dynamic>>> listarTutorias({
+  String? estado,
+  bool incluirCanceladas = false,
+  bool soloSemanaActual = false,
+}) async {
+  try {
+    final token = await AuthService.getToken();
+    
+    if (token == null) {
+      print('❌ No hay token');
       return [];
     }
+
+    // Construir URL con parámetros opcionales
+    String url = '${ApiConfig.baseUrl}/tutorias';
+    List<String> params = [];
+    
+    if (estado != null && estado.isNotEmpty) {
+      params.add('estado=$estado');
+    }
+    
+    if (incluirCanceladas) {
+      params.add('incluirCanceladas=true');
+    }
+    
+    if (soloSemanaActual) {
+      params.add('soloSemanaActual=true');
+    }
+    
+    if (params.isNotEmpty) {
+      url += '?${params.join('&')}';
+    }
+
+    print('📤 Solicitando tutorías: $url');
+
+    final response = await http.get(
+      Uri.parse(url),
+      headers: ApiConfig.getHeaders(token: token),
+    );
+
+    print('📬 Status: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final List<dynamic> tutorias = data['tutorias'] ?? [];
+      
+      print('✅ Tutorías recibidas: ${tutorias.length}');
+      
+      return tutorias.map((t) => t as Map<String, dynamic>).toList();
+    }
+    
+    print('⚠️ Error: ${response.statusCode}');
+    return [];
+  } catch (e) {
+    print('❌ Error en listarTutorias: $e');
+    return [];
   }
+}
 
   /// ✅ LISTAR TUTORÍAS PENDIENTES (SOLO DOCENTE)
   static Future<List<Map<String, dynamic>>> listarTutoriasPendientes() async {
