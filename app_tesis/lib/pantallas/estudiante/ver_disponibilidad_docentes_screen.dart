@@ -1,4 +1,4 @@
-// lib/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart - VERSIÓN COMPLETA CON AGENDAR
+// lib/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart - VERSIÓN CON RECARGA AUTOMÁTICA
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/docente_service.dart';
@@ -16,7 +16,12 @@ class VerDisponibilidadDocentesScreen extends StatefulWidget {
 }
 
 class _VerDisponibilidadDocentesScreenState
-    extends State<VerDisponibilidadDocentesScreen> {
+    extends State<VerDisponibilidadDocentesScreen> with AutomaticKeepAliveClientMixin {
+  
+  // ✅ NUEVO: Mantener el estado vivo
+  @override
+  bool get wantKeepAlive => true;
+  
   List<Map<String, dynamic>> _docentes = [];
   List<Map<String, dynamic>> _docentesFiltrados = [];
   Map<String, dynamic>? _docenteSeleccionado;
@@ -40,6 +45,18 @@ class _VerDisponibilidadDocentesScreenState
   void initState() {
     super.initState();
     _cargarDocentes();
+  }
+
+  // ✅ NUEVO: Detectar cuando la pantalla vuelve a ser visible
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Si hay un docente seleccionado, recargar su disponibilidad
+    if (_docenteSeleccionado != null && mounted) {
+      print('🔄 Pantalla visible de nuevo, recargando disponibilidad...');
+      _recargarDisponibilidadSilenciosamente();
+    }
   }
 
   Future<void> _cargarDocentes() async {
@@ -113,7 +130,11 @@ class _VerDisponibilidadDocentesScreenState
           _isLoadingDisponibilidad = false;
 
           if (_disponibilidad != null && _disponibilidad!.isNotEmpty) {
-            _materiaSeleccionada = _disponibilidad!.keys.first;
+            // Si la materia seleccionada ya no existe, seleccionar la primera disponible
+            if (_materiaSeleccionada == null || 
+                !_disponibilidad!.containsKey(_materiaSeleccionada)) {
+              _materiaSeleccionada = _disponibilidad!.keys.first;
+            }
           }
         });
       }
@@ -125,6 +146,89 @@ class _VerDisponibilidadDocentesScreenState
         _mostrarError('Error al cargar disponibilidad: $e');
       }
     }
+  }
+
+  // ✅ NUEVO: Recargar disponibilidad sin mostrar loading completo
+  Future<void> _recargarDisponibilidadSilenciosamente() async {
+    if (_docenteSeleccionado == null) return;
+
+    try {
+      print('🔄 Recargando disponibilidad de ${_docenteSeleccionado!['nombreDocente']}...');
+      
+      final disponibilidad = await HorarioService.obtenerDisponibilidadCompleta(
+        docenteId: _docenteSeleccionado!['_id'],
+      );
+
+      if (!mounted) return;
+
+      Map<String, List<Map<String, dynamic>>>? disponibilidadNormalizada;
+
+      if (disponibilidad != null && disponibilidad.isNotEmpty) {
+        disponibilidadNormalizada = {};
+        disponibilidad.forEach((materia, bloques) {
+          disponibilidadNormalizada![materia] = bloques;
+        });
+      }
+
+      // Verificar si hay cambios
+      final hayDiferencias = _hayDiferenciasEnDisponibilidad(
+        _disponibilidad, 
+        disponibilidadNormalizada
+      );
+
+      if (hayDiferencias) {
+        print('✅ Se detectaron cambios en la disponibilidad');
+        
+        setState(() {
+          _disponibilidad = disponibilidadNormalizada;
+
+          // Mantener la materia seleccionada si todavía existe
+          if (_materiaSeleccionada != null && 
+              _disponibilidad != null &&
+              !_disponibilidad!.containsKey(_materiaSeleccionada)) {
+            // La materia seleccionada ya no existe, seleccionar otra
+            _materiaSeleccionada = _disponibilidad!.isNotEmpty 
+                ? _disponibilidad!.keys.first 
+                : null;
+          }
+        });
+        
+        _mostrarInfo('Horarios actualizados');
+      } else {
+        print('ℹ️ No hay cambios en la disponibilidad');
+      }
+    } catch (e) {
+      print('❌ Error recargando disponibilidad: $e');
+      // No mostrar error al usuario para no interrumpir
+    }
+  }
+
+  // ✅ NUEVO: Comparar si hay diferencias en la disponibilidad
+  bool _hayDiferenciasEnDisponibilidad(
+    Map<String, List<Map<String, dynamic>>>? anterior,
+    Map<String, List<Map<String, dynamic>>>? nueva,
+  ) {
+    if (anterior == null && nueva == null) return false;
+    if (anterior == null || nueva == null) return true;
+    if (anterior.keys.length != nueva.keys.length) return true;
+
+    for (var materia in anterior.keys) {
+      if (!nueva.containsKey(materia)) return true;
+      
+      final bloquesAnteriores = anterior[materia]!;
+      final bloquesNuevos = nueva[materia]!;
+      
+      if (bloquesAnteriores.length != bloquesNuevos.length) return true;
+      
+      // Comparación simple (podría mejorarse)
+      for (int i = 0; i < bloquesAnteriores.length; i++) {
+        if (bloquesAnteriores[i].toString() != bloquesNuevos[i].toString()) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   List<Map<String, dynamic>> _obtenerBloquesPorDia(String dia) {
@@ -331,8 +435,21 @@ class _VerDisponibilidadDocentesScreenState
     );
   }
 
+  void _mostrarInfo(String mensaje) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+        backgroundColor: Colors.blue,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    super.build(context); // ✅ REQUERIDO por AutomaticKeepAliveClientMixin
+    
     final isLargeScreen = MediaQuery.of(context).size.width > 600;
 
     return Scaffold(
@@ -350,6 +467,16 @@ class _VerDisponibilidadDocentesScreenState
                 },
               )
             : null,
+        // ✅ NUEVO: Botón de recarga manual
+        actions: _docenteSeleccionado != null ? [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _isLoadingDisponibilidad 
+                ? null 
+                : () => _cargarDisponibilidad(_docenteSeleccionado!),
+            tooltip: 'Actualizar horarios',
+          ),
+        ] : null,
       ),
       body: isLargeScreen ? _buildDesktopLayout() : _buildMobileLayout(),
     );
