@@ -1,4 +1,4 @@
-// backend/src/routers/tutorias_routes.js - OPTIMIZADO PARA FLUTTER
+// backend/src/routers/tutorias_routes.js - OPTIMIZADO PARA FLUTTER CON TURNOS
 import { Router } from "express";
 import {
   registrarTutoria,
@@ -16,7 +16,10 @@ import {
   actualizarHorarios,
   aceptarTutoria,
   rechazarTutoria,
-  listarTutoriasPendientes, 
+  listarTutoriasPendientes,
+  // ✅ NUEVAS FUNCIONES PARA TURNOS
+  registrarTutoriaConTurnos,
+  obtenerTurnosDisponibles,
 } from "../controllers/tutorias_controller.js";
 
 import { verificarTokenJWT } from "../middlewares/JWT.js";
@@ -25,15 +28,57 @@ import verificarRol from "../middlewares/rol.js";
 const routerTutorias = Router();
 
 // =====================================================
-// GESTIÓN DE TUTORÍAS
+// ✅ NUEVAS RUTAS PARA SISTEMA DE TURNOS DE 20 MINUTOS
 // =====================================================
 
-// Registrar tutoría (solo estudiantes)
+/**
+ * Obtener turnos disponibles de un bloque específico
+ * Query params:
+ * - docenteId: ID del docente
+ * - fecha: Fecha en formato YYYY-MM-DD
+ * - horaInicio: Hora inicio del bloque (ej: "08:00")
+ * - horaFin: Hora fin del bloque (ej: "09:00")
+ * - materia: Nombre de la materia
+ */
+routerTutorias.get(
+  "/turnos-disponibles",
+  verificarTokenJWT,
+  verificarRol(["Estudiante"]),
+  obtenerTurnosDisponibles
+);
+
+/**
+ * Registrar tutoría con sistema de turnos de 20 minutos
+ * Body:
+ * {
+ *   docente: "docenteId",
+ *   fecha: "2025-11-15",
+ *   turnoInicio: "08:00",
+ *   turnoFin: "08:20",
+ *   materia: "Matemáticas",
+ *   tema: "Álgebra lineal"
+ * }
+ */
+routerTutorias.post(
+  "/tutoria/registrar-turno",
+  verificarTokenJWT,
+  verificarRol(["Estudiante"]),
+  registrarTutoriaConTurnos
+);
+
+// =====================================================
+// GESTIÓN DE TUTORÍAS (RUTAS EXISTENTES)
+// =====================================================
+
+/**
+ * Registrar tutoría - Método tradicional o compatible con turnos
+ * Mantener para compatibilidad con versiones anteriores
+ */
 routerTutorias.post(
   "/tutoria/registro",
   verificarTokenJWT,
   verificarRol(["Estudiante"]),
-  registrarTutoria
+  registrarTutoriaConTurnos  // Usar nueva función que soporta ambos modos
 );
 
 // Listar tutorías activas (sin canceladas por defecto)

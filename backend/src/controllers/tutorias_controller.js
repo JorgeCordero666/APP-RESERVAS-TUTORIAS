@@ -1,14 +1,281 @@
-// backend/src/controllers/tutorias_controller.js - VERSIÓN COMPLETA
+// backend/src/controllers/tutorias_controller.js - VERSIÓN INTEGRADA
 import Tutoria from '../models/tutorias.js';
 import disponibilidadDocente from '../models/disponibilidadDocente.js';
 import Docente from '../models/docente.js';
 import moment from 'moment';
 
 // =====================================================
-// ✅ REGISTRAR TUTORIA
+// ✅ NUEVA FUNCIÓN: Calcular turnos disponibles de 20 minutos
 // =====================================================
-// backend/src/controllers/tutorias_controller.js
+const calcularTurnosDisponibles = (horaInicio, horaFin) => {
+  const convertirAMinutos = (hora) => {
+    const [h, m] = hora.split(':').map(Number);
+    return h * 60 + m;
+  };
 
+  const minutosInicio = convertirAMinutos(horaInicio);
+  const minutosFin = convertirAMinutos(horaFin);
+  const duracionTurno = 20; // minutos
+
+  const turnos = [];
+  let actual = minutosInicio;
+
+  while (actual + duracionTurno <= minutosFin) {
+    const inicioTurno = `${String(Math.floor(actual / 60)).padStart(2, '0')}:${String(actual % 60).padStart(2, '0')}`;
+    const finTurno = `${String(Math.floor((actual + duracionTurno) / 60)).padStart(2, '0')}:${String((actual + duracionTurno) % 60).padStart(2, '0')}`;
+    
+    turnos.push({
+      horaInicio: inicioTurno,
+      horaFin: finTurno
+    });
+
+    actual += duracionTurno;
+  }
+
+  return turnos;
+};
+
+// =====================================================
+// ✅ NUEVA FUNCIÓN: Obtener turnos disponibles de un bloque
+// =====================================================
+const obtenerTurnosDisponibles = async (req, res) => {
+  try {
+    const { docenteId, fecha, horaInicio, horaFin } = req.query;
+
+    if (!docenteId || !fecha || !horaInicio || !horaFin) {
+      return res.status(400).json({
+        success: false,
+        msg: "Faltan parámetros: docenteId, fecha, horaInicio, horaFin"
+      });
+    }
+
+    console.log(`🔍 Calculando turnos para: ${fecha} ${horaInicio}-${horaFin}`);
+
+    // 1. Calcular todos los turnos posibles de 20 min
+    const todosLosTurnos = calcularTurnosDisponibles(horaInicio, horaFin);
+    console.log(`   Total turnos calculados: ${todosLosTurnos.length}`);
+
+    // 2. Buscar tutorías ya agendadas en ese bloque
+    const tutoriasAgendadas = await Tutoria.find({
+      docente: docenteId,
+      fecha: fecha,
+      estado: { $in: ['pendiente', 'confirmada'] }
+    }).select('horaInicio horaFin');
+
+    console.log(`   Tutorías agendadas: ${tutoriasAgendadas.length}`);
+
+    // 3. Filtrar turnos disponibles (sin solapamiento)
+    const turnosDisponibles = todosLosTurnos.filter(turno => {
+      const turnoOcupado = tutoriasAgendadas.some(tutoria => {
+        return !(
+          turno.horaFin <= tutoria.horaInicio || 
+          turno.horaInicio >= tutoria.horaFin
+        );
+      });
+      return !turnoOcupado;
+    });
+
+    console.log(`   Turnos disponibles: ${turnosDisponibles.length}`);
+
+    res.status(200).json({
+      success: true,
+      bloqueCompleto: {
+        horaInicio,
+        horaFin
+      },
+      turnos: {
+        total: todosLosTurnos.length,
+        disponibles: turnosDisponibles.length,
+        ocupados: todosLosTurnos.length - turnosDisponibles.length,
+        lista: turnosDisponibles
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error calculando turnos:", error);
+    res.status(500).json({
+      success: false,
+      msg: "Error al calcular turnos disponibles",
+      error: error.message
+    });
+  }
+};
+
+// =====================================================
+// ✅ NUEVA FUNCIÓN: Registrar Tutoría con Sistema de Turnos
+// =====================================================
+const registrarTutoriaConTurnos = async (req, res) => {
+  try {
+    const { docente, fecha, horaInicio, horaFin } = req.body;
+    const estudiante = req.estudianteBDD?._id;
+
+    if (!estudiante) {
+      return res.status(401).json({ msg: "Estudiante no autenticado" });
+    }
+
+    // ✅ VALIDACIÓN 1: Duración máxima de 20 minutos
+    const convertirAMinutos = (hora) => {
+      const [h, m] = hora.split(':').map(Number);
+      return h * 60 + m;
+    };
+
+    const minutosInicio = convertirAMinutos(horaInicio);
+    const minutosFin = convertirAMinutos(horaFin);
+    const duracion = minutosFin - minutosInicio;
+
+    if (duracion > 20) {
+      return res.status(400).json({
+        success: false,
+        msg: "La duración del turno no puede exceder 20 minutos"
+      });
+    }
+
+    if (duracion <= 0) {
+      return res.status(400).json({
+        success: false,
+        msg: "La hora de fin debe ser posterior a la hora de inicio"
+      });
+    }
+
+    console.log(`📝 Agendando turno: ${horaInicio}-${horaFin} (${duracion} min)`);
+
+    // ✅ VALIDACIÓN 2: Verificar solapamiento EXACTO
+    const turnoOcupado = await Tutoria.findOne({
+      docente,
+      fecha,
+      estado: { $in: ['pendiente', 'confirmada'] },
+      $or: [
+        {
+          $and: [
+            { horaInicio: { $lt: horaFin } },
+            { horaFin: { $gt: horaInicio } }
+          ]
+        }
+      ]
+    });
+
+    if (turnoOcupado) {
+      console.log(`❌ Turno ocupado: ${turnoOcupado.horaInicio}-${turnoOcupado.horaFin}`);
+      return res.status(400).json({ 
+        success: false,
+        msg: "Este turno ya está ocupado. Por favor, elige otro horario.",
+        turnoOcupado: {
+          horaInicio: turnoOcupado.horaInicio,
+          horaFin: turnoOcupado.horaFin
+        }
+      });
+    }
+
+    // ✅ VALIDACIÓN 3: Verificar que el turno esté dentro de un bloque disponible
+    const fechaUTC = new Date(fecha + 'T05:00:00Z');
+    const diaSemana = fechaUTC.toLocaleDateString('es-EC', { weekday: 'long' }).toLowerCase();
+
+    const bloquesDisponibles = await disponibilidadDocente.find({ 
+      docente, 
+      diaSemana 
+    });
+
+    if (bloquesDisponibles.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        msg: "El docente no tiene disponibilidad registrada para ese día." 
+      });
+    }
+
+    // Verificar que el turno esté dentro de algún bloque
+    let bloqueValido = null;
+    
+    for (const disponibilidad of bloquesDisponibles) {
+      for (const bloque of disponibilidad.bloques) {
+        const bloqueInicio = convertirAMinutos(bloque.horaInicio);
+        const bloqueFin = convertirAMinutos(bloque.horaFin);
+
+        if (minutosInicio >= bloqueInicio && minutosFin <= bloqueFin) {
+          bloqueValido = disponibilidad._id;
+          break;
+        }
+      }
+      if (bloqueValido) break;
+    }
+
+    if (!bloqueValido) {
+      return res.status(400).json({ 
+        success: false,
+        msg: "El turno seleccionado no está dentro del horario disponible del docente." 
+      });
+    }
+
+    // ✅ VALIDACIÓN 4: No permitir agendar en el pasado
+    const hoy = moment().startOf('day');
+    const fechaTutoria = moment(fecha, 'YYYY-MM-DD').startOf('day');
+
+    if (fechaTutoria.isBefore(hoy)) {
+      return res.status(400).json({ 
+        success: false,
+        msg: "No puedes agendar tutorías en fechas pasadas." 
+      });
+    }
+
+    // ✅ VALIDACIÓN 5: Verificar que el estudiante no tenga otro turno en ese horario
+    const turnoEstudianteExistente = await Tutoria.findOne({
+      estudiante,
+      fecha,
+      estado: { $in: ['pendiente', 'confirmada'] },
+      $or: [
+        {
+          $and: [
+            { horaInicio: { $lt: horaFin } },
+            { horaFin: { $gt: horaInicio } }
+          ]
+        }
+      ]
+    });
+
+    if (turnoEstudianteExistente) {
+      return res.status(400).json({ 
+        success: false,
+        msg: "Ya tienes una tutoría agendada en ese horario." 
+      });
+    }
+
+    // ✅ REGISTRAR TUTORÍA
+    const nuevaTutoria = new Tutoria({
+      estudiante,
+      docente,
+      fecha,
+      horaInicio,
+      horaFin,
+      bloqueDocenteId: bloqueValido,
+      estado: 'pendiente'
+    });
+
+    await nuevaTutoria.save();
+
+    // Poblar datos para respuesta
+    await nuevaTutoria.populate('docente', 'nombreDocente emailDocente avatarDocente');
+    await nuevaTutoria.populate('estudiante', 'nombreEstudiante emailEstudiante fotoPerfil');
+
+    console.log(`✅ Turno agendado: ${nuevaTutoria._id} (${horaInicio}-${horaFin})`);
+
+    res.status(201).json({ 
+      success: true,
+      msg: "Turno agendado correctamente. El docente revisará tu solicitud.",
+      tutoria: nuevaTutoria
+    });
+
+  } catch (error) {
+    console.error("❌ Error agendando turno:", error);
+    res.status(500).json({ 
+      success: false,
+      msg: 'Error al agendar turno.', 
+      error: error.message 
+    });
+  }
+};
+
+// =====================================================
+// ✅ REGISTRAR TUTORIA (FUNCIÓN ORIGINAL - SIN CAMBIOS)
+// =====================================================
 const registrarTutoria = async (req, res) => {
   try {
     const { docente, fecha, horaInicio, horaFin } = req.body;
@@ -150,8 +417,6 @@ const registrarTutoria = async (req, res) => {
 // =====================================================
 // ✅ LISTAR TUTORIAS
 // =====================================================
-// backend/src/controllers/tutorias_controller.js
-
 const listarTutorias = async (req, res) => {
   try {
     let filtro = {};
@@ -454,6 +719,7 @@ const bloquesOcupadosDocente = async (req, res) => {
     res.status(500).json({ msg: "Error al obtener bloques ocupados.", error });
   }
 };
+
 /**
  * ✅ VALIDAR CRUCES DE HORARIOS
  * Verifica que no haya solapamiento entre bloques del mismo día
@@ -490,6 +756,7 @@ const validarCrucesHorarios = (bloques) => {
 
   return { valido: true };
 };
+
 /**
  * ✅ VALIDACIÓN 2: Cruces locales POR DÍA
  * CAMBIO CRÍTICO: Agrupa por día ANTES de validar
@@ -671,6 +938,7 @@ const _agruparPorDia = (bloques) => {
   
   return resultado;
 };
+
 // =====================================================
 // ✅ REGISTRAR/ACTUALIZAR DISPONIBILIDAD POR MATERIA
 // =====================================================
@@ -831,7 +1099,6 @@ const registrarDisponibilidadPorMateria = async (req, res) => {
     });
   }
 };
-
 
 // =====================================================
 // ✅ VER DISPONIBILIDAD POR MATERIA
@@ -1030,7 +1297,6 @@ const actualizarHorarios = async (req, res) => {
     console.log(`📋 Días a guardar: ${Object.keys(bloquesPorDia).join(', ')}`);
 
     // ✅ PASO 2: VALIDAR CRUCES INTERNOS POR DÍA
-    // (Esto valida cruces dentro de la misma materia en el mismo día)
     for (const [dia, bloquesDelDia] of Object.entries(bloquesPorDia)) {
       console.log(`   Validando cruces internos en ${dia}...`);
       const validacion = validarCrucesHorarios(bloquesDelDia);
@@ -1043,15 +1309,13 @@ const actualizarHorarios = async (req, res) => {
     console.log('   ✅ Sin cruces internos');
 
     // ✅ PASO 3: VALIDAR CRUCES ENTRE MATERIAS (SOLO POR DÍA)
-    // IMPORTANTE: Cada día se valida independientemente
     for (const [dia, bloquesDelDia] of Object.entries(bloquesPorDia)) {
       console.log(`   Validando cruces con otras materias en ${dia}...`);
       
-      // ✅ CLAVE: Solo validamos los bloques de ESE día específico
       const validacion = await validarCrucesEntreMaterias(
         docente,
         materia,
-        dia, // ✅ Solo valida contra bloques del mismo día
+        dia,
         bloquesDelDia
       );
 
@@ -1063,7 +1327,7 @@ const actualizarHorarios = async (req, res) => {
     }
     console.log('   ✅ Sin cruces con otras materias');
 
-    // ✅ PASO 4: ELIMINAR FÍSICAMENTE TODOS LOS REGISTROS ANTERIORES DE ESTA MATERIA
+    // ✅ PASO 4: ELIMINAR FÍSICAMENTE TODOS LOS REGISTROS ANTERIORES
     const eliminados = await disponibilidadDocente.deleteMany({
       docente: docente,
       materia: materia
@@ -1286,12 +1550,16 @@ export const listarTutoriasPendientes = async (req, res) => {
   }
 };
 
-
 // =====================================================
 // ✅ EXPORTAR TODAS LAS FUNCIONES (BLOQUE ÚNICO)
 // =====================================================
 export {
-  // Tutorías
+  // ✅ NUEVAS FUNCIONES DE TURNOS (AGREGADAS)
+  calcularTurnosDisponibles,
+  obtenerTurnosDisponibles,
+  registrarTutoriaConTurnos,
+  
+  // Tutorías (funciones originales)
   registrarTutoria,
   listarTutorias,
   actualizarTutoria,
@@ -1308,7 +1576,8 @@ export {
   verDisponibilidadPorMateria,
   verDisponibilidadCompletaDocente,
   eliminarDisponibilidadMateria,
-  actualizarHorarios,   
+  actualizarHorarios,
+  
   // Validaciones de horarios
   validarCrucesHorarios,
   validarCrucesLocales,

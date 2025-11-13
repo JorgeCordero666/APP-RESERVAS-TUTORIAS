@@ -6,7 +6,113 @@ import '../servicios/auth_service.dart';
 
 class TutoriaService {
   
-  /// ✅ AGENDAR TUTORÍA (ESTUDIANTE)
+  /// ✅ NUEVO: Obtener turnos disponibles de 20 min para un bloque
+  static Future<Map<String, dynamic>?> obtenerTurnosDisponibles({
+    required String docenteId,
+    required String fecha,
+    required String horaInicio,
+    required String horaFin,
+  }) async {
+    try {
+      final token = await AuthService.getToken();
+      
+      if (token == null) {
+        return {'error': 'No hay sesión activa'};
+      }
+
+      // Construir URL con parámetros
+      final url = Uri.parse('${ApiConfig.baseUrl}/turnos-disponibles').replace(
+        queryParameters: {
+          'docenteId': docenteId,
+          'fecha': fecha,
+          'horaInicio': horaInicio,
+          'horaFin': horaFin,
+        }
+      );
+
+      print('📞 Obteniendo turnos disponibles: $url');
+
+      final response = await http.get(
+        url,
+        headers: ApiConfig.getHeaders(token: token),
+      );
+
+      print('📬 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('✅ Turnos disponibles: ${data['turnos']['disponibles']}/${data['turnos']['total']}');
+        return data;
+      } else {
+        final error = jsonDecode(response.body);
+        print('❌ Error: ${error['msg']}');
+        return {'error': error['msg'] ?? 'Error al obtener turnos'};
+      }
+    } catch (e) {
+      print('❌ Error en obtenerTurnosDisponibles: $e');
+      return {'error': 'Error de conexión: $e'};
+    }
+  }
+
+  /// ✅ NUEVO: Agendar tutoría con turno de 20 minutos
+  static Future<Map<String, dynamic>?> agendarTurno({
+    required String docenteId,
+    required String fecha,
+    required String horaInicio,
+    required String horaFin,
+  }) async {
+    try {
+      final token = await AuthService.getToken();
+      
+      if (token == null) {
+        return {'error': 'No hay sesión activa'};
+      }
+
+      // Validar duración localmente
+      final [hIni, mIni] = horaInicio.split(':').map(int.parse).toList();
+      final [hFin, mFin] = horaFin.split(':').map(int.parse).toList();
+      final duracion = (hFin * 60 + mFin) - (hIni * 60 + mIni);
+
+      if (duracion > 20) {
+        return {'error': 'La duración del turno no puede exceder 20 minutos'};
+      }
+
+      if (duracion <= 0) {
+        return {'error': 'Horario inválido'};
+      }
+
+      final url = '${ApiConfig.baseUrl}/tutoria/registrar-turno';
+      print('📝 Agendando turno: $horaInicio-$horaFin ($duracion min)');
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: ApiConfig.getHeaders(token: token),
+        body: jsonEncode({
+          'docente': docenteId,
+          'fecha': fecha,
+          'horaInicio': horaInicio,
+          'horaFin': horaFin,
+        }),
+      );
+
+      print('📬 Status: ${response.statusCode}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('✅ Turno agendado exitosamente');
+        return data;
+      } else {
+        final data = jsonDecode(response.body);
+        print('❌ Error: ${data['msg']}');
+        return {'error': data['msg'] ?? 'Error al agendar turno'};
+      }
+    } catch (e) {
+      print('❌ Error en agendarTurno: $e');
+      return {'error': 'Error de conexión: $e'};
+    }
+  }
+
+  /// ✅ AGENDAR TUTORÍA (ESTUDIANTE) - Función original mantenida
   static Future<Map<String, dynamic>?> agendarTutoria({
     required String docenteId,
     required String fecha,
@@ -55,66 +161,65 @@ class TutoriaService {
     }
   }
 
-  /// ✅ LISTAR TUTORÍAS (DOCENTE O ESTUDIANTE)
-/// ✅ LISTAR TUTORÍAS DEL USUARIO AUTENTICADO (CORREGIDO)
-static Future<List<Map<String, dynamic>>> listarTutorias({
-  String? estado,
-  bool incluirCanceladas = false,
-  bool soloSemanaActual = false,
-}) async {
-  try {
-    final token = await AuthService.getToken();
-    
-    if (token == null) {
-      print('❌ No hay token');
+  /// ✅ LISTAR TUTORÍAS DEL USUARIO AUTENTICADO
+  static Future<List<Map<String, dynamic>>> listarTutorias({
+    String? estado,
+    bool incluirCanceladas = false,
+    bool soloSemanaActual = false,
+  }) async {
+    try {
+      final token = await AuthService.getToken();
+      
+      if (token == null) {
+        print('❌ No hay token');
+        return [];
+      }
+
+      // Construir URL con parámetros opcionales
+      String url = '${ApiConfig.baseUrl}/tutorias';
+      List<String> params = [];
+      
+      if (estado != null && estado.isNotEmpty) {
+        params.add('estado=$estado');
+      }
+      
+      if (incluirCanceladas) {
+        params.add('incluirCanceladas=true');
+      }
+      
+      if (soloSemanaActual) {
+        params.add('soloSemanaActual=true');
+      }
+      
+      if (params.isNotEmpty) {
+        url += '?${params.join('&')}';
+      }
+
+      print('📤 Solicitando tutorías: $url');
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConfig.getHeaders(token: token),
+      );
+
+      print('📬 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> tutorias = data['tutorias'] ?? [];
+        
+        print('✅ Tutorías recibidas: ${tutorias.length}');
+        
+        return tutorias.map((t) => t as Map<String, dynamic>).toList();
+      }
+      
+      print('⚠️ Error: ${response.statusCode}');
+      return [];
+    } catch (e) {
+      print('❌ Error en listarTutorias: $e');
       return [];
     }
-
-    // Construir URL con parámetros opcionales
-    String url = '${ApiConfig.baseUrl}/tutorias';
-    List<String> params = [];
-    
-    if (estado != null && estado.isNotEmpty) {
-      params.add('estado=$estado');
-    }
-    
-    if (incluirCanceladas) {
-      params.add('incluirCanceladas=true');
-    }
-    
-    if (soloSemanaActual) {
-      params.add('soloSemanaActual=true');
-    }
-    
-    if (params.isNotEmpty) {
-      url += '?${params.join('&')}';
-    }
-
-    print('📤 Solicitando tutorías: $url');
-
-    final response = await http.get(
-      Uri.parse(url),
-      headers: ApiConfig.getHeaders(token: token),
-    );
-
-    print('📬 Status: ${response.statusCode}');
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final List<dynamic> tutorias = data['tutorias'] ?? [];
-      
-      print('✅ Tutorías recibidas: ${tutorias.length}');
-      
-      return tutorias.map((t) => t as Map<String, dynamic>).toList();
-    }
-    
-    print('⚠️ Error: ${response.statusCode}');
-    return [];
-  } catch (e) {
-    print('❌ Error en listarTutorias: $e');
-    return [];
   }
-}
 
   /// ✅ LISTAR TUTORÍAS PENDIENTES (SOLO DOCENTE)
   static Future<List<Map<String, dynamic>>> listarTutoriasPendientes() async {

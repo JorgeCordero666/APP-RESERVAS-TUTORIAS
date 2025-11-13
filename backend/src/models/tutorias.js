@@ -1,4 +1,4 @@
-// backend/src/models/tutorias.js - VERSIÓN CON ACEPTAR/RECHAZAR
+// backend/src/models/tutorias.js - VERSIÓN CON TURNOS DE 20 MIN
 import mongoose, { Schema, model } from "mongoose";
 
 const tutoriaSchema = new Schema({
@@ -15,16 +15,23 @@ const tutoriaSchema = new Schema({
 
   fecha: { type: String, required: true },
 
-  // Bloque de tiempo elegido
+  // ✅ NUEVO: Horarios específicos del turno (20 min máximo)
   horaInicio: { type: String, required: true },
   horaFin: { type: String, required: true },
+  
+  // ✅ NUEVO: Referencia al bloque de disponibilidad del docente
+  bloqueDocenteId: {
+    type: Schema.Types.ObjectId,
+    ref: "disponibilidadDocente",
+    required: false
+  },
 
   estado: {
     type: String,
     enum: [
-      "pendiente",               // ✅ Recién creada por estudiante
-      "confirmada",              // ✅ Aceptada por docente
-      "rechazada",               // ✅ NUEVO: Rechazada por docente
+      "pendiente",
+      "confirmada",
+      "rechazada",
       "cancelada_por_estudiante",
       "cancelada_por_docente", 
       "finalizada",
@@ -33,7 +40,6 @@ const tutoriaSchema = new Schema({
     default: "pendiente"
   },
 
-  // ✅ NUEVO: Motivo de rechazo
   motivoRechazo: { 
     type: String, 
     default: null 
@@ -46,6 +52,10 @@ const tutoriaSchema = new Schema({
   creadaEn: { type: Date, default: Date.now },
   actualizadaEn: { type: Date, default: Date.now }
 });
+
+// Índice compuesto para búsquedas rápidas de solapamiento
+tutoriaSchema.index({ docente: 1, fecha: 1, estado: 1 });
+tutoriaSchema.index({ estudiante: 1, fecha: 1 });
 
 // Middleware para actualizar fecha de modificación
 tutoriaSchema.pre("save", function (next) {

@@ -1,9 +1,10 @@
-// lib/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart - VERSIÓN CON RECARGA AUTOMÁTICA
+// lib/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart - VERSIÓN CON TURNOS DE 20 MIN
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/docente_service.dart';
 import '../../servicios/horario_service.dart';
 import '../../servicios/tutoria_service.dart';
+import 'seleccionar_turno_dialog.dart'; // ✅ NUEVO IMPORT
 
 class VerDisponibilidadDocentesScreen extends StatefulWidget {
   final Usuario usuario;
@@ -248,7 +249,7 @@ class _VerDisponibilidadDocentesScreenState
     return resultado;
   }
 
-  // ✅ FUNCIÓN PARA AGENDAR TUTORÍA
+  // ✅ FUNCIÓN MODIFICADA: Ahora abre el diálogo de selección de turnos
   Future<void> _agendarTutoria(Map<String, dynamic> bloque, String dia) async {
     // Paso 1: Seleccionar fecha
     final DateTime? fechaSeleccionada = await showDatePicker(
@@ -275,89 +276,22 @@ class _VerDisponibilidadDocentesScreenState
 
     if (fechaSeleccionada == null) return;
 
-    // Paso 2: Confirmar
-    final confirmar = await showDialog<bool>(
+    // ✅ NUEVO: Mostrar diálogo de selección de turnos
+    final bool? resultado = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmar Tutoría'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Docente: ${_docenteSeleccionado!['nombreDocente']}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text('Materia: $_materiaSeleccionada'),
-            const SizedBox(height: 8),
-            Text('Fecha: ${_formatearFecha(fechaSeleccionada)}'),
-            const SizedBox(height: 8),
-            Text('Hora: ${bloque['horaInicio']} - ${bloque['horaFin']}'),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'El docente deberá aceptar tu solicitud',
-                      style: TextStyle(fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1565C0),
-            ),
-            child: const Text('Confirmar'),
-          ),
-        ],
+      builder: (context) => SeleccionarTurnoDialog(
+        docenteId: _docenteSeleccionado!['_id'],
+        nombreDocente: _docenteSeleccionado!['nombreDocente'],
+        fecha: fechaSeleccionada,
+        bloqueInicio: bloque['horaInicio'],
+        bloqueFin: bloque['horaFin'],
       ),
     );
 
-    if (confirmar != true) return;
-
-    // Paso 3: Agendar
-    _mostrarCargando();
-
-    try {
-      final resultado = await TutoriaService.agendarTutoria(
-        docenteId: _docenteSeleccionado!['_id'],
-        fecha: fechaSeleccionada.toIso8601String().split('T')[0],
-        horaInicio: bloque['horaInicio'],
-        horaFin: bloque['horaFin'],
-      );
-
-      if (!mounted) return;
-      Navigator.pop(context); // Cerrar diálogo de carga
-
-      if (resultado != null && resultado.containsKey('error')) {
-        _mostrarError(resultado['error']);
-      } else {
-        _mostrarExito('¡Solicitud enviada! El docente revisará tu petición');
-      }
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context);
-      _mostrarError('Error al agendar: $e');
+    // Si el resultado es true, el turno se agendó exitosamente
+    if (resultado == true && mounted) {
+      // Opcional: Recargar disponibilidad
+      _recargarDisponibilidadSilenciosamente();
     }
   }
 
