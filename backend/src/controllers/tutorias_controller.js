@@ -1,4 +1,3 @@
-// backend/src/controllers/tutorias_controller.js - VERSIÓN INTEGRADA
 import Tutoria from '../models/tutorias.js';
 import disponibilidadDocente from '../models/disponibilidadDocente.js';
 import Docente from '../models/docente.js';
@@ -812,8 +811,8 @@ const validarCrucesLocales = ({ bloques }) => {
 };
 
 /**
- * ✅ VALIDAR CRUCES ENTRE MATERIAS (CORREGIDO - SOLO MISMO DÍA)
- * Verifica que no haya cruces entre diferentes materias DEL MISMO DÍA
+ * ✅ VALIDAR CRUCES ENTRE MATERIAS (SOLO MATERIAS ACTIVAS DEL DOCENTE)
+ * CORRECCIÓN: Ignora horarios de materias que el docente ya no imparte
  */
 const validarCrucesEntreMaterias = async (docenteId, materia, diaSemana, bloquesNuevos) => {
   try {
@@ -823,7 +822,30 @@ const validarCrucesEntreMaterias = async (docenteId, materia, diaSemana, bloques
     console.log('   Día:', diaSemana);
     console.log('   Bloques nuevos:', bloquesNuevos.length);
 
-    // Normalizar día
+    // ✅ PASO 1: Obtener materias ACTUALMENTE ASIGNADAS al docente
+    const docente = await Docente.findById(docenteId);
+
+    if (!docente) {
+      return { 
+        valido: false, 
+        mensaje: 'Docente no encontrado' 
+      };
+    }
+
+    let materiasActivas = docente.asignaturas || [];
+    
+    // Parsear si viene como string
+    if (typeof materiasActivas === 'string') {
+      try {
+        materiasActivas = JSON.parse(materiasActivas);
+      } catch {
+        materiasActivas = [];
+      }
+    }
+
+    console.log(`   📚 Materias activas del docente: ${materiasActivas.join(', ')}`);
+
+    // ✅ PASO 2: Normalizar día
     let diaNormalizado = diaSemana
       .toLowerCase()
       .trim()
@@ -842,24 +864,27 @@ const validarCrucesEntreMaterias = async (docenteId, materia, diaSemana, bloques
     diaNormalizado = mapaValidos[diaNormalizado] || diaNormalizado;
     console.log(`   Día normalizado: "${diaNormalizado}"`);
 
-    // ✅ BUSCAR SOLO BLOQUES DEL MISMO DÍA Y OTRAS MATERIAS
+    // ✅ PASO 3: Buscar horarios del mismo día, PERO SOLO DE MATERIAS ACTIVAS
     const disponibilidadesExistentes = await disponibilidadDocente.find({
       docente: docenteId,
       diaSemana: diaNormalizado,
-      materia: { $ne: materia }
+      materia: { 
+        $ne: materia,              // ✅ Diferente a la materia actual
+        $in: materiasActivas       // ✅ CRÍTICO: Solo materias activas
+      }
     });
 
-    console.log(`   Disponibilidades en "${diaNormalizado}":`, disponibilidadesExistentes.length);
+    console.log(`   Disponibilidades ACTIVAS en "${diaNormalizado}":`, disponibilidadesExistentes.length);
 
     if (disponibilidadesExistentes.length === 0) {
-      console.log('   ✅ No hay otras materias en este día');
+      console.log('   ✅ No hay otras materias activas en este día');
       return { valido: true };
     }
 
-    // Recopilar bloques existentes
+    // ✅ PASO 4: Recopilar bloques de materias activas
     const bloquesExistentes = [];
     disponibilidadesExistentes.forEach(disp => {
-      console.log(`   📚 Materia existente: ${disp.materia} (${disp.bloques.length} bloques)`);
+      console.log(`   📚 Materia activa: ${disp.materia} (${disp.bloques.length} bloques)`);
       disp.bloques.forEach(b => {
         bloquesExistentes.push({
           materia: disp.materia,
@@ -869,7 +894,7 @@ const validarCrucesEntreMaterias = async (docenteId, materia, diaSemana, bloques
       });
     });
 
-    // Verificar solapamientos
+    // ✅ PASO 5: Verificar solapamientos
     for (const bloqueNuevo of bloquesNuevos) {
       const nuevoInicio = _convertirAMinutos(bloqueNuevo.horaInicio);
       const nuevoFin = _convertirAMinutos(bloqueNuevo.horaFin);
@@ -892,7 +917,7 @@ const validarCrucesEntreMaterias = async (docenteId, materia, diaSemana, bloques
       }
     }
 
-    console.log('   ✅ No se detectaron cruces');
+    console.log('   ✅ No se detectaron cruces con materias activas');
     return { valido: true };
     
   } catch (error) {
@@ -1147,8 +1172,11 @@ const verDisponibilidadPorMateria = async (req, res) => {
 };
 
 // =====================================================
-// ✅ VER DISPONIBILIDAD COMPLETA (TODAS LAS MATERIAS)
+// ✅ VER DISPONIBILIDAD COMPLETA (SOLO MATERIAS ACTIVAS)
 // =====================================================
+
+// CORRECCIÓN: Filtra materias que el docente ya no imparte
+
 const verDisponibilidadCompletaDocente = async (req, res) => {
   try {
     const { docenteId } = req.params;
@@ -1160,8 +1188,31 @@ const verDisponibilidadCompletaDocente = async (req, res) => {
 
     console.log(`🔍 Buscando disponibilidad completa del docente: ${docenteId}`);
 
+    // ✅ PASO 1: Obtener materias ACTUALMENTE ASIGNADAS
+    const Docente = (await import('../models/docente.js')).default;
+    const docente = await Docente.findById(docenteId);
+
+    if (!docente) {
+      return res.status(404).json({ msg: "Docente no encontrado" });
+    }
+
+    let materiasActivas = docente.asignaturas || [];
+    
+    // Parsear si viene como string
+    if (typeof materiasActivas === 'string') {
+      try {
+        materiasActivas = JSON.parse(materiasActivas);
+      } catch {
+        materiasActivas = [];
+      }
+    }
+
+    console.log(`📚 Materias activas del docente: ${materiasActivas.join(', ')}`);
+
+    // ✅ PASO 2: Buscar disponibilidad SOLO de materias activas
     const disponibilidad = await disponibilidadDocente.find({
-      docente: docenteId
+      docente: docenteId,
+      materia: { $in: materiasActivas }  // ✅ FILTRO CRÍTICO
     }).sort({ materia: 1, diaSemana: 1 });
 
     if (!disponibilidad || disponibilidad.length === 0) {
@@ -1174,10 +1225,20 @@ const verDisponibilidadCompletaDocente = async (req, res) => {
       });
     }
 
-    // Agrupar por materia
+    // ✅ PASO 3: Agrupar por materia
     const porMateria = {};
+    let horariosIgnorados = 0;
+
     disponibilidad.forEach(disp => {
       const mat = disp.materia;
+      
+      // Doble verificación (por si acaso)
+      if (!materiasActivas.includes(mat)) {
+        console.log(`⚠️ Ignorando horario obsoleto de: ${mat}`);
+        horariosIgnorados++;
+        return;
+      }
+
       if (!porMateria[mat]) {
         porMateria[mat] = [];
       }
@@ -1188,11 +1249,16 @@ const verDisponibilidadCompletaDocente = async (req, res) => {
       });
     });
 
-    console.log(`✅ Disponibilidad completa: ${Object.keys(porMateria).length} materias`);
+    if (horariosIgnorados > 0) {
+      console.log(`🔍 Se ignoraron ${horariosIgnorados} horarios de materias no activas`);
+    }
+
+    console.log(`✅ Disponibilidad completa: ${Object.keys(porMateria).length} materias activas`);
 
     res.status(200).json({
       success: true,
       docenteId,
+      materiasActivas,  // ✅ Incluir lista de materias activas
       materias: porMateria
     });
 
