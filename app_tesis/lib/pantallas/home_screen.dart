@@ -11,6 +11,7 @@ import 'admin/gestion_materias_screen.dart' as AdminMaterias;
 import 'perfil/perfil_screen.dart';
 import 'docente/gestion_materias_screen.dart' as DocenteMaterias;
 import 'docente/gestion_horarios_screen.dart';
+import 'docente/reportes_screen.dart';
 import 'estudiante/ver_disponibilidad_docentes_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -185,113 +186,131 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-Widget _buildDashboardDocente() {
-  return Scaffold(
-    appBar: AppBar(
-      title: const Text('Panel Docente'),
-      backgroundColor: const Color(0xFF1565C0),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.logout),
-          onPressed: _logout,
-          tooltip: 'Cerrar sesión',
-        ),
-      ],
-    ),
-    body: RefreshIndicator(
-      onRefresh: _cargarUsuarioActualizado,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildWelcomeCard(),
-          const SizedBox(height: 24),
-          _buildQuickAccessCard(
-            title: 'Mis Materias',
-            subtitle: 'Gestionar materias asignadas',
-            icon: Icons.book,
-            color: Colors.orange,
-            onTap: () => setState(() => _selectedIndex = 1),
-          ),
-          const SizedBox(height: 16),
-          _buildQuickAccessCard(
-            title: 'Horarios de Atención',
-            subtitle: 'Configurar disponibilidad',
-            icon: Icons.schedule,
-            color: Colors.purple,
-            onTap: () => setState(() => _selectedIndex = 2),
-          ),
-          const SizedBox(height: 16),
-          // Nueva tarjeta agregada
-          _buildQuickAccessCard(
-            title: 'Solicitudes Pendientes',
-            subtitle: 'Gestionar tutorías solicitadas',
-            icon: Icons.notifications_active,
-            color: Colors.orange,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SolicitudesTutoriasScreen(usuario: _usuario),
-                ),
-              );
-            },
+  Widget _buildDashboardDocente() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Panel Docente'),
+        backgroundColor: const Color(0xFF1565C0),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+            tooltip: 'Cerrar sesión',
           ),
         ],
       ),
-    ),
-  );
-}
-
-
-Widget _buildDashboardEstudiante() {
-  return Scaffold(
-    appBar: AppBar(
-      title: const Text('Panel Estudiante'),
-      backgroundColor: const Color(0xFF1565C0),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.logout),
-          onPressed: _logout,
-          tooltip: 'Cerrar sesión',
+      body: RefreshIndicator(
+        onRefresh: _cargarUsuarioActualizado,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _buildWelcomeCard(),
+            const SizedBox(height: 24),
+            
+            _buildQuickAccessCard(
+              title: 'Mis Materias',
+              subtitle: 'Gestionar materias asignadas',
+              icon: Icons.book,
+              color: Colors.orange,
+              onTap: () => setState(() => _selectedIndex = 1),
+            ),
+            const SizedBox(height: 16),
+            
+            _buildQuickAccessCard(
+              title: 'Horarios de Atención',
+              subtitle: 'Configurar disponibilidad',
+              icon: Icons.schedule,
+              color: Colors.purple,
+              onTap: () => setState(() => _selectedIndex = 2),
+            ),
+            const SizedBox(height: 16),
+            
+            _buildQuickAccessCard(
+              title: 'Solicitudes Pendientes',
+              subtitle: 'Gestionar tutorías solicitadas',
+              icon: Icons.notifications_active,
+              color: Colors.orange,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SolicitudesTutoriasScreen(usuario: _usuario),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            
+            // ✅ NUEVO: Botón de Reportes
+            _buildQuickAccessCard(
+              title: 'Reportes de Tutorías',
+              subtitle: 'Ver estadísticas por materia',
+              icon: Icons.analytics,
+              color: Colors.blue,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ReportesScreen(usuario: _usuario),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
-      ],
-    ),
-    body: RefreshIndicator(
-      onRefresh: _cargarUsuarioActualizado,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildWelcomeCard(),
-          const SizedBox(height: 24),
-          // Reemplazo del botón "Ver Disponibilidad"
-          _buildQuickAccessCard(
-            title: 'Agendar Tutoría',
-            subtitle: 'Solicitar nueva tutoría con un docente',
-            icon: Icons.add_circle,
-            color: Colors.green,
-            onTap: () => setState(() => _selectedIndex = 1), // Ya apunta a VerDisponibilidadDocentesScreen
-          ),
-          const SizedBox(height: 16),
-          // Nuevo botón agregado
-          _buildQuickAccessCard(
-            title: 'Mis Tutorías',
-            subtitle: 'Ver tutorías agendadas',
-            icon: Icons.event_note,
-            color: Colors.blue,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => MisTutoriasScreen(usuario: _usuario),
-                ),
-              );
-            },
+      ),
+    );
+  }
+
+  Widget _buildDashboardEstudiante() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Panel Estudiante'),
+        backgroundColor: const Color(0xFF1565C0),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+            tooltip: 'Cerrar sesión',
           ),
         ],
       ),
-    ),
-  );
-}
+      body: RefreshIndicator(
+        onRefresh: _cargarUsuarioActualizado,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _buildWelcomeCard(),
+            const SizedBox(height: 24),
+            // Reemplazo del botón "Ver Disponibilidad"
+            _buildQuickAccessCard(
+              title: 'Agendar Tutoría',
+              subtitle: 'Solicitar nueva tutoría con un docente',
+              icon: Icons.add_circle,
+              color: Colors.green,
+              onTap: () => setState(() => _selectedIndex = 1), // Ya apunta a VerDisponibilidadDocentesScreen
+            ),
+            const SizedBox(height: 16),
+            // Nuevo botón agregado
+            _buildQuickAccessCard(
+              title: 'Mis Tutorías',
+              subtitle: 'Ver tutorías agendadas',
+              icon: Icons.event_note,
+              color: Colors.blue,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MisTutoriasScreen(usuario: _usuario),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildWelcomeCard() {
     return Card(
