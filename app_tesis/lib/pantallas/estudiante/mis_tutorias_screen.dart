@@ -1,4 +1,4 @@
-// lib/pantallas/estudiante/mis_tutorias_screen.dart - VERSIÓN MEJORADA
+// lib/pantallas/estudiante/mis_tutorias_screen.dart - CON FILTROS COMPLETOS
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/tutoria_service.dart';
@@ -16,11 +16,23 @@ class MisTutoriasScreen extends StatefulWidget {
 class _MisTutoriasScreenState extends State<MisTutoriasScreen> 
     with SingleTickerProviderStateMixin {
   
-  List<Map<String, dynamic>> _tutorias = [];
+  List<Map<String, dynamic>> _todasTutorias = [];
+  List<Map<String, dynamic>> _tutoriasFiltradas = [];
   bool _isLoading = true;
   late TabController _tabController;
   
-  // Filtros
+  // ✅ NUEVAS VARIABLES PARA FILTROS
+  String? _filtroEstado;
+  final List<String> _estadosDisponibles = [
+    'Todos',
+    'pendiente',
+    'confirmada',
+    'finalizada',
+    'cancelada_por_estudiante',
+    'cancelada_por_docente',
+    'rechazada',
+  ];
+  
   final List<String> _tabs = ['Activas', 'Historial'];
   int _tabIndex = 0;
 
@@ -32,6 +44,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
       if (_tabController.indexIsChanging) {
         setState(() {
           _tabIndex = _tabController.index;
+          _filtroEstado = null; // Resetear filtro al cambiar tab
         });
         _cargarTutorias();
       }
@@ -59,7 +72,6 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
           incluirCanceladas: false,
         );
         
-        // Filtrar solo activas
         tutorias = tutorias.where((t) {
           final estado = t['estado'] as String;
           return estado == 'pendiente' || estado == 'confirmada';
@@ -80,7 +92,8 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
       
       if (mounted) {
         setState(() {
-          _tutorias = tutorias;
+          _todasTutorias = tutorias;
+          _aplicarFiltros();
           _isLoading = false;
         });
       }
@@ -91,6 +104,19 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
         _mostrarError('Error al cargar tutorías: $e');
       }
     }
+  }
+
+  // ✅ NUEVA FUNCIÓN: Aplicar filtros
+  void _aplicarFiltros() {
+    if (_filtroEstado == null || _filtroEstado == 'Todos') {
+      _tutoriasFiltradas = List.from(_todasTutorias);
+    } else {
+      _tutoriasFiltradas = _todasTutorias.where((t) {
+        return t['estado'] == _filtroEstado;
+      }).toList();
+    }
+    
+    print('📊 Total: ${_todasTutorias.length}, Filtradas: ${_tutoriasFiltradas.length}');
   }
 
   Future<void> _cancelarTutoria(String tutoriaId) async {
@@ -144,7 +170,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
     );
 
     if (!mounted) return;
-    Navigator.pop(context); // Cerrar loading
+    Navigator.pop(context);
 
     if (resultado != null && resultado.containsKey('error')) {
       _mostrarError(resultado['error']);
@@ -271,6 +297,47 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
           tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
         ),
         actions: [
+          // ✅ NUEVO: Botón de filtros (solo en Historial)
+          if (_tabIndex == 1)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.filter_list),
+              tooltip: 'Filtrar por estado',
+              onSelected: (value) {
+                setState(() {
+                  _filtroEstado = value == 'Todos' ? null : value;
+                  _aplicarFiltros();
+                });
+              },
+              itemBuilder: (context) {
+                return _estadosDisponibles.map((estado) {
+                  final isSelected = (_filtroEstado == estado) || 
+                                    (estado == 'Todos' && _filtroEstado == null);
+                  
+                  return PopupMenuItem<String>(
+                    value: estado,
+                    child: Row(
+                      children: [
+                        if (isSelected)
+                          const Icon(Icons.check, size: 18, color: Color(0xFF1565C0))
+                        else
+                          const SizedBox(width: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            estado == 'Todos' 
+                              ? 'Mostrar todos' 
+                              : _getEstadoTexto(estado),
+                            style: TextStyle(
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList();
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _cargarTutorias,
@@ -278,18 +345,62 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _cargarTutorias,
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _tutorias.isEmpty
-                ? _buildEmptyState()
-                : _buildListaTutorias(),
+      body: Column(
+        children: [
+          // ✅ NUEVO: Chip de filtro activo
+          if (_filtroEstado != null && _tabIndex == 1)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.blue[50],
+              child: Wrap(
+                spacing: 8,
+                children: [
+                  Chip(
+                    avatar: const Icon(Icons.filter_list, size: 18),
+                    label: Text('Filtro: ${_getEstadoTexto(_filtroEstado!)}'),
+                    onDeleted: () {
+                      setState(() {
+                        _filtroEstado = null;
+                        _aplicarFiltros();
+                      });
+                    },
+                    deleteIcon: const Icon(Icons.close, size: 18),
+                  ),
+                  Text(
+                    '${_tutoriasFiltradas.length} de ${_todasTutorias.length} tutorías',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          
+          // Lista de tutorías
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _cargarTutorias,
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _tutoriasFiltradas.isEmpty
+                      ? _buildEmptyState()
+                      : _buildListaTutorias(),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildEmptyState() {
+    final mensaje = _filtroEstado != null
+        ? 'No hay tutorías con el filtro seleccionado'
+        : (_tabIndex == 0 
+            ? 'No tienes tutorías activas'
+            : 'No tienes historial de tutorías');
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -301,20 +412,31 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
           ),
           const SizedBox(height: 16),
           Text(
-            _tabIndex == 0 
-                ? 'No tienes tutorías activas'
-                : 'No tienes historial de tutorías',
+            mensaje,
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey[600],
             ),
+            textAlign: TextAlign.center,
           ),
-          if (_tabIndex == 0) ...[
+          if (_filtroEstado != null) ...[
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _filtroEstado = null;
+                  _aplicarFiltros();
+                });
+              },
+              icon: const Icon(Icons.clear),
+              label: const Text('Limpiar filtro'),
+            ),
+          ],
+          if (_tabIndex == 0 && _filtroEstado == null) ...[
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () {
                 Navigator.pop(context);
-                // Navegar a agendar tutoría
               },
               icon: const Icon(Icons.add),
               label: const Text('Agendar Tutoría'),
@@ -331,9 +453,9 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
   Widget _buildListaTutorias() {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _tutorias.length,
+      itemCount: _tutoriasFiltradas.length,
       itemBuilder: (context, index) {
-        final tutoria = _tutorias[index];
+        final tutoria = _tutoriasFiltradas[index];
         return _buildTutoriaCard(tutoria);
       },
     );
@@ -354,7 +476,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header con docente y estado
+            // Header
             Row(
               children: [
                 CircleAvatar(
@@ -414,15 +536,12 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
 
             const Divider(height: 24),
 
-            // Información de fecha y hora
+            // Información
             Row(
               children: [
                 const Icon(Icons.calendar_today, size: 18),
                 const SizedBox(width: 8),
-                Text(
-                  _formatearFecha(tutoria['fecha']),
-                  style: const TextStyle(fontSize: 14),
-                ),
+                Text(_formatearFecha(tutoria['fecha'])),
               ],
             ),
             const SizedBox(height: 8),
@@ -430,10 +549,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
               children: [
                 const Icon(Icons.access_time, size: 18),
                 const SizedBox(width: 8),
-                Text(
-                  '${tutoria['horaInicio']} - ${tutoria['horaFin']}',
-                  style: const TextStyle(fontSize: 14),
-                ),
+                Text('${tutoria['horaInicio']} - ${tutoria['horaFin']}'),
                 if (reagendada) ...[
                   const SizedBox(width: 8),
                   Container(
@@ -466,7 +582,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
               ],
             ),
 
-            // Motivo de rechazo/cancelación/reagendamiento
+            // Motivos
             if (estado == 'rechazada' && tutoria['motivoRechazo'] != null) ...[
               const SizedBox(height: 12),
               _buildInfoBox(

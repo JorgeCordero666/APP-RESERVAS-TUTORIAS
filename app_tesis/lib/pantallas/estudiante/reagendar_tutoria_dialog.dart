@@ -1,6 +1,7 @@
-// lib/pantallas/estudiante/reagendar_tutoria_dialog.dart
+// lib/pantallas/estudiante/reagendar_tutoria_dialog.dart - VERSIÓN CORREGIDA
 import 'package:flutter/material.dart';
 import '../../servicios/tutoria_service.dart';
+import '../../servicios/horario_service.dart';
 
 class ReagendarTutoriaDialog extends StatefulWidget {
   final Map<String, dynamic> tutoria;
@@ -22,16 +23,15 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
   String? _horaFin;
   final _motivoController = TextEditingController();
   bool _isLoading = false;
-
-  // ✅ GENERAR HORAS DINÁMICAMENTE (intervalos de 20 minutos)
-  late final List<String> _horasDisponibles;
+  
+  // ✅ NUEVO: Variables para disponibilidad
+  bool _cargandoDisponibilidad = false;
+  List<Map<String, dynamic>> _bloquesDisponibles = [];
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    
-    // ✅ Generar lista de horas al inicializar
-    _horasDisponibles = _generarHorasDisponibles();
     
     // Inicializar con la fecha actual de la tutoría
     try {
@@ -43,66 +43,113 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     _horaInicio = widget.tutoria['horaInicio'];
     _horaFin = widget.tutoria['horaFin'];
     
-    // ✅ VALIDAR que las horas existan en la lista generada
-    if (_horaInicio != null && !_horasDisponibles.contains(_horaInicio)) {
-      print('⚠️ Hora inicio no válida: $_horaInicio, usando primera disponible');
-      _horaInicio = _horasDisponibles.first;
-    }
-    
-    if (_horaFin != null && !_horasDisponibles.contains(_horaFin)) {
-      print('⚠️ Hora fin no válida: $_horaFin, calculando desde inicio');
-      _horaFin = _calcularHoraFin(_horaInicio ?? _horasDisponibles.first);
-    }
-  }
-
-  // ✅ FUNCIÓN PARA GENERAR HORAS (7:00 - 21:00, cada 20 min)
-  List<String> _generarHorasDisponibles() {
-    final List<String> horas = [];
-    
-    for (int hora = 7; hora <= 21; hora++) {
-      for (int minuto = 0; minuto < 60; minuto += 20) {
-        final horaStr = hora.toString().padLeft(2, '0');
-        final minutoStr = minuto.toString().padLeft(2, '0');
-        horas.add('$horaStr:$minutoStr');
-      }
-    }
-    
-    return horas;
-  }
-
-  // ✅ CALCULAR HORA FIN (20 minutos después)
-  String _calcularHoraFin(String horaInicio) {
-    try {
-      final partes = horaInicio.split(':');
-      final hora = int.parse(partes[0]);
-      final minuto = int.parse(partes[1]);
-      
-      int totalMinutos = hora * 60 + minuto + 20;
-      final nuevaHora = totalMinutos ~/ 60;
-      final nuevoMinuto = totalMinutos % 60;
-      
-      return '${nuevaHora.toString().padLeft(2, '0')}:${nuevoMinuto.toString().padLeft(2, '0')}';
-    } catch (e) {
-      print('Error calculando hora fin: $e');
-      return '08:00';
-    }
-  }
-
-  // ✅ CONVERTIR HORA A MINUTOS (para comparaciones)
-  int _convertirAMinutos(String hora) {
-    try {
-      final partes = hora.split(':');
-      return int.parse(partes[0]) * 60 + int.parse(partes[1]);
-    } catch (e) {
-      print('Error convirtiendo hora a minutos: $e');
-      return 0;
-    }
+    // ✅ Cargar disponibilidad inicial
+    _cargarDisponibilidadDelDia();
   }
 
   @override
   void dispose() {
     _motivoController.dispose();
     super.dispose();
+  }
+
+  // ✅ NUEVA FUNCIÓN: Cargar bloques disponibles del día seleccionado
+  Future<void> _cargarDisponibilidadDelDia() async {
+    if (_fechaSeleccionada == null) return;
+
+    setState(() {
+      _cargandoDisponibilidad = true;
+      _error = null;
+      _bloquesDisponibles = [];
+    });
+
+    try {
+      final docenteId = widget.tutoria['docente']['_id'];
+      
+      // Obtener día de la semana
+      const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      final diaSemana = dias[_fechaSeleccionada!.weekday - 1];
+
+      print('🔍 Cargando disponibilidad para: $diaSemana');
+
+      // Obtener disponibilidad completa del docente
+      final disponibilidad = await HorarioService.obtenerDisponibilidadCompleta(
+        docenteId: docenteId,
+      );
+
+      if (disponibilidad == null || disponibilidad.isEmpty) {
+        setState(() {
+          _cargandoDisponibilidad = false;
+          _error = 'El docente no tiene disponibilidad registrada';
+        });
+        return;
+      }
+
+      // Extraer todos los bloques de todas las materias para ese día
+      List<Map<String, dynamic>> bloquesDelDia = [];
+      
+      disponibilidad.forEach((materia, bloques) {
+        for (var bloque in bloques) {
+          if (bloque['dia'] == diaSemana) {
+            bloquesDelDia.add(bloque);
+          }
+        }
+      });
+
+      // Verificar bloques ocupados en esa fecha
+      final fechaStr = _fechaSeleccionada!.toIso8601String().split('T')[0];
+      final bloquesOcupados = await TutoriaService.listarTutorias(
+        incluirCanceladas: false,
+      );
+
+      // Filtrar bloques del mismo docente y fecha
+      final ocupadosEnFecha = bloquesOcupados.where((t) {
+        return t['docente']['_id'] == docenteId && 
+               t['fecha'] == fechaStr &&
+               t['_id'] != widget.tutoria['_id'] && // Excluir la tutoría actual
+               (t['estado'] == 'pendiente' || t['estado'] == 'confirmada');
+      }).toList();
+
+      print('📊 Bloques disponibles: ${bloquesDelDia.length}');
+      print('📊 Bloques ocupados: ${ocupadosEnFecha.length}');
+
+      // Filtrar bloques disponibles (sin solapamiento)
+      final disponibles = bloquesDelDia.where((bloque) {
+        final bloqueOcupado = ocupadosEnFecha.any((tutoria) {
+          return !(
+            bloque['horaFin'] <= tutoria['horaInicio'] || 
+            bloque['horaInicio'] >= tutoria['horaFin']
+          );
+        });
+        return !bloqueOcupado;
+      }).toList();
+
+      setState(() {
+        _bloquesDisponibles = disponibles;
+        _cargandoDisponibilidad = false;
+        
+        // Si el horario actual no está disponible, limpiar selección
+        if (_horaInicio != null && _horaFin != null) {
+          final horarioActualDisponible = disponibles.any((b) =>
+            b['horaInicio'] == _horaInicio && b['horaFin'] == _horaFin
+          );
+          
+          if (!horarioActualDisponible) {
+            _horaInicio = null;
+            _horaFin = null;
+          }
+        }
+      });
+
+      print('✅ Bloques disponibles finales: ${_bloquesDisponibles.length}');
+
+    } catch (e) {
+      print('❌ Error cargando disponibilidad: $e');
+      setState(() {
+        _cargandoDisponibilidad = false;
+        _error = 'Error al cargar disponibilidad: $e';
+      });
+    }
   }
 
   Future<void> _seleccionarFecha() async {
@@ -124,10 +171,15 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       },
     );
 
-    if (fecha != null) {
+    if (fecha != null && mounted) {
       setState(() {
         _fechaSeleccionada = fecha;
+        _horaInicio = null;
+        _horaFin = null;
       });
+      
+      // ✅ Recargar disponibilidad del nuevo día
+      _cargarDisponibilidadDelDia();
     }
   }
 
@@ -139,24 +191,17 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     }
 
     if (_horaInicio == null || _horaFin == null) {
-      _mostrarError('Selecciona el horario');
+      _mostrarError('Selecciona un bloque horario disponible');
       return;
     }
 
-    // Validar que la hora fin sea mayor que la hora inicio
-    final [hIni, mIni] = _horaInicio!.split(':').map(int.parse).toList();
-    final [hFin, mFin] = _horaFin!.split(':').map(int.parse).toList();
-    final inicioMinutos = hIni * 60 + mIni;
-    final finMinutos = hFin * 60 + mFin;
+    // ✅ Validar que el horario esté en los bloques disponibles
+    final bloqueValido = _bloquesDisponibles.any((b) =>
+      b['horaInicio'] == _horaInicio && b['horaFin'] == _horaFin
+    );
 
-    if (finMinutos <= inicioMinutos) {
-      _mostrarError('La hora de fin debe ser posterior a la hora de inicio');
-      return;
-    }
-
-    // Validar duración máxima de 20 minutos
-    if ((finMinutos - inicioMinutos) > 20) {
-      _mostrarError('La duración máxima es de 20 minutos');
+    if (!bloqueValido) {
+      _mostrarError('El horario seleccionado ya no está disponible');
       return;
     }
 
@@ -216,9 +261,9 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1565C0),
-                borderRadius: const BorderRadius.only(
+              decoration: const BoxDecoration(
+                color: Color(0xFF1565C0),
+                borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(16),
                   topRight: Radius.circular(16),
                 ),
@@ -353,65 +398,121 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
 
                     const SizedBox(height: 16),
 
-                    // Hora inicio
-                    DropdownButtonFormField<String>(
-                      value: _horaInicio,
-                      decoration: InputDecoration(
-                        labelText: 'Hora inicio',
-                        prefixIcon: const Icon(Icons.access_time),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    // ✅ NUEVO: Lista de bloques disponibles
+                    if (_cargandoDisponibilidad)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20),
+                          child: CircularProgressIndicator(),
                         ),
-                      ),
-                      items: _horasDisponibles.map((hora) {
-                        return DropdownMenuItem(
-                          value: hora,
-                          child: Text(hora),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            _horaInicio = value;
-                            // ✅ Auto-ajustar hora fin (20 min después)
-                            _horaFin = _calcularHoraFin(value);
-                          });
-                        }
-                      },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Hora fin
-                    DropdownButtonFormField<String>(
-                      value: _horaFin,
-                      decoration: InputDecoration(
-                        labelText: 'Hora fin',
-                        prefixIcon: const Icon(Icons.access_time),
-                        border: OutlineInputBorder(
+                      )
+                    else if (_error != null)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.red[50],
                           borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.red),
                         ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline, color: Colors.red),
+                            const SizedBox(width: 12),
+                            Expanded(child: Text(_error!)),
+                          ],
+                        ),
+                      )
+                    else if (_bloquesDisponibles.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.warning_amber, color: Colors.orange),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'No hay bloques disponibles para este día',
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Bloques Disponibles (${_bloquesDisponibles.length})',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          
+                          ..._bloquesDisponibles.map((bloque) {
+                            final isSelected = 
+                              _horaInicio == bloque['horaInicio'] && 
+                              _horaFin == bloque['horaFin'];
+                            
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    _horaInicio = bloque['horaInicio'];
+                                    _horaFin = bloque['horaFin'];
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: isSelected 
+                                      ? const Color(0xFF1565C0).withOpacity(0.1)
+                                      : Colors.grey[50],
+                                    border: Border.all(
+                                      color: isSelected 
+                                        ? const Color(0xFF1565C0)
+                                        : Colors.grey[300]!,
+                                      width: isSelected ? 2 : 1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        isSelected 
+                                          ? Icons.check_circle 
+                                          : Icons.schedule,
+                                        color: isSelected 
+                                          ? const Color(0xFF1565C0)
+                                          : Colors.grey,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        '${bloque['horaInicio']} - ${bloque['horaFin']}',
+                                        style: TextStyle(
+                                          fontWeight: isSelected 
+                                            ? FontWeight.bold 
+                                            : FontWeight.normal,
+                                          color: isSelected 
+                                            ? const Color(0xFF1565C0)
+                                            : Colors.black,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ],
                       ),
-                      items: _horasDisponibles
-                          .where((hora) {
-                            // ✅ Solo mostrar horas posteriores a la hora de inicio
-                            if (_horaInicio == null) return true;
-                            
-                            final inicioMinutos = _convertirAMinutos(_horaInicio!);
-                            final finMinutos = _convertirAMinutos(hora);
-                            
-                            return finMinutos > inicioMinutos && 
-                                   (finMinutos - inicioMinutos) <= 20; // Máximo 20 min
-                          })
-                          .map((hora) => DropdownMenuItem(
-                                value: hora,
-                                child: Text(hora),
-                              ))
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() => _horaFin = value);
-                      },
-                    ),
 
                     const SizedBox(height: 16),
 
@@ -450,7 +551,9 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _reagendar,
+                  onPressed: (_isLoading || _cargandoDisponibilidad || _horaInicio == null) 
+                    ? null 
+                    : _reagendar,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1565C0),
                     disabledBackgroundColor: Colors.grey,
@@ -467,9 +570,11 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Text(
-                          'Confirmar Reagendamiento',
-                          style: TextStyle(
+                      : Text(
+                          _horaInicio == null 
+                            ? 'Selecciona un horario' 
+                            : 'Confirmar Reagendamiento',
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
