@@ -20,6 +20,9 @@ import {
   // ✅ NUEVAS FUNCIONES PARA TURNOS
   registrarTutoriaConTurnos,
   obtenerTurnosDisponibles,
+  reagendarTutoria,
+  obtenerHistorialTutorias,
+  generarReportePorMaterias
 } from "../controllers/tutorias_controller.js";
 
 import { verificarTokenJWT } from "../middlewares/JWT.js";
@@ -64,6 +67,13 @@ routerTutorias.post(
   verificarTokenJWT,
   verificarRol(["Estudiante"]),
   registrarTutoriaConTurnos
+);
+
+routerTutorias.put(
+  "/tutoria/reagendar/:id",
+  verificarTokenJWT,
+  verificarRol(["Estudiante", "Docente"]),
+  reagendarTutoria
 );
 
 // =====================================================
@@ -179,6 +189,14 @@ routerTutorias.get(
       });
     }
   }
+);
+
+// Historial completo con filtros avanzados
+routerTutorias.get(
+  "/historial-tutorias",
+  verificarTokenJWT,
+  verificarRol(["Estudiante", "Docente"]),
+  obtenerHistorialTutorias
 );
 
 // =====================================================
@@ -407,6 +425,15 @@ routerTutorias.put(
   verificarTokenJWT,
   verificarRol(["Docente"]),
   rechazarTutoria
+);
+
+
+// Generar reporte por materias (solo docente)
+routerTutorias.get(
+  "/reporte-por-materias",
+  verificarTokenJWT,
+  verificarRol(["Docente"]),
+  generarReportePorMaterias
 );
 
 export default routerTutorias;

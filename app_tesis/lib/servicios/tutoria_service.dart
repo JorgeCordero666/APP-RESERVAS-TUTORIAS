@@ -369,4 +369,163 @@ class TutoriaService {
       return {'error': 'Error de conexión: $e'};
     }
   }
+  // Agregar al final del archivo tutoria_service.dart existente
+
+  /// ✅ REAGENDAR TUTORÍA
+  static Future<Map<String, dynamic>?> reagendarTutoria({
+    required String tutoriaId,
+    required String nuevaFecha,
+    required String nuevaHoraInicio,
+    required String nuevaHoraFin,
+    String? motivo,
+  }) async {
+    try {
+      final token = await AuthService.getToken();
+      
+      if (token == null) {
+        return {'error': 'No hay sesión activa'};
+      }
+
+      final url = '${ApiConfig.baseUrl}/tutoria/reagendar/$tutoriaId';
+      print('🔄 Reagendando tutoría: $url');
+      print('   Nueva fecha: $nuevaFecha');
+      print('   Nuevo horario: $nuevaHoraInicio - $nuevaHoraFin');
+
+      final response = await http.put(
+        Uri.parse(url),
+        headers: ApiConfig.getHeaders(token: token),
+        body: jsonEncode({
+          'nuevaFecha': nuevaFecha,
+          'nuevaHoraInicio': nuevaHoraInicio,
+          'nuevaHoraFin': nuevaHoraFin,
+          'motivo': motivo ?? 'Reagendada por el usuario',
+        }),
+      );
+
+      print('📬 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('✅ Tutoría reagendada exitosamente');
+        return data;
+      } else {
+        final data = jsonDecode(response.body);
+        print('❌ Error: ${data['msg']}');
+        return {'error': data['msg'] ?? 'Error al reagendar tutoría'};
+      }
+    } catch (e) {
+      print('❌ Error en reagendarTutoria: $e');
+      return {'error': 'Error de conexión: $e'};
+    }
+  }
+
+  /// ✅ OBTENER HISTORIAL DE TUTORÍAS CON FILTROS
+  static Future<Map<String, dynamic>?> obtenerHistorialTutorias({
+    String? fechaInicio,
+    String? fechaFin,
+    String? estado,
+    bool incluirCanceladas = true,
+    int page = 1,
+    int limit = 50,
+  }) async {
+    try {
+      final token = await AuthService.getToken();
+      
+      if (token == null) {
+        return {'error': 'No hay sesión activa'};
+      }
+
+      // Construir URL con parámetros
+      final params = <String, String>{
+        'page': page.toString(),
+        'limit': limit.toString(),
+        'incluirCanceladas': incluirCanceladas.toString(),
+      };
+
+      if (fechaInicio != null) params['fechaInicio'] = fechaInicio;
+      if (fechaFin != null) params['fechaFin'] = fechaFin;
+      if (estado != null) params['estado'] = estado;
+
+      final uri = Uri.parse('${ApiConfig.baseUrl}/historial-tutorias')
+          .replace(queryParameters: params);
+
+      print('📊 Obteniendo historial: $uri');
+
+      final response = await http.get(
+        uri,
+        headers: ApiConfig.getHeaders(token: token),
+      );
+
+      print('📬 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('✅ Historial obtenido: ${data['total']} tutorías');
+        return data;
+      } else {
+        final error = jsonDecode(response.body);
+        print('❌ Error: ${error['msg']}');
+        return {'error': error['msg'] ?? 'Error al obtener historial'};
+      }
+    } catch (e) {
+      print('❌ Error en obtenerHistorialTutorias: $e');
+      return {'error': 'Error de conexión: $e'};
+    }
+  }
+
+  /// ✅ GENERAR REPORTE POR MATERIAS (SOLO DOCENTE)
+  static Future<Map<String, dynamic>?> generarReportePorMaterias({
+    String? fechaInicio,
+    String? fechaFin,
+    String formato = 'json', // 'json' o 'csv'
+  }) async {
+    try {
+      final token = await AuthService.getToken();
+      
+      if (token == null) {
+        return {'error': 'No hay sesión activa'};
+      }
+
+      final params = <String, String>{
+        'formato': formato,
+      };
+
+      if (fechaInicio != null) params['fechaInicio'] = fechaInicio;
+      if (fechaFin != null) params['fechaFin'] = fechaFin;
+
+      final uri = Uri.parse('${ApiConfig.baseUrl}/reporte-por-materias')
+          .replace(queryParameters: params);
+
+      print('📊 Generando reporte: $uri');
+
+      final response = await http.get(
+        uri,
+        headers: ApiConfig.getHeaders(token: token),
+      );
+
+      print('📬 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        if (formato == 'csv') {
+          // Para CSV, retornar el contenido directamente
+          return {
+            'success': true,
+            'csv': response.body,
+            'filename': 'reporte_tutorias_${DateTime.now().millisecondsSinceEpoch}.csv'
+          };
+        } else {
+          final data = jsonDecode(response.body);
+          print('✅ Reporte generado: ${data['estadisticasGlobales']['materiasActivas']} materias');
+          return data;
+        }
+      } else {
+        final error = jsonDecode(response.body);
+        print('❌ Error: ${error['msg']}');
+        return {'error': error['msg'] ?? 'Error al generar reporte'};
+      }
+    } catch (e) {
+      print('❌ Error en generarReportePorMaterias: $e');
+      return {'error': 'Error de conexión: $e'};
+    }
+  }
 }

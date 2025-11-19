@@ -26,6 +26,21 @@ const tutoriaSchema = new Schema({
     required: false
   },
 
+  // ✅ NUEVOS CAMPOS PARA REAGENDAMIENTO
+  motivoReagendamiento: { 
+    type: String, 
+    default: null 
+  },
+  reagendadaPor: {
+    type: String,
+    enum: ['Estudiante', 'Docente', null],
+    default: null
+  },
+  fechaReagendamiento: {
+    type: Date,
+    default: null
+  },
+
   estado: {
     type: String,
     enum: [
