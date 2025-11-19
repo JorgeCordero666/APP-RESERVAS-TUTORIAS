@@ -23,24 +23,80 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
   final _motivoController = TextEditingController();
   bool _isLoading = false;
 
-  final List<String> _horasDisponibles = [
-    '07:00', '07:40', '08:20', '09:00', '09:40', '10:20',
-    '11:00', '11:40', '12:20', '13:00', '13:40', '14:20',
-    '15:00', '15:40', '16:20', '17:00', '17:40', '18:20',
-    '19:00', '19:40', '20:20', '21:00',
-  ];
+  // ✅ GENERAR HORAS DINÁMICAMENTE (intervalos de 20 minutos)
+  late final List<String> _horasDisponibles;
 
   @override
   void initState() {
     super.initState();
+    
+    // ✅ Generar lista de horas al inicializar
+    _horasDisponibles = _generarHorasDisponibles();
+    
     // Inicializar con la fecha actual de la tutoría
     try {
       _fechaSeleccionada = DateTime.parse(widget.tutoria['fecha']);
     } catch (e) {
       _fechaSeleccionada = DateTime.now().add(const Duration(days: 1));
     }
+    
     _horaInicio = widget.tutoria['horaInicio'];
     _horaFin = widget.tutoria['horaFin'];
+    
+    // ✅ VALIDAR que las horas existan en la lista generada
+    if (_horaInicio != null && !_horasDisponibles.contains(_horaInicio)) {
+      print('⚠️ Hora inicio no válida: $_horaInicio, usando primera disponible');
+      _horaInicio = _horasDisponibles.first;
+    }
+    
+    if (_horaFin != null && !_horasDisponibles.contains(_horaFin)) {
+      print('⚠️ Hora fin no válida: $_horaFin, calculando desde inicio');
+      _horaFin = _calcularHoraFin(_horaInicio ?? _horasDisponibles.first);
+    }
+  }
+
+  // ✅ FUNCIÓN PARA GENERAR HORAS (7:00 - 21:00, cada 20 min)
+  List<String> _generarHorasDisponibles() {
+    final List<String> horas = [];
+    
+    for (int hora = 7; hora <= 21; hora++) {
+      for (int minuto = 0; minuto < 60; minuto += 20) {
+        final horaStr = hora.toString().padLeft(2, '0');
+        final minutoStr = minuto.toString().padLeft(2, '0');
+        horas.add('$horaStr:$minutoStr');
+      }
+    }
+    
+    return horas;
+  }
+
+  // ✅ CALCULAR HORA FIN (20 minutos después)
+  String _calcularHoraFin(String horaInicio) {
+    try {
+      final partes = horaInicio.split(':');
+      final hora = int.parse(partes[0]);
+      final minuto = int.parse(partes[1]);
+      
+      int totalMinutos = hora * 60 + minuto + 20;
+      final nuevaHora = totalMinutos ~/ 60;
+      final nuevoMinuto = totalMinutos % 60;
+      
+      return '${nuevaHora.toString().padLeft(2, '0')}:${nuevoMinuto.toString().padLeft(2, '0')}';
+    } catch (e) {
+      print('Error calculando hora fin: $e');
+      return '08:00';
+    }
+  }
+
+  // ✅ CONVERTIR HORA A MINUTOS (para comparaciones)
+  int _convertirAMinutos(String hora) {
+    try {
+      final partes = hora.split(':');
+      return int.parse(partes[0]) * 60 + int.parse(partes[1]);
+    } catch (e) {
+      print('Error convirtiendo hora a minutos: $e');
+      return 0;
+    }
   }
 
   @override
@@ -314,17 +370,13 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                         );
                       }).toList(),
                       onChanged: (value) {
-                        setState(() {
-                          _horaInicio = value;
-                          // Auto-ajustar hora fin (20 min después)
-                          if (value != null) {
-                            final [h, m] = value.split(':').map(int.parse).toList();
-                            final totalMin = h * 60 + m + 20;
-                            final newH = totalMin ~/ 60;
-                            final newM = totalMin % 60;
-                            _horaFin = '${newH.toString().padLeft(2, '0')}:${newM.toString().padLeft(2, '0')}';
-                          }
-                        });
+                        if (value != null) {
+                          setState(() {
+                            _horaInicio = value;
+                            // ✅ Auto-ajustar hora fin (20 min después)
+                            _horaFin = _calcularHoraFin(value);
+                          });
+                        }
                       },
                     ),
 
@@ -340,12 +392,22 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      items: _horasDisponibles.map((hora) {
-                        return DropdownMenuItem(
-                          value: hora,
-                          child: Text(hora),
-                        );
-                      }).toList(),
+                      items: _horasDisponibles
+                          .where((hora) {
+                            // ✅ Solo mostrar horas posteriores a la hora de inicio
+                            if (_horaInicio == null) return true;
+                            
+                            final inicioMinutos = _convertirAMinutos(_horaInicio!);
+                            final finMinutos = _convertirAMinutos(hora);
+                            
+                            return finMinutos > inicioMinutos && 
+                                   (finMinutos - inicioMinutos) <= 20; // Máximo 20 min
+                          })
+                          .map((hora) => DropdownMenuItem(
+                                value: hora,
+                                child: Text(hora),
+                              ))
+                          .toList(),
                       onChanged: (value) {
                         setState(() => _horaFin = value);
                       },
