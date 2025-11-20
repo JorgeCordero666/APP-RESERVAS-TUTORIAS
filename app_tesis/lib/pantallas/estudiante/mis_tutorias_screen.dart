@@ -31,6 +31,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
     'cancelada_por_estudiante',
     'cancelada_por_docente',
     'rechazada',
+    'expirada',
   ];
   
   final List<String> _tabs = ['Activas', 'Historial'];
@@ -250,6 +251,8 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
       case 'cancelada_por_estudiante':
       case 'cancelada_por_docente':
         return Colors.grey;
+      case 'expirada':  // ✅ NUEVO
+        return Colors.brown;
       default:
         return Colors.grey;
     }
@@ -269,6 +272,8 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
         return 'CANCELADA';
       case 'cancelada_por_docente':
         return 'CANCELADA POR DOCENTE';
+      case 'expirada':  // ✅ NUEVO
+        return 'EXPIRADA';
       default:
         return estado.toUpperCase();
     }

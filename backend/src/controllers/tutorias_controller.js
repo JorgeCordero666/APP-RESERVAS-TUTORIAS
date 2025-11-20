@@ -565,12 +565,23 @@ const cancelarTutoria = async (req, res) => {
       return res.status(400).json({ msg: 'Esta tutoría ya fue cancelada.' });
     }
 
-    // ✅ Validar fecha correctamente (comparar sin hora)
-    const hoy = moment().startOf('day');
-    const fechaTutoria = moment(tutoria.fecha, 'YYYY-MM-DD').startOf('day');
+    // ✅ CORRECCIÓN: Validar fecha Y hora
+    const ahora = moment();
+    const fechaTutoria = moment(`${tutoria.fecha} ${tutoria.horaInicio}`, 'YYYY-MM-DD HH:mm');
 
-    if (fechaTutoria.isBefore(hoy)) {
-      return res.status(400).json({ msg: 'No puedes cancelar una tutoría pasada.' });
+    // Permitir cancelación si la tutoría no ha comenzado
+    if (fechaTutoria.isSameOrBefore(ahora)) {
+      return res.status(400).json({ 
+        msg: 'No puedes cancelar una tutoría que ya comenzó o finalizó.' 
+      });
+    }
+
+    // ✅ OPCIONAL: Límite de tiempo para cancelación (2 horas antes)
+    const horasAnticipacion = fechaTutoria.diff(ahora, 'hours');
+    if (horasAnticipacion < 2) {
+      return res.status(400).json({ 
+        msg: `Debes cancelar con al menos 2 horas de anticipación. Tiempo restante: ${horasAnticipacion} hora(s).` 
+      });
     }
 
     // Determinar el estado correcto
@@ -612,7 +623,7 @@ const cancelarTutoria = async (req, res) => {
 };
 
 // =====================================================
-// ✅ REAGENDAR TUTORÍA (ESTUDIANTE O DOCENTE)
+// ✅ REAGENDAR TUTORÍA - VERSIÓN CON VALIDACIÓN DE EXPIRACIÓN
 // =====================================================
 export const reagendarTutoria = async (req, res) => {
   try {
@@ -620,14 +631,6 @@ export const reagendarTutoria = async (req, res) => {
     const { nuevaFecha, nuevaHoraInicio, nuevaHoraFin, motivo } = req.body;
 
     console.log(`🔄 Intentando reagendar tutoría: ${id}`);
-
-    // Validaciones básicas
-    if (!nuevaFecha || !nuevaHoraInicio || !nuevaHoraFin) {
-      return res.status(400).json({
-        success: false,
-        msg: 'Nueva fecha, hora inicio y hora fin son obligatorios'
-      });
-    }
 
     const tutoria = await Tutoria.findById(id);
     
@@ -638,7 +641,7 @@ export const reagendarTutoria = async (req, res) => {
       });
     }
 
-    // Validar que sea estudiante de la tutoría o el docente asignado
+    // ✅ VALIDACIÓN 1: Permisos (estudiante o docente de la tutoría)
     const esEstudiante = req.estudianteBDD && 
                          tutoria.estudiante.toString() === req.estudianteBDD._id.toString();
     const esDocente = req.docenteBDD && 
@@ -651,12 +654,47 @@ export const reagendarTutoria = async (req, res) => {
       });
     }
 
-    // Validar estados permitidos para reagendar
+    // ✅ VALIDACIÓN 2: Estados permitidos
     const estadosPermitidos = ['pendiente', 'confirmada'];
     if (!estadosPermitidos.includes(tutoria.estado)) {
       return res.status(400).json({
         success: false,
         msg: `No se puede reagendar una tutoría ${tutoria.estado}`
+      });
+    }
+
+    // ✅ VALIDACIÓN CRÍTICA: Verificar si la tutoría ya expiró
+    const fechaHoraTutoria = moment(`${tutoria.fecha} ${tutoria.horaFin}`, 'YYYY-MM-DD HH:mm');
+    const ahora = moment();
+
+    if (fechaHoraTutoria.isBefore(ahora)) {
+      console.log(`⏰ Tutoría expirada detectada: ${tutoria._id}`);
+      console.log(`   Fecha original: ${tutoria.fecha} ${tutoria.horaInicio}-${tutoria.horaFin}`);
+      console.log(`   Ahora: ${ahora.format('YYYY-MM-DD HH:mm')}`);
+
+      // Marcar como expirada
+      tutoria.estado = 'expirada';
+      await tutoria.save();
+
+      return res.status(400).json({
+        success: false,
+        msg: 'Esta tutoría ya expiró. Por favor, agenda una nueva tutoría con el docente.',
+        estado: 'expirada',
+        detalles: {
+          fechaOriginal: tutoria.fecha,
+          horaOriginal: `${tutoria.horaInicio} - ${tutoria.horaFin}`,
+          razon: 'La fecha y hora de la tutoría ya pasaron'
+        }
+      });
+    }
+
+    // ✅ CONTINUAR CON REAGENDAMIENTO NORMAL (solo si NO expiró)
+    
+    // Validaciones de campos
+    if (!nuevaFecha || !nuevaHoraInicio || !nuevaHoraFin) {
+      return res.status(400).json({
+        success: false,
+        msg: 'Nueva fecha, hora inicio y hora fin son obligatorios'
       });
     }
 
@@ -671,7 +709,18 @@ export const reagendarTutoria = async (req, res) => {
       });
     }
 
-    // Validar duración del turno (máximo 20 minutos)
+    // Validación: Anticipación de 2 horas
+    const fechaHoraNueva = moment(`${nuevaFecha} ${nuevaHoraInicio}`, 'YYYY-MM-DD HH:mm');
+    const horasAnticipacion = fechaHoraNueva.diff(ahora, 'hours', true);
+
+    if (horasAnticipacion < 2) {
+      return res.status(400).json({
+        success: false,
+        msg: `Debes reagendar con al menos 2 horas de anticipación. Tiempo disponible: ${horasAnticipacion.toFixed(1)} horas`
+      });
+    }
+
+    // Validación: Duración del turno (máximo 20 minutos)
     const convertirAMinutos = (hora) => {
       const [h, m] = hora.split(':').map(Number);
       return h * 60 + m;
@@ -695,11 +744,88 @@ export const reagendarTutoria = async (req, res) => {
       });
     }
 
+    // Obtener materia original
+    const bloqueOriginal = await disponibilidadDocente.findById(tutoria.bloqueDocenteId);
+    let materiaOriginal = null;
+
+    if (bloqueOriginal) {
+      materiaOriginal = bloqueOriginal.materia;
+    } else {
+      const fechaOriginalUTC = new Date(tutoria.fecha + 'T05:00:00Z');
+      const diaOriginal = fechaOriginalUTC.toLocaleDateString('es-EC', { weekday: 'long' }).toLowerCase();
+      
+      const bloquesOriginales = await disponibilidadDocente.find({
+        docente: tutoria.docente,
+        diaSemana: diaOriginal
+      });
+      
+      for (const disp of bloquesOriginales) {
+        const bloqueEncontrado = disp.bloques.find(b => 
+          b.horaInicio === tutoria.horaInicio && 
+          b.horaFin === tutoria.horaFin
+        );
+        
+        if (bloqueEncontrado) {
+          materiaOriginal = disp.materia;
+          break;
+        }
+      }
+    }
+
+    if (!materiaOriginal) {
+      return res.status(400).json({
+        success: false,
+        msg: 'No se pudo determinar la materia original de la tutoría'
+      });
+    }
+
+    // Verificar disponibilidad del docente
+    const fechaUTC = new Date(nuevaFecha + 'T05:00:00Z');
+    const diaSemana = fechaUTC.toLocaleDateString('es-EC', { weekday: 'long' }).toLowerCase();
+
+    const bloquesDisponibles = await disponibilidadDocente.find({ 
+      docente: tutoria.docente, 
+      diaSemana,
+      materia: materiaOriginal
+    });
+
+    if (bloquesDisponibles.length === 0) {
+      return res.status(400).json({
+        success: false,
+        msg: `El docente no tiene disponibilidad registrada para "${materiaOriginal}" los días ${diaSemana}s`
+      });
+    }
+
+    // Verificar que el nuevo horario esté dentro de un bloque disponible
+    let bloqueValido = false;
+    let nuevoBloqueMateriaId = null;
+    
+    for (const disponibilidad of bloquesDisponibles) {
+      for (const bloque of disponibilidad.bloques) {
+        const bloqueInicio = convertirAMinutos(bloque.horaInicio);
+        const bloqueFin = convertirAMinutos(bloque.horaFin);
+
+        if (minutosInicio >= bloqueInicio && minutosFin <= bloqueFin) {
+          bloqueValido = true;
+          nuevoBloqueMateriaId = disponibilidad._id;
+          break;
+        }
+      }
+      if (bloqueValido) break;
+    }
+
+    if (!bloqueValido) {
+      return res.status(400).json({
+        success: false,
+        msg: `El horario ${nuevaHoraInicio}-${nuevaHoraFin} no está disponible para "${materiaOriginal}" los ${diaSemana}s`
+      });
+    }
+
     // Verificar que el nuevo horario no esté ocupado
     const horarioOcupado = await Tutoria.findOne({
       docente: tutoria.docente,
       fecha: nuevaFecha,
-      _id: { $ne: id }, // Excluir la tutoría actual
+      _id: { $ne: id },
       estado: { $in: ['pendiente', 'confirmada'] },
       $or: [
         {
@@ -714,86 +840,74 @@ export const reagendarTutoria = async (req, res) => {
     if (horarioOcupado) {
       return res.status(400).json({
         success: false,
-        msg: 'El nuevo horario ya está ocupado. Elige otro turno.'
+        msg: `El horario ${nuevaHoraInicio}-${nuevaHoraFin} ya está ocupado el ${nuevaFecha}`,
+        turnoOcupado: {
+          horaInicio: horarioOcupado.horaInicio,
+          horaFin: horarioOcupado.horaFin
+        }
       });
     }
 
-    // Verificar disponibilidad del docente en el nuevo día
-    const fechaUTC = new Date(nuevaFecha + 'T05:00:00Z');
-    const diaSemana = fechaUTC.toLocaleDateString('es-EC', { weekday: 'long' }).toLowerCase();
-
-    const bloquesDisponibles = await disponibilidadDocente.find({ 
-      docente: tutoria.docente, 
-      diaSemana 
+    // Verificar que el estudiante no tenga otra tutoría a esa hora
+    const conflictoEstudiante = await Tutoria.findOne({
+      estudiante: tutoria.estudiante,
+      fecha: nuevaFecha,
+      _id: { $ne: id },
+      estado: { $in: ['pendiente', 'confirmada'] },
+      $or: [
+        {
+          $and: [
+            { horaInicio: { $lt: nuevaHoraFin } },
+            { horaFin: { $gt: nuevaHoraInicio } }
+          ]
+        }
+      ]
     });
 
-    if (bloquesDisponibles.length === 0) {
+    if (conflictoEstudiante) {
       return res.status(400).json({
         success: false,
-        msg: 'El docente no tiene disponibilidad registrada para ese día'
+        msg: 'Ya tienes otra tutoría agendada en ese horario'
       });
     }
 
-    // Verificar que el nuevo horario esté dentro de un bloque disponible
-    let bloqueValido = false;
-    
-    for (const disponibilidad of bloquesDisponibles) {
-      for (const bloque of disponibilidad.bloques) {
-        const bloqueInicio = convertirAMinutos(bloque.horaInicio);
-        const bloqueFin = convertirAMinutos(bloque.horaFin);
-
-        if (minutosInicio >= bloqueInicio && minutosFin <= bloqueFin) {
-          bloqueValido = true;
-          break;
-        }
-      }
-      if (bloqueValido) break;
-    }
-
-    if (!bloqueValido) {
-      return res.status(400).json({
-        success: false,
-        msg: 'El nuevo horario no está dentro de la disponibilidad del docente'
-      });
-    }
-
-    // Guardar datos anteriores para historial
+    // Guardar datos anteriores
     const datosAnteriores = {
       fechaAnterior: tutoria.fecha,
       horaInicioAnterior: tutoria.horaInicio,
       horaFinAnterior: tutoria.horaFin
     };
 
-    // Actualizar la tutoría
+    // Actualizar tutoría
     tutoria.fecha = nuevaFecha;
     tutoria.horaInicio = nuevaHoraInicio;
     tutoria.horaFin = nuevaHoraFin;
     
-    // Si estaba confirmada, volver a pendiente
+    if (nuevoBloqueMateriaId) {
+      tutoria.bloqueDocenteId = nuevoBloqueMateriaId;
+    }
+    
     if (tutoria.estado === 'confirmada') {
       tutoria.estado = 'pendiente';
     }
 
-    // Agregar motivo de reagendamiento
     tutoria.motivoReagendamiento = motivo || 'Reagendada por el usuario';
     tutoria.reagendadaPor = esEstudiante ? 'Estudiante' : 'Docente';
     tutoria.fechaReagendamiento = new Date();
 
     await tutoria.save();
 
-    // Poblar datos para respuesta
     await tutoria.populate('docente', 'nombreDocente emailDocente avatarDocente');
     await tutoria.populate('estudiante', 'nombreEstudiante emailEstudiante fotoPerfil');
 
-    console.log(`✅ Tutoría reagendada: ${tutoria._id}`);
-    console.log(`   Anterior: ${datosAnteriores.fechaAnterior} ${datosAnteriores.horaInicioAnterior}-${datosAnteriores.horaFinAnterior}`);
-    console.log(`   Nueva: ${nuevaFecha} ${nuevaHoraInicio}-${nuevaHoraFin}`);
+    console.log(`✅ Tutoría reagendada exitosamente`);
 
     res.status(200).json({
       success: true,
       msg: 'Tutoría reagendada exitosamente. El docente debe confirmar el nuevo horario.',
       tutoria,
-      datosAnteriores
+      datosAnteriores,
+      materia: materiaOriginal
     });
 
   } catch (error) {
@@ -2093,6 +2207,149 @@ export const listarTutoriasPendientes = async (req, res) => {
       msg: "Error al listar tutorías", 
       error: error.message 
     });
+  }
+};
+
+// =====================================================
+// Finalizar tutoría y registrar asistencia
+// - Solo el docente puede finalizar
+// - Solo se pueden finalizar tutorías confirmadas
+// - Se marca asistencia y observaciones
+// =====================================================
+export const finalizarTutoria = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { asistio, observaciones } = req.body;
+    const docente = req.docenteBDD?._id;
+
+    console.log(`🏁 Finalizando tutoría: ${id}`);
+
+    if (!docente) {
+      return res.status(401).json({
+        success: false,
+        msg: "Docente no autenticado"
+      });
+    }
+
+    // Validar que asistio sea booleano
+    if (typeof asistio !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        msg: "Debes indicar si el estudiante asistió (true/false)"
+      });
+    }
+
+    const tutoria = await Tutoria.findById(id);
+
+    if (!tutoria) {
+      return res.status(404).json({
+        success: false,
+        msg: 'Tutoría no encontrada'
+      });
+    }
+
+    // Verificar que sea el docente correcto
+    if (tutoria.docente.toString() !== docente.toString()) {
+      return res.status(403).json({
+        success: false,
+        msg: 'No tienes permiso para finalizar esta tutoría'
+      });
+    }
+
+    // Validar estado actual
+    if (tutoria.estado !== 'confirmada') {
+      return res.status(400).json({
+        success: false,
+        msg: `Solo se pueden finalizar tutorías confirmadas. Estado actual: ${tutoria.estado}`
+      });
+    }
+
+    // Validar que la fecha no sea futura
+    const fechaTutoria = moment(tutoria.fecha, 'YYYY-MM-DD');
+    const hoy = moment().startOf('day');
+
+    if (fechaTutoria.isAfter(hoy)) {
+      return res.status(400).json({
+        success: false,
+        msg: 'No puedes finalizar una tutoría que aún no ha ocurrido'
+      });
+    }
+
+    // Actualizar tutoría
+    tutoria.estado = 'finalizada';
+    tutoria.asistenciaEstudiante = asistio;
+    tutoria.observacionesDocente = observaciones?.trim() || null;
+
+    await tutoria.save();
+
+    console.log(`✅ Tutoría finalizada: ${tutoria._id}`);
+    console.log(`   Asistencia: ${asistio ? 'SÍ' : 'NO'}`);
+    console.log(`   Observaciones: ${observaciones || 'ninguna'}`);
+
+    // Poblar datos para respuesta
+    await tutoria.populate('estudiante', 'nombreEstudiante emailEstudiante fotoPerfil');
+    await tutoria.populate('docente', 'nombreDocente emailDocente');
+
+    res.status(200).json({
+      success: true,
+      msg: 'Tutoría finalizada exitosamente',
+      tutoria: {
+        _id: tutoria._id,
+        estado: tutoria.estado,
+        asistenciaEstudiante: tutoria.asistenciaEstudiante,
+        observacionesDocente: tutoria.observacionesDocente,
+        estudiante: tutoria.estudiante,
+        fecha: tutoria.fecha,
+        horaInicio: tutoria.horaInicio,
+        horaFin: tutoria.horaFin
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error finalizando tutoría:", error);
+    res.status(500).json({
+      success: false,
+      msg: 'Error al finalizar la tutoría',
+      error: error.message
+    });
+  }
+};
+
+// =====================================================
+// ✅ TAREA AUTOMÁTICA: Marcar tutorías expiradas
+// =====================================================
+export const marcarTutoriasExpiradas = async () => {
+  try {
+    const ahora = moment();
+    const fechaHoy = ahora.format('YYYY-MM-DD');
+    const horaActual = ahora.format('HH:mm');
+
+    console.log('🔍 Buscando tutorías expiradas...');
+
+    // Buscar tutorías pendientes o confirmadas cuya fecha/hora ya pasó
+    const tutoriasActivas = await Tutoria.find({
+      estado: { $in: ['pendiente', 'confirmada'] }
+    });
+
+    let marcadas = 0;
+
+    for (const tutoria of tutoriasActivas) {
+      const fechaHoraTutoria = moment(`${tutoria.fecha} ${tutoria.horaFin}`, 'YYYY-MM-DD HH:mm');
+      
+      if (fechaHoraTutoria.isBefore(ahora)) {
+        tutoria.estado = 'expirada';
+        await tutoria.save();
+        marcadas++;
+        console.log(`   ⏰ Marcada como expirada: ${tutoria._id}`);
+      }
+    }
+
+    console.log(`✅ Total tutorías expiradas: ${marcadas}`);
+    return marcadas;
+
+  } catch (error) {
+    console.error('❌ Error marcando tutorías expiradas:', error);
+    return 0;
   }
 };
 

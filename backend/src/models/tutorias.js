@@ -1,4 +1,3 @@
-// backend/src/models/tutorias.js - VERSIÓN CON TURNOS DE 20 MIN
 import mongoose, { Schema, model } from "mongoose";
 
 const tutoriaSchema = new Schema({
@@ -15,18 +14,18 @@ const tutoriaSchema = new Schema({
 
   fecha: { type: String, required: true },
 
-  // ✅ NUEVO: Horarios específicos del turno (20 min máximo)
+  // ✅ Horarios específicos del turno (20 min máximo)
   horaInicio: { type: String, required: true },
   horaFin: { type: String, required: true },
   
-  // ✅ NUEVO: Referencia al bloque de disponibilidad del docente
+  // ✅ Referencia al bloque de disponibilidad del docente
   bloqueDocenteId: {
     type: Schema.Types.ObjectId,
     ref: "disponibilidadDocente",
     required: false
   },
 
-  // ✅ NUEVOS CAMPOS PARA REAGENDAMIENTO
+  // ✅ CAMPOS PARA REAGENDAMIENTO
   motivoReagendamiento: { 
     type: String, 
     default: null 
@@ -50,7 +49,8 @@ const tutoriaSchema = new Schema({
       "cancelada_por_estudiante",
       "cancelada_por_docente", 
       "finalizada",
-      "no_asiste"
+      "no_asiste",
+      "expirada"  // ✅ NUEVO ESTADO
     ],
     default: "pendiente"
   },
