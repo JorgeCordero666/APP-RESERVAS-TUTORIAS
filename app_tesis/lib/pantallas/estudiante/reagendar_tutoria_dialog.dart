@@ -1,5 +1,5 @@
 // app_tesis/lib/pantallas/estudiante/reagendar_tutoria_dialog.dart
-// ✅ VERSIÓN COMPLETAMENTE CORREGIDA CON VALIDACIÓN DE DÍAS DISPONIBLES
+// ✅ VERSIÓN COMPLETAMENTE MEJORADA CON VALIDACIÓN DE MATERIA ESPECÍFICA
 
 import 'package:flutter/material.dart';
 import '../../servicios/tutoria_service.dart';
@@ -31,11 +31,50 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
   List<Map<String, dynamic>> _bloquesDisponibles = [];
   String? _error;
 
-  // ✅ NUEVO: Días disponibles del docente
+  // Días disponibles del docente
   Set<int> _diasDisponiblesDocente = {};
   bool _cargandoDias = true;
+  
+  // Materia identificada
+  String? _materiaOriginal;
 
-  // ✅ NUEVO: Buscar el próximo día disponible del docente
+  @override
+  void initState() {
+    super.initState();
+
+    // Validar si la tutoría ya pasó
+    DateTime fechaTutoria;
+    try {
+      fechaTutoria = DateTime.parse(widget.tutoria['fecha']);
+    } catch (e) {
+      fechaTutoria = DateTime.now().add(const Duration(days: 1));
+    }
+
+    final ahora = DateTime.now();
+    final hoy = DateTime(ahora.year, ahora.month, ahora.day);
+    
+    // Si la fecha de la tutoría es anterior a hoy, usar el próximo día disponible
+    if (fechaTutoria.isBefore(hoy)) {
+      _fechaSeleccionada = null;
+      print('⚠️ Tutoría pasada detectada. Se buscará próximo día disponible.');
+    } else {
+      _fechaSeleccionada = fechaTutoria;
+    }
+
+    _horaInicio = widget.tutoria['horaInicio'];
+    _horaFin = widget.tutoria['horaFin'];
+
+    // CRÍTICO: Cargar días disponibles PRIMERO
+    _cargarDiasDisponiblesDocente();
+  }
+
+  @override
+  void dispose() {
+    _motivoController.dispose();
+    super.dispose();
+  }
+
+  // ✅ Buscar el próximo día disponible del docente
   DateTime _buscarProximoDiaDisponible() {
     final ahora = DateTime.now();
     final hoy = DateTime(ahora.year, ahora.month, ahora.day);
@@ -54,44 +93,81 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     return hoy.add(const Duration(days: 1));
   }
 
-  @override
-  void initState() {
-    super.initState();
-
-    // ✅ Validar si la tutoría ya pasó
-    DateTime fechaTutoria;
-    try {
-      fechaTutoria = DateTime.parse(widget.tutoria['fecha']);
-    } catch (e) {
-      fechaTutoria = DateTime.now().add(const Duration(days: 1));
+  // ✅ MÉTODO MEJORADO: Identificar la materia original de forma robusta
+  String? _identificarMateriaOriginal(
+    Map<String, List<Map<String, dynamic>>> disponibilidad,
+  ) {
+    // PRIORIDAD 1: Buscar por bloqueDocenteId si existe
+    if (widget.tutoria['bloqueDocenteId'] != null) {
+      final bloqueId = widget.tutoria['bloqueDocenteId'];
+      
+      for (var entrada in disponibilidad.entries) {
+        final materia = entrada.key;
+        final bloques = entrada.value;
+        
+        for (var bloque in bloques) {
+          if (bloque['_id'] == bloqueId) {
+            print('✅ Materia encontrada por bloqueDocenteId: $materia');
+            return materia;
+          }
+        }
+      }
     }
-
-    final ahora = DateTime.now();
-    final hoy = DateTime(ahora.year, ahora.month, ahora.day);
     
-    // Si la fecha de la tutoría es anterior a hoy, usar el próximo día disponible
-    if (fechaTutoria.isBefore(hoy)) {
-      // Se establecerá después de cargar los días disponibles
-      _fechaSeleccionada = null;
-      print('⚠️ Tutoría pasada detectada. Se buscará próximo día disponible.');
-    } else {
-      _fechaSeleccionada = fechaTutoria;
+    // PRIORIDAD 2: Buscar por coincidencia exacta de horario
+    final fechaOriginal = DateTime.parse(widget.tutoria['fecha']);
+    final diaOriginal = _obtenerDiaSemana(fechaOriginal);
+    final horaInicioOriginal = widget.tutoria['horaInicio'];
+    final horaFinOriginal = widget.tutoria['horaFin'];
+    
+    print('🔍 Buscando materia por horario:');
+    print('   Día: $diaOriginal');
+    print('   Hora: $horaInicioOriginal - $horaFinOriginal');
+    
+    // Lista de coincidencias (puede haber múltiples)
+    List<String> materiasCoincidentes = [];
+    
+    for (var entrada in disponibilidad.entries) {
+      final materia = entrada.key;
+      final bloques = entrada.value;
+      
+      for (var bloque in bloques) {
+        if (bloque['dia'] == diaOriginal) {
+          final bloqueInicio = _convertirAMinutos(bloque['horaInicio']);
+          final bloqueFin = _convertirAMinutos(bloque['horaFin']);
+          final tutoriaInicio = _convertirAMinutos(horaInicioOriginal);
+          final tutoriaFin = _convertirAMinutos(horaFinOriginal);
+          
+          // Verificar si el horario de la tutoría está contenido en el bloque
+          if (tutoriaInicio >= bloqueInicio && tutoriaFin <= bloqueFin) {
+            materiasCoincidentes.add(materia);
+          }
+        }
+      }
     }
-
-    _horaInicio = widget.tutoria['horaInicio'];
-    _horaFin = widget.tutoria['horaFin'];
-
-    // ✅ CRÍTICO: Cargar días disponibles PRIMERO
-    _cargarDiasDisponiblesDocente();
+    
+    if (materiasCoincidentes.isEmpty) {
+      print('❌ No se encontró ninguna materia coincidente');
+      return null;
+    }
+    
+    if (materiasCoincidentes.length > 1) {
+      print('⚠️ Múltiples materias coincidentes: ${materiasCoincidentes.join(", ")}');
+      // Si hay múltiples, intentar usar el campo 'materia' de la tutoría como desempate
+      if (widget.tutoria['materia'] != null) {
+        final materiaTutoria = widget.tutoria['materia'];
+        if (materiasCoincidentes.contains(materiaTutoria)) {
+          print('✅ Usando materia del registro de tutoría: $materiaTutoria');
+          return materiaTutoria;
+        }
+      }
+    }
+    
+    print('✅ Materia identificada: ${materiasCoincidentes.first}');
+    return materiasCoincidentes.first;
   }
 
-  @override
-  void dispose() {
-    _motivoController.dispose();
-    super.dispose();
-  }
-
-  // ✅ NUEVO: Cargar días en los que el docente tiene disponibilidad
+  // ✅ Cargar días disponibles SOLO para la materia de la tutoría
   Future<void> _cargarDiasDisponiblesDocente() async {
     setState(() => _cargandoDias = true);
 
@@ -100,6 +176,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
 
       print('📅 Cargando días disponibles del docente: $docenteId');
 
+      // PASO 1: Obtener la disponibilidad COMPLETA del docente
       final disponibilidad = await HorarioService.obtenerDisponibilidadCompleta(
         docenteId: docenteId,
       );
@@ -114,18 +191,46 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
         return;
       }
 
-      // ✅ Extraer días únicos de la disponibilidad
+      print('📚 Materias disponibles: ${disponibilidad.keys.join(", ")}');
+
+      // PASO 2: Identificar la MATERIA ORIGINAL de la tutoría
+      _materiaOriginal = _identificarMateriaOriginal(disponibilidad);
+
+      if (_materiaOriginal == null) {
+        if (mounted) {
+          setState(() {
+            _cargandoDias = false;
+            _error = 'No se pudo determinar la materia de esta tutoría. '
+                     'Por favor, contacta al docente para reagendar.';
+          });
+        }
+        return;
+      }
+
+      print('✅ Materia original de la tutoría: $_materiaOriginal');
+
+      // PASO 3: Extraer SOLO los días de esa materia específica
+      final bloquesMateria = disponibilidad[_materiaOriginal] ?? [];
+      
+      if (bloquesMateria.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _cargandoDias = false;
+            _error = 'El docente no tiene disponibilidad para la materia "$_materiaOriginal"';
+          });
+        }
+        return;
+      }
+
       Set<String> diasDisponibles = {};
 
-      disponibilidad.forEach((materia, bloques) {
-        for (var bloque in bloques) {
-          diasDisponibles.add(bloque['dia']);
-        }
-      });
+      for (var bloque in bloquesMateria) {
+        diasDisponibles.add(bloque['dia']);
+      }
 
-      print('✅ Días disponibles: ${diasDisponibles.join(", ")}');
+      print('📅 Días disponibles para "$_materiaOriginal": ${diasDisponibles.join(", ")}');
 
-      // ✅ Convertir nombres de días a números (1=Lunes, 7=Domingo)
+      // PASO 4: Convertir nombres de días a números (1=Lunes, 7=Domingo)
       final mapaDias = {
         'Lunes': 1,
         'Martes': 2,
@@ -149,7 +254,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
           _cargandoDias = false;
         });
 
-        // ✅ Si la fecha seleccionada es null o inválida, buscar próximo día disponible
+        // Si la fecha seleccionada no es válida, buscar próximo día disponible
         if (_fechaSeleccionada == null || 
             _fechaSeleccionada!.isBefore(DateTime.now()) ||
             !_diasDisponiblesDocente.contains(_fechaSeleccionada!.weekday)) {
@@ -171,9 +276,30 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     }
   }
 
-  // ✅ MODIFICADO: Cargar bloques disponibles del día seleccionado
+  // ✅ Método auxiliar para convertir hora a minutos
+  int _convertirAMinutos(String hora) {
+    try {
+      final partes = hora.split(':');
+      final horas = int.parse(partes[0]);
+      final minutos = int.parse(partes[1]);
+      return horas * 60 + minutos;
+    } catch (e) {
+      print('⚠️ Error convirtiendo hora: $hora');
+      return 0;
+    }
+  }
+
+  // ✅ Obtener día de la semana en español
+  String _obtenerDiaSemana(DateTime fecha) {
+    const dias = [
+      'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
+    ];
+    return dias[fecha.weekday - 1];
+  }
+
+  // ✅ Cargar bloques disponibles del día seleccionado SOLO DE LA MATERIA ORIGINAL
   Future<void> _cargarDisponibilidadDelDia() async {
-    if (_fechaSeleccionada == null) return;
+    if (_fechaSeleccionada == null || _materiaOriginal == null) return;
 
     setState(() {
       _cargandoDisponibilidad = true;
@@ -189,8 +315,9 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       ];
       final diaSemana = dias[_fechaSeleccionada!.weekday - 1];
 
-      print('🔍 Buscando disponibilidad para: $diaSemana');
+      print('🔍 Buscando disponibilidad para: $diaSemana en materia $_materiaOriginal');
 
+      // Obtener disponibilidad completa
       final disponibilidad = await HorarioService.obtenerDisponibilidadCompleta(
         docenteId: docenteId,
       );
@@ -203,18 +330,17 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
         return;
       }
 
-      // ✅ Extraer bloques de TODAS las materias para este día
+      // Extraer bloques SOLO de la materia original para el día seleccionado
+      final bloquesMateria = disponibilidad[_materiaOriginal] ?? [];
       List<Map<String, dynamic>> bloquesDelDia = [];
 
-      disponibilidad.forEach((materia, bloques) {
-        for (var bloque in bloques) {
-          if (bloque['dia'] == diaSemana) {
-            bloquesDelDia.add(bloque);
-          }
+      for (var bloque in bloquesMateria) {
+        if (bloque['dia'] == diaSemana) {
+          bloquesDelDia.add(bloque);
         }
-      });
+      }
 
-      print('📦 Bloques encontrados: ${bloquesDelDia.length}');
+      print('📦 Bloques encontrados para $_materiaOriginal en $diaSemana: ${bloquesDelDia.length}');
 
       if (bloquesDelDia.isEmpty) {
         setState(() {
@@ -224,7 +350,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
         return;
       }
 
-      // ✅ Verificar turnos ocupados
+      // Verificar turnos ocupados
       final fechaStr = _fechaSeleccionada!.toIso8601String().split('T')[0];
       final bloquesOcupados = await TutoriaService.listarTutorias(
         incluirCanceladas: false,
@@ -237,7 +363,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
             (t['estado'] == 'pendiente' || t['estado'] == 'confirmada');
       }).toList();
 
-      // ✅ Generar turnos de 20 minutos para cada bloque
+      // Generar turnos de 20 minutos para cada bloque
       List<Map<String, dynamic>> turnosDisponibles = [];
 
       for (var bloque in bloquesDelDia) {
@@ -265,7 +391,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
         _bloquesDisponibles = turnosDisponibles;
         _cargandoDisponibilidad = false;
 
-        // ✅ Validar si el horario actual sigue disponible
+        // Validar si el horario actual sigue disponible
         final horarioActualDisponible = turnosDisponibles.any((t) =>
             t['horaInicio'] == _horaInicio && t['horaFin'] == _horaFin);
 
@@ -275,7 +401,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
         }
       });
 
-      print('✅ Turnos disponibles: ${turnosDisponibles.length}');
+      print('✅ Turnos disponibles para reagendar: ${turnosDisponibles.length}');
     } catch (e) {
       setState(() {
         _cargandoDisponibilidad = false;
@@ -284,7 +410,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     }
   }
 
-  // ✅ NUEVO: Generar turnos de 20 minutos
+  // ✅ Generar turnos de 20 minutos
   List<Map<String, dynamic>> _generarTurnos20Min(String inicio, String fin) {
     final convertirAMinutos = (String hora) {
       final partes = hora.split(':');
@@ -315,23 +441,17 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     return turnos;
   }
 
-  // ✅ MODIFICADO: Selector de fecha con validación de días disponibles
+  // ✅ Selector de fecha con validación de días disponibles
   Future<void> _seleccionarFecha() async {
     final ahora = DateTime.now();
     final hoy = DateTime(ahora.year, ahora.month, ahora.day);
     
-    // ✅ Buscar una fecha inicial válida
+    // Asegurar que initialDate sea válida (no anterior a hoy)
     DateTime fechaInicial;
-    
-    if (_fechaSeleccionada != null && 
-        !_fechaSeleccionada!.isBefore(hoy) &&
-        _diasDisponiblesDocente.contains(_fechaSeleccionada!.weekday)) {
-      // La fecha actual es válida
+    if (_fechaSeleccionada != null && !_fechaSeleccionada!.isBefore(hoy)) {
       fechaInicial = _fechaSeleccionada!;
     } else {
-      // Buscar el próximo día disponible
-      fechaInicial = _buscarProximoDiaDisponible();
-      print('🔄 Fecha inicial ajustada a: $fechaInicial');
+      fechaInicial = hoy.add(const Duration(days: 1));
     }
 
     final fecha = await showDatePicker(
@@ -340,7 +460,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       firstDate: hoy,
       lastDate: DateTime.now().add(const Duration(days: 90)),
       locale: const Locale('es', 'ES'),
-      // ✅ CRÍTICO: Solo permitir días en los que el docente tiene disponibilidad
+      // CRÍTICO: Solo permitir días en los que el docente tiene disponibilidad
       selectableDayPredicate: (DateTime date) {
         final diaSemana = date.weekday;
         return _diasDisponiblesDocente.contains(diaSemana);
@@ -389,7 +509,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       return;
     }
 
-    // ✅ Validación: No reagendar a menos de 2 horas
+    // Validación: No reagendar a menos de 2 horas
     final fechaHoraNueva = DateTime(
       _fechaSeleccionada!.year,
       _fechaSeleccionada!.month,
@@ -450,7 +570,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Mostrar loading mientras se cargan los días disponibles
+    // Mostrar loading mientras se cargan los días disponibles
     if (_cargandoDias) {
       return Dialog(
         shape: RoundedRectangleBorder(
@@ -474,7 +594,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       );
     }
 
-    // ✅ Mostrar error si no hay días disponibles
+    // Mostrar error si no hay días disponibles
     if (_error != null && _diasDisponiblesDocente.isEmpty) {
       return Dialog(
         shape: RoundedRectangleBorder(
@@ -578,12 +698,55 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                             ],
                           ),
                           const SizedBox(height: 8),
+                          
+                          // ✅ Mostrar materia identificada
+                          if (_materiaOriginal != null) ...[
+                            Row(
+                              children: [
+                                const Icon(Icons.book, size: 16, color: Colors.orange),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    'Materia: $_materiaOriginal',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                          ] else if (widget.tutoria['materia'] != null) ...[
+                            Row(
+                              children: [
+                                const Icon(Icons.book, size: 16, color: Colors.orange),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    'Materia: ${widget.tutoria['materia']}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                          ],
+                          
                           Text(
-                              '📅 ${widget.tutoria['fecha'] != null ? _formatearFecha(DateTime.parse(widget.tutoria['fecha'])) : 'Fecha no disponible'}'),
+                            '📅 ${widget.tutoria['fecha'] != null 
+                                ? _formatearFecha(DateTime.parse(widget.tutoria['fecha'])) 
+                                : 'Fecha no disponible'}',
+                          ),
                           Text(
-                              '🕐 ${widget.tutoria['horaInicio'] ?? '--:--'} - ${widget.tutoria['horaFin'] ?? '--:--'}'),
-                          // ✅ Mostrar advertencia si la fecha ya pasó
-                          if (widget.tutoria['fecha'] != null && 
+                            '🕐 ${widget.tutoria['horaInicio'] ?? '--:--'} - ${widget.tutoria['horaFin'] ?? '--:--'}',
+                          ),
+                          
+                          // Advertencia si la fecha ya pasó
+                          if (widget.tutoria['fecha'] != null &&
                               DateTime.parse(widget.tutoria['fecha'])
                                   .isBefore(DateTime.now())) ...[
                             const SizedBox(height: 8),
@@ -653,13 +816,10 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                                   Text(
                                     _fechaSeleccionada != null
                                         ? _formatearFecha(_fechaSeleccionada!)
-                                        : 'Cargando días disponibles...',
-                                    style: TextStyle(
+                                        : 'Seleccionar fecha',
+                                    style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w500,
-                                      color: _fechaSeleccionada != null 
-                                          ? Colors.black 
-                                          : Colors.grey,
                                     ),
                                   ),
                                 ],
@@ -714,9 +874,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    _fechaSeleccionada != null
-                                        ? 'No hay turnos disponibles para ${_formatearFecha(_fechaSeleccionada!)}'
-                                        : 'No hay turnos disponibles',
+                                    'No hay turnos disponibles para ${_formatearFecha(_fechaSeleccionada!)}',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,
@@ -727,7 +885,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              'El docente no tiene horarios libres en este día. Por favor, elige otro día de la semana.',
+                              'El docente no tiene horarios libres en este día para la materia "$_materiaOriginal". Por favor, elige otro día de la semana.',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey[700],
@@ -754,12 +912,39 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Turnos Disponibles (${_bloquesDisponibles.length})',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                'Turnos Disponibles (${_bloquesDisponibles.length})',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // ✅ Badge indicando que son solo de la materia específica
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1565C0).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(0xFF1565C0).withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Text(
+                                  _materiaOriginal ?? 'Materia',
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF1565C0),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 12),
                           ..._bloquesDisponibles.map((turno) {
