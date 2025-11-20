@@ -1,4 +1,4 @@
-// lib/pantallas/estudiante/reagendar_tutoria_dialog.dart - VERSIÓN CORREGIDA
+// lib/pantallas/estudiante/reagendar_tutoria_dialog.dart - VERSIÓN ACTUALIZADA
 import 'package:flutter/material.dart';
 import '../../servicios/tutoria_service.dart';
 import '../../servicios/horario_service.dart';
@@ -23,8 +23,8 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
   String? _horaFin;
   final _motivoController = TextEditingController();
   bool _isLoading = false;
-  
-  // ✅ NUEVO: Variables para disponibilidad
+
+  // Disponibilidad
   bool _cargandoDisponibilidad = false;
   List<Map<String, dynamic>> _bloquesDisponibles = [];
   String? _error;
@@ -32,18 +32,17 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
   @override
   void initState() {
     super.initState();
-    
-    // Inicializar con la fecha actual de la tutoría
+
+    // Inicializar fecha actual de la tutoría
     try {
       _fechaSeleccionada = DateTime.parse(widget.tutoria['fecha']);
     } catch (e) {
       _fechaSeleccionada = DateTime.now().add(const Duration(days: 1));
     }
-    
+
     _horaInicio = widget.tutoria['horaInicio'];
     _horaFin = widget.tutoria['horaFin'];
-    
-    // ✅ Cargar disponibilidad inicial
+
     _cargarDisponibilidadDelDia();
   }
 
@@ -53,7 +52,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     super.dispose();
   }
 
-  // ✅ NUEVA FUNCIÓN: Cargar bloques disponibles del día seleccionado
+  // Cargar bloques disponibles
   Future<void> _cargarDisponibilidadDelDia() async {
     if (_fechaSeleccionada == null) return;
 
@@ -65,14 +64,12 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
 
     try {
       final docenteId = widget.tutoria['docente']['_id'];
-      
-      // Obtener día de la semana
-      const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+      const dias = [
+        'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
+      ];
       final diaSemana = dias[_fechaSeleccionada!.weekday - 1];
 
-      print('🔍 Cargando disponibilidad para: $diaSemana');
-
-      // Obtener disponibilidad completa del docente
       final disponibilidad = await HorarioService.obtenerDisponibilidadCompleta(
         docenteId: docenteId,
       );
@@ -85,9 +82,8 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
         return;
       }
 
-      // Extraer todos los bloques de todas las materias para ese día
       List<Map<String, dynamic>> bloquesDelDia = [];
-      
+
       disponibilidad.forEach((materia, bloques) {
         for (var bloque in bloques) {
           if (bloque['dia'] == diaSemana) {
@@ -96,28 +92,22 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
         }
       });
 
-      // Verificar bloques ocupados en esa fecha
       final fechaStr = _fechaSeleccionada!.toIso8601String().split('T')[0];
       final bloquesOcupados = await TutoriaService.listarTutorias(
         incluirCanceladas: false,
       );
 
-      // Filtrar bloques del mismo docente y fecha
       final ocupadosEnFecha = bloquesOcupados.where((t) {
-        return t['docente']['_id'] == docenteId && 
-               t['fecha'] == fechaStr &&
-               t['_id'] != widget.tutoria['_id'] && // Excluir la tutoría actual
-               (t['estado'] == 'pendiente' || t['estado'] == 'confirmada');
+        return t['docente']['_id'] == docenteId &&
+            t['fecha'] == fechaStr &&
+            t['_id'] != widget.tutoria['_id'] &&
+            (t['estado'] == 'pendiente' || t['estado'] == 'confirmada');
       }).toList();
 
-      print('📊 Bloques disponibles: ${bloquesDelDia.length}');
-      print('📊 Bloques ocupados: ${ocupadosEnFecha.length}');
-
-      // Filtrar bloques disponibles (sin solapamiento)
       final disponibles = bloquesDelDia.where((bloque) {
         final bloqueOcupado = ocupadosEnFecha.any((tutoria) {
           return !(
-            bloque['horaFin'] <= tutoria['horaInicio'] || 
+            bloque['horaFin'] <= tutoria['horaInicio'] ||
             bloque['horaInicio'] >= tutoria['horaFin']
           );
         });
@@ -127,24 +117,16 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       setState(() {
         _bloquesDisponibles = disponibles;
         _cargandoDisponibilidad = false;
-        
-        // Si el horario actual no está disponible, limpiar selección
-        if (_horaInicio != null && _horaFin != null) {
-          final horarioActualDisponible = disponibles.any((b) =>
-            b['horaInicio'] == _horaInicio && b['horaFin'] == _horaFin
-          );
-          
-          if (!horarioActualDisponible) {
-            _horaInicio = null;
-            _horaFin = null;
-          }
+
+        final horarioActualDisponible = disponibles.any((b) =>
+            b['horaInicio'] == _horaInicio && b['horaFin'] == _horaFin);
+
+        if (!horarioActualDisponible) {
+          _horaInicio = null;
+          _horaFin = null;
         }
       });
-
-      print('✅ Bloques disponibles finales: ${_bloquesDisponibles.length}');
-
     } catch (e) {
-      print('❌ Error cargando disponibilidad: $e');
       setState(() {
         _cargandoDisponibilidad = false;
         _error = 'Error al cargar disponibilidad: $e';
@@ -159,16 +141,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 90)),
       locale: const Locale('es', 'ES'),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF1565C0),
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
 
     if (fecha != null && mounted) {
@@ -177,14 +149,12 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
         _horaInicio = null;
         _horaFin = null;
       });
-      
-      // ✅ Recargar disponibilidad del nuevo día
+
       _cargarDisponibilidadDelDia();
     }
   }
 
   Future<void> _reagendar() async {
-    // Validaciones
     if (_fechaSeleccionada == null) {
       _mostrarError('Selecciona una fecha');
       return;
@@ -195,14 +165,31 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       return;
     }
 
-    // ✅ Validar que el horario esté en los bloques disponibles
+    // Validar que el horario sigue disponible
     final bloqueValido = _bloquesDisponibles.any((b) =>
-      b['horaInicio'] == _horaInicio && b['horaFin'] == _horaFin
-    );
+        b['horaInicio'] == _horaInicio && b['horaFin'] == _horaFin);
 
     if (!bloqueValido) {
       _mostrarError('El horario seleccionado ya no está disponible');
       return;
+    }
+
+    // ✅ NUEVA VALIDACIÓN: No reagendar a menos de 2 horas
+    if (_fechaSeleccionada != null && _horaInicio != null) {
+      final fechaHoraNueva = DateTime(
+        _fechaSeleccionada!.year,
+        _fechaSeleccionada!.month,
+        _fechaSeleccionada!.day,
+        int.parse(_horaInicio!.split(':')[0]),
+        int.parse(_horaInicio!.split(':')[1]),
+      );
+
+      final diferencia = fechaHoraNueva.difference(DateTime.now());
+
+      if (diferencia.inHours < 2) {
+        _mostrarError('Debes reagendar con al menos 2 horas de anticipación');
+        return;
+      }
     }
 
     setState(() => _isLoading = true);
@@ -214,8 +201,8 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       nuevaFecha: fechaFormateada,
       nuevaHoraInicio: _horaInicio!,
       nuevaHoraFin: _horaFin!,
-      motivo: _motivoController.text.isEmpty 
-          ? 'Reagendada por el estudiante' 
+      motivo: _motivoController.text.isEmpty
+          ? 'Reagendada por el estudiante'
           : _motivoController.text,
     );
 
@@ -241,7 +228,9 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
   }
 
   String _formatearFecha(DateTime fecha) {
-    const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const dias = [
+      'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
+    ];
     final dia = dias[fecha.weekday - 1];
     return '$dia ${fecha.day}/${fecha.month}/${fecha.year}';
   }
@@ -255,7 +244,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       child: Container(
         constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
             // Header
             Container(
@@ -268,36 +256,23 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                   topRight: Radius.circular(16),
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.event_repeat, color: Colors.white, size: 28),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'Reagendar Tutoría',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                  const Icon(Icons.event_repeat, color: Colors.white, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Reagendar Tutoría',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.nombreDocente,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 14,
                     ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
@@ -324,7 +299,8 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.info_outline, color: Colors.orange[700], size: 20),
+                              Icon(Icons.info_outline,
+                                  color: Colors.orange[700], size: 20),
                               const SizedBox(width: 8),
                               Text(
                                 'Horario Actual',
@@ -336,8 +312,10 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Text('📅 ${_formatearFecha(DateTime.parse(widget.tutoria['fecha']))}'),
-                          Text('🕐 ${widget.tutoria['horaInicio']} - ${widget.tutoria['horaFin']}'),
+                          Text(
+                              '📅 ${_formatearFecha(DateTime.parse(widget.tutoria['fecha']))}'),
+                          Text(
+                              '🕐 ${widget.tutoria['horaInicio']} - ${widget.tutoria['horaFin']}'),
                         ],
                       ),
                     ),
@@ -364,7 +342,8 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.calendar_today, color: Color(0xFF1565C0)),
+                            const Icon(Icons.calendar_today,
+                                color: Color(0xFF1565C0)),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -373,14 +352,14 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                                   const Text(
                                     'Fecha',
                                     style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
+                                        fontSize: 12, color: Colors.grey),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     _fechaSeleccionada != null
-                                        ? _formatearFecha(_fechaSeleccionada!)
+                                        ? _formatearFecha(
+                                            _fechaSeleccionada!,
+                                          )
                                         : 'Seleccionar fecha',
                                     style: const TextStyle(
                                       fontSize: 16,
@@ -398,7 +377,9 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
 
                     const SizedBox(height: 16),
 
-                    // ✅ NUEVO: Lista de bloques disponibles
+                    // =============================
+                    //     BLOQUES DISPONIBLES
+                    // =============================
                     if (_cargandoDisponibilidad)
                       const Center(
                         child: Padding(
@@ -422,6 +403,8 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                           ],
                         ),
                       )
+
+                    // ⭐ NUEVO CONTENEDOR PERSONALIZADO CUANDO NO HAY BLOQUES ⭐
                     else if (_bloquesDisponibles.isEmpty)
                       Container(
                         padding: const EdgeInsets.all(16),
@@ -430,18 +413,53 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.orange),
                         ),
-                        child: const Row(
+                        child: Column(
                           children: [
-                            Icon(Icons.warning_amber, color: Colors.orange),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'No hay bloques disponibles para este día',
+                            Row(
+                              children: [
+                                const Icon(Icons.warning_amber,
+                                    color: Colors.orange, size: 24),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'No hay turnos disponibles para ${_formatearFecha(_fechaSeleccionada!)}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'El docente no tiene horarios libres en este día. Por favor, elige otro día de la semana.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[700],
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 12),
+                            ElevatedButton.icon(
+                              onPressed: _seleccionarFecha,
+                              icon: const Icon(Icons.calendar_today, size: 18),
+                              label: const Text('Elegir otro día'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                               ),
                             ),
                           ],
                         ),
                       )
+
+                    // =============================
+                    // BLOQUES DISPONIBLES (LISTA)
+                    // =============================
                     else
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -454,12 +472,10 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          
                           ..._bloquesDisponibles.map((bloque) {
-                            final isSelected = 
-                              _horaInicio == bloque['horaInicio'] && 
-                              _horaFin == bloque['horaFin'];
-                            
+                            final isSelected = _horaInicio == bloque['horaInicio'] &&
+                                _horaFin == bloque['horaFin'];
+
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 8),
                               child: InkWell(
@@ -472,13 +488,13 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                                 child: Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: isSelected 
-                                      ? const Color(0xFF1565C0).withOpacity(0.1)
-                                      : Colors.grey[50],
+                                    color: isSelected
+                                        ? const Color(0xFF1565C0).withOpacity(0.1)
+                                        : Colors.grey[50],
                                     border: Border.all(
-                                      color: isSelected 
-                                        ? const Color(0xFF1565C0)
-                                        : Colors.grey[300]!,
+                                      color: isSelected
+                                          ? const Color(0xFF1565C0)
+                                          : Colors.grey[300]!,
                                       width: isSelected ? 2 : 1,
                                     ),
                                     borderRadius: BorderRadius.circular(8),
@@ -486,23 +502,23 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                                   child: Row(
                                     children: [
                                       Icon(
-                                        isSelected 
-                                          ? Icons.check_circle 
-                                          : Icons.schedule,
-                                        color: isSelected 
-                                          ? const Color(0xFF1565C0)
-                                          : Colors.grey,
+                                        isSelected
+                                            ? Icons.check_circle
+                                            : Icons.schedule,
+                                        color: isSelected
+                                            ? const Color(0xFF1565C0)
+                                            : Colors.grey,
                                       ),
                                       const SizedBox(width: 12),
                                       Text(
                                         '${bloque['horaInicio']} - ${bloque['horaFin']}',
                                         style: TextStyle(
-                                          fontWeight: isSelected 
-                                            ? FontWeight.bold 
-                                            : FontWeight.normal,
-                                          color: isSelected 
-                                            ? const Color(0xFF1565C0)
-                                            : Colors.black,
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          color: isSelected
+                                              ? const Color(0xFF1565C0)
+                                              : Colors.black,
                                         ),
                                       ),
                                     ],
@@ -534,26 +550,16 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
               ),
             ),
 
-            // Footer con botón
+            // Footer
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
               child: SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: (_isLoading || _cargandoDisponibilidad || _horaInicio == null) 
-                    ? null 
-                    : _reagendar,
+                  onPressed: (_isLoading || _cargandoDisponibilidad || _horaInicio == null)
+                      ? null
+                      : _reagendar,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1565C0),
                     disabledBackgroundColor: Colors.grey,
@@ -571,9 +577,9 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
                           ),
                         )
                       : Text(
-                          _horaInicio == null 
-                            ? 'Selecciona un horario' 
-                            : 'Confirmar Reagendamiento',
+                          _horaInicio == null
+                              ? 'Selecciona un horario'
+                              : 'Confirmar Reagendamiento',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,

@@ -565,12 +565,23 @@ const cancelarTutoria = async (req, res) => {
       return res.status(400).json({ msg: 'Esta tutoría ya fue cancelada.' });
     }
 
-    // ✅ Validar fecha correctamente (comparar sin hora)
-    const hoy = moment().startOf('day');
-    const fechaTutoria = moment(tutoria.fecha, 'YYYY-MM-DD').startOf('day');
+    // ✅ CORRECCIÓN: Validar fecha Y hora
+    const ahora = moment();
+    const fechaTutoria = moment(`${tutoria.fecha} ${tutoria.horaInicio}`, 'YYYY-MM-DD HH:mm');
 
-    if (fechaTutoria.isBefore(hoy)) {
-      return res.status(400).json({ msg: 'No puedes cancelar una tutoría pasada.' });
+    // Permitir cancelación si la tutoría no ha comenzado
+    if (fechaTutoria.isSameOrBefore(ahora)) {
+      return res.status(400).json({ 
+        msg: 'No puedes cancelar una tutoría que ya comenzó o finalizó.' 
+      });
+    }
+
+    // ✅ OPCIONAL: Límite de tiempo para cancelación (2 horas antes)
+    const horasAnticipacion = fechaTutoria.diff(ahora, 'hours');
+    if (horasAnticipacion < 2) {
+      return res.status(400).json({ 
+        msg: `Debes cancelar con al menos 2 horas de anticipación. Tiempo restante: ${horasAnticipacion} hora(s).` 
+      });
     }
 
     // Determinar el estado correcto
