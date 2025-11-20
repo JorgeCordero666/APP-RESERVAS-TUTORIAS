@@ -369,7 +369,6 @@ class TutoriaService {
       return {'error': 'Error de conexión: $e'};
     }
   }
-  // Agregar al final del archivo tutoria_service.dart existente
 
   /// ✅ REAGENDAR TUTORÍA
   static Future<Map<String, dynamic>?> reagendarTutoria({
@@ -418,6 +417,49 @@ class TutoriaService {
       return {'error': 'Error de conexión: $e'};
     }
   }
+
+  /// ✅ FINALIZAR TUTORÍA CON ASISTENCIA (SOLO DOCENTE)
+static Future<Map<String, dynamic>?> finalizarTutoria({
+  required String tutoriaId,
+  required bool asistio,
+  String? observaciones,
+}) async {
+  try {
+    final token = await AuthService.getToken();
+    
+    if (token == null) {
+      return {'error': 'No hay sesión activa'};
+    }
+
+    final url = '${ApiConfig.baseUrl}/tutoria/finalizar/$tutoriaId';
+    print('🏁 Finalizando tutoría: $url');
+    print('   Asistió: $asistio');
+
+    final response = await http.put(
+      Uri.parse(url),
+      headers: ApiConfig.getHeaders(token: token),
+      body: jsonEncode({
+        'asistio': asistio,
+        'observaciones': observaciones ?? '',
+      }),
+    );
+
+    print('📬 Status: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print('✅ Tutoría finalizada exitosamente');
+      return data;
+    } else {
+      final data = jsonDecode(response.body);
+      print('❌ Error: ${data['msg']}');
+      return {'error': data['msg'] ?? 'Error al finalizar tutoría'};
+    }
+  } catch (e) {
+    print('❌ Error en finalizarTutoria: $e');
+    return {'error': 'Error de conexión: $e'};
+  }
+}
 
   /// ✅ OBTENER HISTORIAL DE TUTORÍAS CON FILTROS
   static Future<Map<String, dynamic>?> obtenerHistorialTutorias({

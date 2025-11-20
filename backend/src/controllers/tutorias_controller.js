@@ -2097,6 +2097,111 @@ export const listarTutoriasPendientes = async (req, res) => {
 };
 
 // =====================================================
+// Finalizar tutoría y registrar asistencia
+// - Solo el docente puede finalizar
+// - Solo se pueden finalizar tutorías confirmadas
+// - Se marca asistencia y observaciones
+// =====================================================
+export const finalizarTutoria = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { asistio, observaciones } = req.body;
+    const docente = req.docenteBDD?._id;
+
+    console.log(`🏁 Finalizando tutoría: ${id}`);
+
+    if (!docente) {
+      return res.status(401).json({
+        success: false,
+        msg: "Docente no autenticado"
+      });
+    }
+
+    // Validar que asistio sea booleano
+    if (typeof asistio !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        msg: "Debes indicar si el estudiante asistió (true/false)"
+      });
+    }
+
+    const tutoria = await Tutoria.findById(id);
+
+    if (!tutoria) {
+      return res.status(404).json({
+        success: false,
+        msg: 'Tutoría no encontrada'
+      });
+    }
+
+    // Verificar que sea el docente correcto
+    if (tutoria.docente.toString() !== docente.toString()) {
+      return res.status(403).json({
+        success: false,
+        msg: 'No tienes permiso para finalizar esta tutoría'
+      });
+    }
+
+    // Validar estado actual
+    if (tutoria.estado !== 'confirmada') {
+      return res.status(400).json({
+        success: false,
+        msg: `Solo se pueden finalizar tutorías confirmadas. Estado actual: ${tutoria.estado}`
+      });
+    }
+
+    // Validar que la fecha no sea futura
+    const fechaTutoria = moment(tutoria.fecha, 'YYYY-MM-DD');
+    const hoy = moment().startOf('day');
+
+    if (fechaTutoria.isAfter(hoy)) {
+      return res.status(400).json({
+        success: false,
+        msg: 'No puedes finalizar una tutoría que aún no ha ocurrido'
+      });
+    }
+
+    // Actualizar tutoría
+    tutoria.estado = 'finalizada';
+    tutoria.asistenciaEstudiante = asistio;
+    tutoria.observacionesDocente = observaciones?.trim() || null;
+
+    await tutoria.save();
+
+    console.log(`✅ Tutoría finalizada: ${tutoria._id}`);
+    console.log(`   Asistencia: ${asistio ? 'SÍ' : 'NO'}`);
+    console.log(`   Observaciones: ${observaciones || 'ninguna'}`);
+
+    // Poblar datos para respuesta
+    await tutoria.populate('estudiante', 'nombreEstudiante emailEstudiante fotoPerfil');
+    await tutoria.populate('docente', 'nombreDocente emailDocente');
+
+    res.status(200).json({
+      success: true,
+      msg: 'Tutoría finalizada exitosamente',
+      tutoria: {
+        _id: tutoria._id,
+        estado: tutoria.estado,
+        asistenciaEstudiante: tutoria.asistenciaEstudiante,
+        observacionesDocente: tutoria.observacionesDocente,
+        estudiante: tutoria.estudiante,
+        fecha: tutoria.fecha,
+        horaInicio: tutoria.horaInicio,
+        horaFin: tutoria.horaFin
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error finalizando tutoría:", error);
+    res.status(500).json({
+      success: false,
+      msg: 'Error al finalizar la tutoría',
+      error: error.message
+    });
+  }
+};
+
+// =====================================================
 // ✅ EXPORTAR TODAS LAS FUNCIONES (BLOQUE ÚNICO)
 // =====================================================
 export {

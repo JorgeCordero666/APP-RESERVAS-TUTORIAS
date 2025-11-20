@@ -22,7 +22,8 @@ import {
   obtenerTurnosDisponibles,
   reagendarTutoria,
   obtenerHistorialTutorias,
-  generarReportePorMaterias
+  generarReportePorMaterias,
+  finalizarTutoria
 } from "../controllers/tutorias_controller.js";
 
 import { verificarTokenJWT } from "../middlewares/JWT.js";
@@ -427,13 +428,19 @@ routerTutorias.put(
   rechazarTutoria
 );
 
-
 // Generar reporte por materias (solo docente)
 routerTutorias.get(
   "/reporte-por-materias",
   verificarTokenJWT,
   verificarRol(["Docente"]),
   generarReportePorMaterias
+);
+
+routerTutorias.put(
+  "/tutoria/finalizar/:id",
+  verificarTokenJWT,
+  verificarRol(["Docente"]),
+  finalizarTutoria
 );
 
 export default routerTutorias;
