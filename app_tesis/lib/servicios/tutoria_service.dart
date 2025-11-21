@@ -1,4 +1,4 @@
-// lib/servicios/tutoria_service.dart
+// app_tesis/lib/servicios/tutoria_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
@@ -112,7 +112,7 @@ class TutoriaService {
     }
   }
 
-  /// ✅ AGENDAR TUTORÍA (ESTUDIANTE) - Función original mantenida
+  /// ✅ AGENDAR TUTORÍA (ESTUDIANTE)
   static Future<Map<String, dynamic>?> agendarTutoria({
     required String docenteId,
     required String fecha,
@@ -128,9 +128,6 @@ class TutoriaService {
 
       final url = '${ApiConfig.baseUrl}/tutoria/registro';
       print('📝 Agendando tutoría: $url');
-      print('   Docente: $docenteId');
-      print('   Fecha: $fecha');
-      print('   Hora: $horaInicio - $horaFin');
 
       final response = await http.post(
         Uri.parse(url),
@@ -144,7 +141,6 @@ class TutoriaService {
       );
 
       print('📬 Status: ${response.statusCode}');
-      print('📄 Response: ${response.body}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -175,7 +171,6 @@ class TutoriaService {
         return [];
       }
 
-      // Construir URL con parámetros opcionales
       String url = '${ApiConfig.baseUrl}/tutorias';
       List<String> params = [];
       
@@ -329,11 +324,11 @@ class TutoriaService {
     }
   }
 
-  /// ✅ CANCELAR TUTORÍA (ESTUDIANTE O DOCENTE)
+  /// ✅ CANCELAR TUTORÍA
   static Future<Map<String, dynamic>?> cancelarTutoria({
     required String tutoriaId,
     required String motivo,
-    required String canceladaPor, // 'Estudiante' o 'Docente'
+    required String canceladaPor,
   }) async {
     try {
       final token = await AuthService.getToken();
@@ -387,8 +382,6 @@ class TutoriaService {
 
       final url = '${ApiConfig.baseUrl}/tutoria/reagendar/$tutoriaId';
       print('🔄 Reagendando tutoría: $url');
-      print('   Nueva fecha: $nuevaFecha');
-      print('   Nuevo horario: $nuevaHoraInicio - $nuevaHoraFin');
 
       final response = await http.put(
         Uri.parse(url),
@@ -397,7 +390,7 @@ class TutoriaService {
           'nuevaFecha': nuevaFecha,
           'nuevaHoraInicio': nuevaHoraInicio,
           'nuevaHoraFin': nuevaHoraFin,
-          'motivo': motivo ?? 'Reagendada por el usuario',
+          'motivo': motivo ?? '',
         }),
       );
 
@@ -419,49 +412,48 @@ class TutoriaService {
   }
 
   /// ✅ FINALIZAR TUTORÍA CON ASISTENCIA (SOLO DOCENTE)
-static Future<Map<String, dynamic>?> finalizarTutoria({
-  required String tutoriaId,
-  required bool asistio,
-  String? observaciones,
-}) async {
-  try {
-    final token = await AuthService.getToken();
-    
-    if (token == null) {
-      return {'error': 'No hay sesión activa'};
+  static Future<Map<String, dynamic>?> finalizarTutoria({
+    required String tutoriaId,
+    required bool asistio,
+    String? observaciones,
+  }) async {
+    try {
+      final token = await AuthService.getToken();
+      
+      if (token == null) {
+        return {'error': 'No hay sesión activa'};
+      }
+
+      final url = '${ApiConfig.baseUrl}/tutoria/finalizar/$tutoriaId';
+      print('🏁 Finalizando tutoría: $url');
+
+      final response = await http.put(
+        Uri.parse(url),
+        headers: ApiConfig.getHeaders(token: token),
+        body: jsonEncode({
+          'asistio': asistio,
+          'observaciones': observaciones ?? '',
+        }),
+      );
+
+      print('📬 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('✅ Tutoría finalizada exitosamente');
+        return data;
+      } else {
+        final data = jsonDecode(response.body);
+        print('❌ Error: ${data['msg']}');
+        return {'error': data['msg'] ?? 'Error al finalizar tutoría'};
+      }
+    } catch (e) {
+      print('❌ Error en finalizarTutoria: $e');
+      return {'error': 'Error de conexión: $e'};
     }
-
-    final url = '${ApiConfig.baseUrl}/tutoria/finalizar/$tutoriaId';
-    print('🏁 Finalizando tutoría: $url');
-    print('   Asistió: $asistio');
-
-    final response = await http.put(
-      Uri.parse(url),
-      headers: ApiConfig.getHeaders(token: token),
-      body: jsonEncode({
-        'asistio': asistio,
-        'observaciones': observaciones ?? '',
-      }),
-    );
-
-    print('📬 Status: ${response.statusCode}');
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      print('✅ Tutoría finalizada exitosamente');
-      return data;
-    } else {
-      final data = jsonDecode(response.body);
-      print('❌ Error: ${data['msg']}');
-      return {'error': data['msg'] ?? 'Error al finalizar tutoría'};
-    }
-  } catch (e) {
-    print('❌ Error en finalizarTutoria: $e');
-    return {'error': 'Error de conexión: $e'};
   }
-}
 
-  /// ✅ OBTENER HISTORIAL DE TUTORÍAS CON FILTROS
+  /// ✅ OBTENER HISTORIAL CON FILTROS
   static Future<Map<String, dynamic>?> obtenerHistorialTutorias({
     String? fechaInicio,
     String? fechaFin,
@@ -477,7 +469,6 @@ static Future<Map<String, dynamic>?> finalizarTutoria({
         return {'error': 'No hay sesión activa'};
       }
 
-      // Construir URL con parámetros
       final params = <String, String>{
         'page': page.toString(),
         'limit': limit.toString(),
@@ -519,7 +510,7 @@ static Future<Map<String, dynamic>?> finalizarTutoria({
   static Future<Map<String, dynamic>?> generarReportePorMaterias({
     String? fechaInicio,
     String? fechaFin,
-    String formato = 'json', // 'json' o 'csv'
+    String formato = 'json',
   }) async {
     try {
       final token = await AuthService.getToken();
@@ -549,7 +540,6 @@ static Future<Map<String, dynamic>?> finalizarTutoria({
 
       if (response.statusCode == 200) {
         if (formato == 'csv') {
-          // Para CSV, retornar el contenido directamente
           return {
             'success': true,
             'csv': response.body,
@@ -557,7 +547,7 @@ static Future<Map<String, dynamic>?> finalizarTutoria({
           };
         } else {
           final data = jsonDecode(response.body);
-          print('✅ Reporte generado: ${data['estadisticasGlobales']['materiasActivas']} materias');
+          print('✅ Reporte generado');
           return data;
         }
       } else {
@@ -568,6 +558,107 @@ static Future<Map<String, dynamic>?> finalizarTutoria({
     } catch (e) {
       print('❌ Error en generarReportePorMaterias: $e');
       return {'error': 'Error de conexión: $e'};
+    }
+  }
+
+  /// ✅ GENERAR REPORTE GENERAL (SOLO ADMIN)
+  static Future<Map<String, dynamic>?> generarReporteGeneralAdmin({
+    String? fechaInicio,
+    String? fechaFin,
+    String formato = 'json',
+  }) async {
+    try {
+      final token = await AuthService.getToken();
+      
+      if (token == null) {
+        return {'error': 'No hay sesión activa'};
+      }
+
+      final params = <String, String>{
+        'formato': formato,
+      };
+
+      if (fechaInicio != null) params['fechaInicio'] = fechaInicio;
+      if (fechaFin != null) params['fechaFin'] = fechaFin;
+
+      final uri = Uri.parse('${ApiConfig.baseUrl}/admin/reporte-general')
+          .replace(queryParameters: params);
+
+      print('📊 Generando reporte general: $uri');
+
+      final response = await http.get(
+        uri,
+        headers: ApiConfig.getHeaders(token: token),
+      );
+
+      print('📬 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        if (formato == 'csv') {
+          return {
+            'success': true,
+            'csv': response.body,
+            'filename': 'reporte_admin_${DateTime.now().millisecondsSinceEpoch}.csv'
+          };
+        } else {
+          final data = jsonDecode(response.body);
+          print('✅ Reporte generado');
+          return data;
+        }
+      } else {
+        final error = jsonDecode(response.body);
+        print('❌ Error: ${error['msg']}');
+        return {'error': error['msg'] ?? 'Error al generar reporte'};
+      }
+    } catch (e) {
+      print('❌ Error en generarReporteGeneralAdmin: $e');
+      return {'error': 'Error de conexión: $e'};
+    }
+  }
+
+  /// ✅ LISTAR TODAS LAS TUTORÍAS (SOLO ADMIN)
+  static Future<List<Map<String, dynamic>>> listarTodasTutoriasAdmin({
+    bool incluirCanceladas = true,
+  }) async {
+    try {
+      final token = await AuthService.getToken();
+      
+      if (token == null) {
+        print('❌ No hay token');
+        return [];
+      }
+
+      final params = <String, String>{};
+      if (incluirCanceladas) {
+        params['incluirCanceladas'] = 'true';
+      }
+
+      final uri = Uri.parse('${ApiConfig.baseUrl}/admin/todas-tutorias')
+          .replace(queryParameters: params);
+
+      print('📋 Obteniendo todas las tutorías (Admin): $uri');
+
+      final response = await http.get(
+        uri,
+        headers: ApiConfig.getHeaders(token: token),
+      );
+
+      print('📬 Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> tutorias = data['tutorias'] ?? [];
+        
+        print('✅ Tutorías obtenidas: ${tutorias.length}');
+        
+        return tutorias.map((t) => t as Map<String, dynamic>).toList();
+      }
+      
+      print('⚠️ Error: ${response.statusCode}');
+      return [];
+    } catch (e) {
+      print('❌ Error en listarTodasTutoriasAdmin: $e');
+      return [];
     }
   }
 }

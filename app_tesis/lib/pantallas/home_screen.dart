@@ -1,4 +1,4 @@
-// lib/pantallas/home_screen.dart - VERSIÓN FINAL CORREGIDA
+// lib/pantallas/home_screen.dart - VERSIÓN COMPLETA CON REPORTES ADMIN
 import 'package:app_tesis/pantallas/docente/solicitudes_tutorias_screen.dart';
 import 'package:app_tesis/pantallas/estudiante/mis_tutorias_screen.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +8,8 @@ import '../config/routes.dart';
 import 'admin/gestion_usuarios_screen.dart';
 import 'admin/gestion_estudiantes_screen.dart';
 import 'admin/gestion_materias_screen.dart' as AdminMaterias;
+import 'admin/reportes_admin_screen.dart';
+import 'admin/historial_tutorias_admin_screen.dart';
 import 'perfil/perfil_screen.dart';
 import 'docente/gestion_materias_screen.dart' as DocenteMaterias;
 import 'docente/gestion_horarios_screen.dart';
@@ -150,6 +152,8 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _buildWelcomeCard(),
             const SizedBox(height: 24),
+            
+            // Gestión de Docentes
             _buildQuickAccessCard(
               title: 'Gestión de Docentes',
               subtitle: 'Administrar docentes del sistema',
@@ -158,6 +162,8 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () => setState(() => _selectedIndex = 1),
             ),
             const SizedBox(height: 16),
+            
+            // Gestión de Estudiantes
             _buildQuickAccessCard(
               title: 'Gestión de Estudiantes',
               subtitle: 'Administrar estudiantes',
@@ -166,6 +172,8 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () => setState(() => _selectedIndex = 2),
             ),
             const SizedBox(height: 16),
+            
+            // Gestión de Materias
             _buildQuickAccessCard(
               title: 'Gestión de Materias',
               subtitle: 'Administrar catálogo de materias',
@@ -176,6 +184,40 @@ class _HomeScreenState extends State<HomeScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => AdminMaterias.GestionMateriasScreen(usuario: _usuario),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            
+            // ✅ NUEVO: Reportes Generales
+            _buildQuickAccessCard(
+              title: 'Reportes Generales',
+              subtitle: 'Ver estadísticas del sistema',
+              icon: Icons.analytics,
+              color: Colors.orange,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ReportesAdminScreen(usuario: _usuario),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            
+            // ✅ NUEVO: Historial de Tutorías
+            _buildQuickAccessCard(
+              title: 'Historial de Tutorías',
+              subtitle: 'Ver todas las tutorías del sistema',
+              icon: Icons.history,
+              color: Colors.teal,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HistorialTutoriasAdminScreen(usuario: _usuario),
                   ),
                 );
               },
@@ -241,7 +283,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
             
-            // ✅ NUEVO: Botón de Reportes
             _buildQuickAccessCard(
               title: 'Reportes de Tutorías',
               subtitle: 'Ver estadísticas por materia',
@@ -282,16 +323,16 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _buildWelcomeCard(),
             const SizedBox(height: 24),
-            // Reemplazo del botón "Ver Disponibilidad"
+            
             _buildQuickAccessCard(
               title: 'Agendar Tutoría',
               subtitle: 'Solicitar nueva tutoría con un docente',
               icon: Icons.add_circle,
               color: Colors.green,
-              onTap: () => setState(() => _selectedIndex = 1), // Ya apunta a VerDisponibilidadDocentesScreen
+              onTap: () => setState(() => _selectedIndex = 1),
             ),
             const SizedBox(height: 16),
-            // Nuevo botón agregado
+            
             _buildQuickAccessCard(
               title: 'Mis Tutorías',
               subtitle: 'Ver tutorías agendadas',

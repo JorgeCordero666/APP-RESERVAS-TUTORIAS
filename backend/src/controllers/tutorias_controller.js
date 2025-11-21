@@ -2443,6 +2443,171 @@ export const marcarTutoriasExpiradas = async () => {
 };
 
 // =====================================================
+// ✅ GENERAR REPORTE GENERAL PARA ADMINISTRADOR
+// Resumen de todas las tutorías del sistema
+// =====================================================
+export const generarReporteGeneralAdmin = async (req, res) => {
+  try {
+    const { fechaInicio, fechaFin, formato = 'json' } = req.query;
+
+    console.log('📊 Generando reporte general para administrador');
+    console.log(`   Período: ${fechaInicio || 'Inicio'} - ${fechaFin || 'Hoy'}`);
+
+    // Construir filtro
+    let filtro = {};
+
+    if (fechaInicio || fechaFin) {
+      filtro.fecha = {};
+      if (fechaInicio) filtro.fecha.$gte = fechaInicio;
+      if (fechaFin) filtro.fecha.$lte = fechaFin;
+    }
+
+    // Obtener todas las tutorías del período
+    const tutorias = await Tutoria.find(filtro)
+      .populate('estudiante', 'nombreEstudiante emailEstudiante')
+      .populate('docente', 'nombreDocente emailDocente')
+      .sort({ fecha: -1 });
+
+    console.log(`   Total tutorías encontradas: ${tutorias.length}`);
+
+    // Estadísticas globales
+    const estadisticasGlobales = {
+      totalTutorias: tutorias.length,
+      pendientes: tutorias.filter(t => t.estado === 'pendiente').length,
+      confirmadas: tutorias.filter(t => t.estado === 'confirmada').length,
+      finalizadas: tutorias.filter(t => t.estado === 'finalizada').length,
+      canceladas: tutorias.filter(t => 
+        t.estado === 'cancelada_por_estudiante' || 
+        t.estado === 'cancelada_por_docente'
+      ).length,
+      rechazadas: tutorias.filter(t => t.estado === 'rechazada').length,
+      expiradas: tutorias.filter(t => t.estado === 'expirada').length,
+      periodo: {
+        inicio: fechaInicio || tutorias[tutorias.length - 1]?.fecha || 'N/A',
+        fin: fechaFin || tutorias[0]?.fecha || 'N/A'
+      }
+    };
+
+    // Contar docentes y estudiantes únicos
+    const docentesUnicos = new Set(tutorias.map(t => t.docente?._id?.toString())).size;
+    const estudiantesUnicos = new Set(tutorias.map(t => t.estudiante?._id?.toString())).size;
+
+    estadisticasGlobales.docentesActivos = docentesUnicos;
+    estadisticasGlobales.estudiantesUnicos = estudiantesUnicos;
+
+    // Agrupar por docente
+    const reportePorDocente = {};
+
+    tutorias.forEach(tutoria => {
+      const nombreDocente = tutoria.docente?.nombreDocente || 'Sin docente';
+      
+      if (!reportePorDocente[nombreDocente]) {
+        reportePorDocente[nombreDocente] = {
+          estadisticas: {
+            total: 0,
+            pendientes: 0,
+            confirmadas: 0,
+            finalizadas: 0,
+            canceladas: 0,
+            rechazadas: 0,
+            asistencias: 0,
+            inasistencias: 0,
+          },
+          tutorias: []
+        };
+      }
+
+      const stats = reportePorDocente[nombreDocente].estadisticas;
+      stats.total++;
+
+      switch (tutoria.estado) {
+        case 'pendiente':
+          stats.pendientes++;
+          break;
+        case 'confirmada':
+          stats.confirmadas++;
+          break;
+        case 'finalizada':
+          stats.finalizadas++;
+          if (tutoria.asistenciaEstudiante === true) stats.asistencias++;
+          if (tutoria.asistenciaEstudiante === false) stats.inasistencias++;
+          break;
+        case 'cancelada_por_estudiante':
+        case 'cancelada_por_docente':
+          stats.canceladas++;
+          break;
+        case 'rechazada':
+          stats.rechazadas++;
+          break;
+      }
+
+      reportePorDocente[nombreDocente].tutorias.push({
+        _id: tutoria._id,
+        estudiante: tutoria.estudiante?.nombreEstudiante || 'N/A',
+        fecha: tutoria.fecha,
+        horario: `${tutoria.horaInicio} - ${tutoria.horaFin}`,
+        estado: tutoria.estado,
+        asistencia: tutoria.asistenciaEstudiante
+      });
+    });
+
+    // Calcular tasas de asistencia por docente
+    Object.values(reportePorDocente).forEach(data => {
+      const stats = data.estadisticas;
+      if (stats.finalizadas > 0) {
+        stats.tasaAsistencia = ((stats.asistencias / stats.finalizadas) * 100).toFixed(2) + '%';
+      } else {
+        stats.tasaAsistencia = 'N/A';
+      }
+    });
+
+    console.log(`✅ Reporte generado`);
+    console.log(`   Docentes: ${docentesUnicos}`);
+    console.log(`   Estudiantes: ${estudiantesUnicos}`);
+
+    // Responder según formato solicitado
+    if (formato === 'csv') {
+      return generarCSVAdmin(res, reportePorDocente, estadisticasGlobales);
+    }
+
+    res.status(200).json({
+      success: true,
+      estadisticasGlobales,
+      reportePorDocente
+    });
+
+  } catch (error) {
+    console.error("❌ Error generando reporte general:", error);
+    res.status(500).json({
+      success: false,
+      msg: 'Error al generar reporte',
+      error: error.message
+    });
+  }
+};
+
+// Función auxiliar para generar CSV
+const generarCSVAdmin = (res, reporte, stats) => {
+  let csv = 'RESUMEN GENERAL\n';
+  csv += `Total Tutorías,${stats.totalTutorias}\n`;
+  csv += `Docentes Activos,${stats.docentesActivos}\n`;
+  csv += `Estudiantes Únicos,${stats.estudiantesUnicos}\n`;
+  csv += `Período,${stats.periodo.inicio} a ${stats.periodo.fin}\n\n`;
+  
+  csv += 'DETALLE POR DOCENTE\n';
+  csv += 'Docente,Total,Pendientes,Confirmadas,Finalizadas,Canceladas,Tasa Asistencia\n';
+  
+  for (const [docente, datos] of Object.entries(reporte)) {
+    const e = datos.estadisticas;
+    csv += `"${docente}",${e.total},${e.pendientes},${e.confirmadas},${e.finalizadas},${e.canceladas},${e.tasaAsistencia}\n`;
+  }
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename="reporte_admin_${Date.now()}.csv"`);
+  res.send(csv);
+};
+
+// =====================================================
 // ✅ EXPORTAR TODAS LAS FUNCIONES (BLOQUE ÚNICO)
 // =====================================================
 export {
