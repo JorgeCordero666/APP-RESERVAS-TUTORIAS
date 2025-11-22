@@ -2470,9 +2470,20 @@ export const generarReporteGeneralAdmin = async (req, res) => {
 
     console.log(`   Total tutorías encontradas: ${tutorias.length}`);
 
+    // Contar docentes y estudiantes únicos
+    const docentesSet = new Set();
+    const estudiantesSet = new Set();
+
+    tutorias.forEach(t => {
+      if (t.docente?._id) docentesSet.add(t.docente._id.toString());
+      if (t.estudiante?._id) estudiantesSet.add(t.estudiante._id.toString());
+    });
+
     // Estadísticas globales
     const estadisticasGlobales = {
       totalTutorias: tutorias.length,
+      docentesActivos: docentesSet.size,
+      estudiantesUnicos: estudiantesSet.size,
       pendientes: tutorias.filter(t => t.estado === 'pendiente').length,
       confirmadas: tutorias.filter(t => t.estado === 'confirmada').length,
       finalizadas: tutorias.filter(t => t.estado === 'finalizada').length,
@@ -2483,17 +2494,15 @@ export const generarReporteGeneralAdmin = async (req, res) => {
       rechazadas: tutorias.filter(t => t.estado === 'rechazada').length,
       expiradas: tutorias.filter(t => t.estado === 'expirada').length,
       periodo: {
-        inicio: fechaInicio || tutorias[tutorias.length - 1]?.fecha || 'N/A',
-        fin: fechaFin || tutorias[0]?.fecha || 'N/A'
+        inicio: fechaInicio || (tutorias.length > 0 ? tutorias[tutorias.length - 1]?.fecha : 'N/A') || 'N/A',
+        fin: fechaFin || (tutorias.length > 0 ? tutorias[0]?.fecha : 'N/A') || 'N/A'
       }
     };
 
-    // Contar docentes y estudiantes únicos
-    const docentesUnicos = new Set(tutorias.map(t => t.docente?._id?.toString())).size;
-    const estudiantesUnicos = new Set(tutorias.map(t => t.estudiante?._id?.toString())).size;
-
-    estadisticasGlobales.docentesActivos = docentesUnicos;
-    estadisticasGlobales.estudiantesUnicos = estudiantesUnicos;
+    console.log(`✅ Estadísticas calculadas:`);
+    console.log(`   Tutorías: ${estadisticasGlobales.totalTutorias}`);
+    console.log(`   Docentes: ${estadisticasGlobales.docentesActivos}`);
+    console.log(`   Estudiantes: ${estadisticasGlobales.estudiantesUnicos}`);
 
     // Agrupar por docente
     const reportePorDocente = {};
@@ -2561,9 +2570,7 @@ export const generarReporteGeneralAdmin = async (req, res) => {
       }
     });
 
-    console.log(`✅ Reporte generado`);
-    console.log(`   Docentes: ${docentesUnicos}`);
-    console.log(`   Estudiantes: ${estudiantesUnicos}`);
+    console.log(`✅ Reporte generado con ${Object.keys(reportePorDocente).length} docentes`);
 
     // Responder según formato solicitado
     if (formato === 'csv') {

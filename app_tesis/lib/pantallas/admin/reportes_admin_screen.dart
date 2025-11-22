@@ -17,15 +17,15 @@ class _ReportesAdminScreenState extends State<ReportesAdminScreen> {
   bool _isLoading = false;
   Map<String, dynamic>? _reporteData;
   
-  DateTime? _fechaInicio;
-  DateTime? _fechaFin;
+  DateTime? _fechaInicio;  // ✅ Ahora puede ser null
+  DateTime? _fechaFin;     // ✅ Ahora puede ser null
   
   @override
   void initState() {
     super.initState();
-    // Por defecto: último mes
-    _fechaFin = DateTime.now();
-    _fechaInicio = DateTime.now().subtract(const Duration(days: 30));
+    // Por defecto: SIN FILTRO (todas las tutorías)
+    _fechaFin = null;
+    _fechaInicio = null;
     _cargarReporte();
   }
 
@@ -33,21 +33,43 @@ class _ReportesAdminScreenState extends State<ReportesAdminScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final fechaInicioStr = DateFormat('yyyy-MM-dd').format(_fechaInicio!);
-      final fechaFinStr = DateFormat('yyyy-MM-dd').format(_fechaFin!);
+      // ✅ CAMBIO CRÍTICO: Solo enviar fechas si están definidas
+      String? fechaInicioStr;
+      String? fechaFinStr;
+      
+      if (_fechaInicio != null) {
+        fechaInicioStr = DateFormat('yyyy-MM-dd').format(_fechaInicio!);
+      }
+      
+      if (_fechaFin != null) {
+        fechaFinStr = DateFormat('yyyy-MM-dd').format(_fechaFin!);
+      }
+
+      print('📊 Cargando reporte: ${fechaInicioStr ?? "SIN FILTRO"} a ${fechaFinStr ?? "SIN FILTRO"}');
 
       final resultado = await TutoriaService.generarReporteGeneralAdmin(
         fechaInicio: fechaInicioStr,
         fechaFin: fechaFinStr,
       );
 
+      print('📦 Resultado recibido: ${resultado?.keys.join(", ")}');
+
       if (resultado != null && resultado.containsKey('error')) {
+        print('❌ Error: ${resultado['error']}');
         _mostrarError(resultado['error']);
         setState(() => _reporteData = null);
-      } else {
+      } else if (resultado != null) {
+        print('✅ Datos cargados exitosamente');
+        print('   Estadísticas: ${resultado['estadisticasGlobales']}');
+        print('   Docentes: ${resultado['reportePorDocente']?.length ?? 0}');
         setState(() => _reporteData = resultado);
+      } else {
+        print('⚠️ Resultado es null');
+        _mostrarError('No se recibieron datos del servidor');
+        setState(() => _reporteData = null);
       }
     } catch (e) {
+      print('❌ Exception: $e');
       _mostrarError('Error al cargar reporte: $e');
       setState(() => _reporteData = null);
     } finally {
@@ -56,9 +78,13 @@ class _ReportesAdminScreenState extends State<ReportesAdminScreen> {
   }
 
   Future<void> _seleccionarFecha(BuildContext context, bool esInicio) async {
+    final DateTime initialDate = esInicio 
+        ? (_fechaInicio ?? DateTime.now().subtract(const Duration(days: 30)))
+        : (_fechaFin ?? DateTime.now());
+    
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: esInicio ? _fechaInicio! : _fechaFin!,
+      initialDate: initialDate,
       firstDate: DateTime(2024),
       lastDate: DateTime.now(),
       locale: const Locale('es', 'ES'),
@@ -171,13 +197,34 @@ class _ReportesAdminScreenState extends State<ReportesAdminScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Rango de Fechas',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1565C0),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Filtros de Fecha',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1565C0),
+                  ),
+                ),
+                // ✅ Botón para limpiar filtros
+                if (_fechaInicio != null || _fechaFin != null)
+                  TextButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _fechaInicio = null;
+                        _fechaFin = null;
+                      });
+                      _cargarReporte();
+                    },
+                    icon: const Icon(Icons.clear, size: 18),
+                    label: const Text('Limpiar'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
             Row(
@@ -198,8 +245,13 @@ class _ReportesAdminScreenState extends State<ReportesAdminScreen> {
                         ),
                       ),
                       child: Text(
-                        DateFormat('dd/MM/yyyy').format(_fechaInicio!),
-                        style: const TextStyle(fontSize: 14),
+                        _fechaInicio == null 
+                            ? 'Todas' 
+                            : DateFormat('dd/MM/yyyy').format(_fechaInicio!),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: _fechaInicio == null ? Colors.grey : Colors.black,
+                        ),
                       ),
                     ),
                   ),
@@ -221,8 +273,13 @@ class _ReportesAdminScreenState extends State<ReportesAdminScreen> {
                         ),
                       ),
                       child: Text(
-                        DateFormat('dd/MM/yyyy').format(_fechaFin!),
-                        style: const TextStyle(fontSize: 14),
+                        _fechaFin == null 
+                            ? 'Todas' 
+                            : DateFormat('dd/MM/yyyy').format(_fechaFin!),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: _fechaFin == null ? Colors.grey : Colors.black,
+                        ),
                       ),
                     ),
                   ),
@@ -236,6 +293,9 @@ class _ReportesAdminScreenState extends State<ReportesAdminScreen> {
   }
 
   Widget _buildEstadisticasGlobales(Map<String, dynamic> stats) {
+    // Debug: Imprimir stats recibidos
+    print('📊 Stats recibidos: $stats');
+    
     return Card(
       elevation: 2,
       child: Padding(
@@ -255,21 +315,21 @@ class _ReportesAdminScreenState extends State<ReportesAdminScreen> {
             
             _buildStatRow(
               'Total de Tutorías',
-              stats['totalTutorias']?.toString() ?? '0',
+              (stats['totalTutorias'] ?? 0).toString(),
               Icons.event,
               Colors.blue,
             ),
             
             _buildStatRow(
-              'Docentes Activos',
-              stats['docentesActivos']?.toString() ?? '0',
+              'Docentes',
+              (stats['docentesActivos'] ?? 0).toString(),
               Icons.people,
               Colors.green,
             ),
             
             _buildStatRow(
-              'Estudiantes Únicos',
-              stats['estudiantesUnicos']?.toString() ?? '0',
+              'Estudiantes',
+              (stats['estudiantesUnicos'] ?? 0).toString(),
               Icons.school,
               Colors.orange,
             ),
@@ -278,28 +338,28 @@ class _ReportesAdminScreenState extends State<ReportesAdminScreen> {
             
             _buildStatRow(
               'Confirmadas',
-              stats['confirmadas']?.toString() ?? '0',
+              (stats['confirmadas'] ?? 0).toString(),
               Icons.check_circle,
               Colors.green,
             ),
             
             _buildStatRow(
               'Pendientes',
-              stats['pendientes']?.toString() ?? '0',
+              (stats['pendientes'] ?? 0).toString(),
               Icons.pending,
               Colors.orange,
             ),
             
             _buildStatRow(
               'Finalizadas',
-              stats['finalizadas']?.toString() ?? '0',
+              (stats['finalizadas'] ?? 0).toString(),
               Icons.done_all,
               Colors.blue,
             ),
             
             _buildStatRow(
               'Canceladas',
-              stats['canceladas']?.toString() ?? '0',
+              (stats['canceladas'] ?? 0).toString(),
               Icons.cancel,
               Colors.red,
             ),
