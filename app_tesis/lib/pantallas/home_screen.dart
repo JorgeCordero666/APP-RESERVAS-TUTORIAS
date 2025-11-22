@@ -1,4 +1,4 @@
-// lib/pantallas/home_screen.dart - VERSIÓN COMPLETA CON REPORTES ADMIN
+// lib/pantallas/home_screen.dart - DISEÑO PROFESIONAL UNIVERSITARIO
 import 'package:app_tesis/pantallas/docente/solicitudes_tutorias_screen.dart';
 import 'package:app_tesis/pantallas/estudiante/mis_tutorias_screen.dart';
 import 'package:flutter/material.dart';
@@ -25,7 +25,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _selectedIndex = 0;
   late Usuario _usuario;
 
@@ -79,53 +79,64 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_usuario.esAdministrador) {
       return const [
         BottomNavigationBarItem(
-          icon: Icon(Icons.dashboard),
+          icon: Icon(Icons.dashboard_outlined),
+          activeIcon: Icon(Icons.dashboard),
           label: 'Inicio',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.people),
+          icon: Icon(Icons.people_outline),
+          activeIcon: Icon(Icons.people),
           label: 'Docentes',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.school),
+          icon: Icon(Icons.school_outlined),
+          activeIcon: Icon(Icons.school),
           label: 'Estudiantes',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.person),
+          icon: Icon(Icons.person_outline),
+          activeIcon: Icon(Icons.person),
           label: 'Perfil',
         ),
       ];
     } else if (_usuario.esDocente) {
       return const [
         BottomNavigationBarItem(
-          icon: Icon(Icons.dashboard),
+          icon: Icon(Icons.dashboard_outlined),
+          activeIcon: Icon(Icons.dashboard),
           label: 'Inicio',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.book),
+          icon: Icon(Icons.book_outlined),
+          activeIcon: Icon(Icons.book),
           label: 'Materias',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.schedule),
+          icon: Icon(Icons.schedule_outlined),
+          activeIcon: Icon(Icons.schedule),
           label: 'Horarios',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.person),
+          icon: Icon(Icons.person_outline),
+          activeIcon: Icon(Icons.person),
           label: 'Perfil',
         ),
       ];
     } else {
       return const [
         BottomNavigationBarItem(
-          icon: Icon(Icons.dashboard),
+          icon: Icon(Icons.dashboard_outlined),
+          activeIcon: Icon(Icons.dashboard),
           label: 'Inicio',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.calendar_today),
+          icon: Icon(Icons.calendar_today_outlined),
+          activeIcon: Icon(Icons.calendar_today),
           label: 'Disponibilidad',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.person),
+          icon: Icon(Icons.person_outline),
+          activeIcon: Icon(Icons.person),
           label: 'Perfil',
         ),
       ];
@@ -134,320 +145,422 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildDashboardAdmin() {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Panel Administrativo'),
-        backgroundColor: const Color(0xFF1565C0),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-            tooltip: 'Cerrar sesión',
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          _buildSliverAppBar('Panel Administrativo'),
+          
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildWelcomeCard(),
+                  const SizedBox(height: 32),
+                  
+                  _buildSectionTitle('Gestión del Sistema'),
+                  const SizedBox(height: 16),
+                  
+                  _buildActionCard(
+                    title: 'Gestión de Docentes',
+                    subtitle: 'Administrar docentes del sistema',
+                    icon: Icons.people,
+                    color: const Color(0xFF1565C0),
+                    onTap: () => setState(() => _selectedIndex = 1),
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  _buildActionCard(
+                    title: 'Gestión de Estudiantes',
+                    subtitle: 'Administrar estudiantes',
+                    icon: Icons.school,
+                    color: const Color(0xFF2E7D32),
+                    onTap: () => setState(() => _selectedIndex = 2),
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  _buildActionCard(
+                    title: 'Gestión de Materias',
+                    subtitle: 'Administrar catálogo de materias',
+                    icon: Icons.menu_book,
+                    color: const Color(0xFF7B1FA2),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AdminMaterias.GestionMateriasScreen(usuario: _usuario),
+                        ),
+                      );
+                    },
+                  ),
+                  
+                  const SizedBox(height: 32),
+                  _buildSectionTitle('Reportes y Análisis'),
+                  const SizedBox(height: 16),
+                  
+                  _buildActionCard(
+                    title: 'Reportes Generales',
+                    subtitle: 'Ver estadísticas del sistema',
+                    icon: Icons.analytics,
+                    color: const Color(0xFFE65100),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ReportesAdminScreen(usuario: _usuario),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  _buildActionCard(
+                    title: 'Historial de Tutorías',
+                    subtitle: 'Ver todas las tutorías del sistema',
+                    icon: Icons.history,
+                    color: const Color(0xFF00695C),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => HistorialTutoriasAdminScreen(usuario: _usuario),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
           ),
         ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _cargarUsuarioActualizado,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _buildWelcomeCard(),
-            const SizedBox(height: 24),
-            
-            // Gestión de Docentes
-            _buildQuickAccessCard(
-              title: 'Gestión de Docentes',
-              subtitle: 'Administrar docentes del sistema',
-              icon: Icons.people,
-              color: Colors.blue,
-              onTap: () => setState(() => _selectedIndex = 1),
-            ),
-            const SizedBox(height: 16),
-            
-            // Gestión de Estudiantes
-            _buildQuickAccessCard(
-              title: 'Gestión de Estudiantes',
-              subtitle: 'Administrar estudiantes',
-              icon: Icons.school,
-              color: Colors.green,
-              onTap: () => setState(() => _selectedIndex = 2),
-            ),
-            const SizedBox(height: 16),
-            
-            // Gestión de Materias
-            _buildQuickAccessCard(
-              title: 'Gestión de Materias',
-              subtitle: 'Administrar catálogo de materias',
-              icon: Icons.book,
-              color: Colors.purple,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AdminMaterias.GestionMateriasScreen(usuario: _usuario),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-            
-            // ✅ NUEVO: Reportes Generales
-            _buildQuickAccessCard(
-              title: 'Reportes Generales',
-              subtitle: 'Ver estadísticas del sistema',
-              icon: Icons.analytics,
-              color: Colors.orange,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ReportesAdminScreen(usuario: _usuario),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-            
-            // ✅ NUEVO: Historial de Tutorías
-            _buildQuickAccessCard(
-              title: 'Historial de Tutorías',
-              subtitle: 'Ver todas las tutorías del sistema',
-              icon: Icons.history,
-              color: Colors.teal,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => HistorialTutoriasAdminScreen(usuario: _usuario),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
       ),
     );
   }
 
   Widget _buildDashboardDocente() {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Panel Docente'),
-        backgroundColor: const Color(0xFF1565C0),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-            tooltip: 'Cerrar sesión',
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          _buildSliverAppBar('Panel Docente'),
+          
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildWelcomeCard(),
+                  const SizedBox(height: 32),
+                  
+                  _buildSectionTitle('Configuración'),
+                  const SizedBox(height: 16),
+                  
+                  _buildActionCard(
+                    title: 'Mis Materias',
+                    subtitle: 'Gestionar materias asignadas',
+                    icon: Icons.book,
+                    color: const Color(0xFFE65100),
+                    onTap: () => setState(() => _selectedIndex = 1),
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  _buildActionCard(
+                    title: 'Horarios de Atención',
+                    subtitle: 'Configurar disponibilidad',
+                    icon: Icons.schedule,
+                    color: const Color(0xFF7B1FA2),
+                    onTap: () => setState(() => _selectedIndex = 2),
+                  ),
+                  
+                  const SizedBox(height: 32),
+                  _buildSectionTitle('Tutorías'),
+                  const SizedBox(height: 16),
+                  
+                  _buildActionCard(
+                    title: 'Solicitudes Pendientes',
+                    subtitle: 'Gestionar tutorías solicitadas',
+                    icon: Icons.notifications_active,
+                    color: const Color(0xFFC62828),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SolicitudesTutoriasScreen(usuario: _usuario),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  _buildActionCard(
+                    title: 'Reportes de Tutorías',
+                    subtitle: 'Ver estadísticas por materia',
+                    icon: Icons.analytics,
+                    color: const Color(0xFF1565C0),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ReportesScreen(usuario: _usuario),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
           ),
         ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _cargarUsuarioActualizado,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _buildWelcomeCard(),
-            const SizedBox(height: 24),
-            
-            _buildQuickAccessCard(
-              title: 'Mis Materias',
-              subtitle: 'Gestionar materias asignadas',
-              icon: Icons.book,
-              color: Colors.orange,
-              onTap: () => setState(() => _selectedIndex = 1),
-            ),
-            const SizedBox(height: 16),
-            
-            _buildQuickAccessCard(
-              title: 'Horarios de Atención',
-              subtitle: 'Configurar disponibilidad',
-              icon: Icons.schedule,
-              color: Colors.purple,
-              onTap: () => setState(() => _selectedIndex = 2),
-            ),
-            const SizedBox(height: 16),
-            
-            _buildQuickAccessCard(
-              title: 'Solicitudes Pendientes',
-              subtitle: 'Gestionar tutorías solicitadas',
-              icon: Icons.notifications_active,
-              color: Colors.orange,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => SolicitudesTutoriasScreen(usuario: _usuario),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-            
-            _buildQuickAccessCard(
-              title: 'Reportes de Tutorías',
-              subtitle: 'Ver estadísticas por materia',
-              icon: Icons.analytics,
-              color: Colors.blue,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ReportesScreen(usuario: _usuario),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
       ),
     );
   }
 
   Widget _buildDashboardEstudiante() {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Panel Estudiante'),
-        backgroundColor: const Color(0xFF1565C0),
-        actions: [
-          IconButton(
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          _buildSliverAppBar('Panel Estudiante'),
+          
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildWelcomeCard(),
+                  const SizedBox(height: 32),
+                  
+                  _buildSectionTitle('Mis Tutorías'),
+                  const SizedBox(height: 16),
+                  
+                  _buildActionCard(
+                    title: 'Agendar Tutoría',
+                    subtitle: 'Solicitar nueva tutoría con un docente',
+                    icon: Icons.add_circle,
+                    color: const Color(0xFF2E7D32),
+                    onTap: () => setState(() => _selectedIndex = 1),
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  _buildActionCard(
+                    title: 'Mis Tutorías',
+                    subtitle: 'Ver tutorías agendadas',
+                    icon: Icons.event_note,
+                    color: const Color(0xFF1565C0),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MisTutoriasScreen(usuario: _usuario),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSliverAppBar(String title) {
+    return SliverAppBar(
+      expandedHeight: 120,
+      floating: false,
+      pinned: true,
+      elevation: 0,
+      backgroundColor: const Color(0xFF1565C0),
+      flexibleSpace: FlexibleSpaceBar(
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 20,
+            letterSpacing: 0.3,
+          ),
+        ),
+        background: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF1976D2), Color(0xFF1565C0)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _logout,
             tooltip: 'Cerrar sesión',
           ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _cargarUsuarioActualizado,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _buildWelcomeCard(),
-            const SizedBox(height: 24),
-            
-            _buildQuickAccessCard(
-              title: 'Agendar Tutoría',
-              subtitle: 'Solicitar nueva tutoría con un docente',
-              icon: Icons.add_circle,
-              color: Colors.green,
-              onTap: () => setState(() => _selectedIndex = 1),
-            ),
-            const SizedBox(height: 16),
-            
-            _buildQuickAccessCard(
-              title: 'Mis Tutorías',
-              subtitle: 'Ver tutorías agendadas',
-              icon: Icons.event_note,
-              color: Colors.blue,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => MisTutoriasScreen(usuario: _usuario),
-                  ),
-                );
-              },
-            ),
-          ],
         ),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 24,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1565C0),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1E3A5F),
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildWelcomeCard() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1976D2), Color(0xFF1565C0)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 35,
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+            ),
+            child: CircleAvatar(
+              radius: 36,
               backgroundImage: NetworkImage(_usuario.fotoPerfilUrl),
               backgroundColor: Colors.white,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '¡Bienvenido!',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Bienvenido',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _usuario.nombre,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.2,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.3),
+                      width: 1,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _usuario.nombre,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      _usuario.rol,
-                      style: const TextStyle(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _getRolIcon(),
                         color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                        size: 14,
                       ),
-                    ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _usuario.rol,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildQuickAccessCard({
+  IconData _getRolIcon() {
+    if (_usuario.esAdministrador) return Icons.admin_panel_settings;
+    if (_usuario.esDocente) return Icons.school;
+    return Icons.person;
+  }
+
+  Widget _buildActionCard({
     required String title,
     required String subtitle,
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
   }) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[200]!),
+          ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -455,7 +568,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Icon(
                   icon,
                   color: color,
-                  size: 32,
+                  size: 28,
                 ),
               ),
               const SizedBox(width: 16),
@@ -468,6 +581,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: Color(0xFF1E3A5F),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -477,14 +591,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontSize: 14,
                         color: Colors.grey[600],
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 12),
               Icon(
                 Icons.arrow_forward_ios,
                 color: Colors.grey[400],
-                size: 20,
+                size: 18,
               ),
             ],
           ),
@@ -497,17 +614,50 @@ class _HomeScreenState extends State<HomeScreen> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Cerrar sesión'),
-        content: const Text('¿Estás seguro de que deseas cerrar sesión?'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.logout, color: Colors.red[700], size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Cerrar sesión',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: const Text(
+          '¿Está seguro de que desea cerrar sesión?',
+          style: TextStyle(fontSize: 16),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(
+                color: Colors.grey[700],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: Colors.red[600],
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 0,
             ),
             child: const Text('Cerrar sesión'),
           ),
@@ -536,7 +686,12 @@ class _HomeScreenState extends State<HomeScreen> {
         items: _buildNavItems(),
         type: BottomNavigationBarType.fixed,
         selectedItemColor: const Color(0xFF1565C0),
-        unselectedItemColor: Colors.grey,
+        unselectedItemColor: Colors.grey[400],
+        selectedFontSize: 12,
+        unselectedFontSize: 11,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+        backgroundColor: Colors.white,
+        elevation: 8,
       ),
     );
   }

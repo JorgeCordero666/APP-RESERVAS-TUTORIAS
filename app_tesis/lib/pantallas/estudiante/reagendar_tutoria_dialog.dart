@@ -1,6 +1,3 @@
-// app_tesis/lib/pantallas/estudiante/reagendar_tutoria_dialog.dart
-// ✅ VERSIÓN COMPLETAMENTE MEJORADA CON VALIDACIÓN DE MATERIA ESPECÍFICA
-
 import 'package:flutter/material.dart';
 import '../../servicios/tutoria_service.dart';
 import '../../servicios/horario_service.dart';
@@ -19,30 +16,42 @@ class ReagendarTutoriaDialog extends StatefulWidget {
   State<ReagendarTutoriaDialog> createState() => _ReagendarTutoriaDialogState();
 }
 
-class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
+class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> 
+    with SingleTickerProviderStateMixin {
   DateTime? _fechaSeleccionada;
   String? _horaInicio;
   String? _horaFin;
   final _motivoController = TextEditingController();
   bool _isLoading = false;
 
-  // Disponibilidad
   bool _cargandoDisponibilidad = false;
   List<Map<String, dynamic>> _bloquesDisponibles = [];
   String? _error;
 
-  // Días disponibles del docente
   Set<int> _diasDisponiblesDocente = {};
   bool _cargandoDias = true;
   
-  // Materia identificada
   String? _materiaOriginal;
+  
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // Validar si la tutoría ya pasó
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
+    
+    _animationController.forward();
+
     DateTime fechaTutoria;
     try {
       fechaTutoria = DateTime.parse(widget.tutoria['fecha']);
@@ -53,7 +62,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     final ahora = DateTime.now();
     final hoy = DateTime(ahora.year, ahora.month, ahora.day);
     
-    // Si la fecha de la tutoría es anterior a hoy, usar el próximo día disponible
     if (fechaTutoria.isBefore(hoy)) {
       _fechaSeleccionada = null;
       print('⚠️ Tutoría pasada detectada. Se buscará próximo día disponible.');
@@ -64,22 +72,20 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     _horaInicio = widget.tutoria['horaInicio'];
     _horaFin = widget.tutoria['horaFin'];
 
-    // CRÍTICO: Cargar días disponibles PRIMERO
     _cargarDiasDisponiblesDocente();
   }
 
   @override
   void dispose() {
     _motivoController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
-  // ✅ Buscar el próximo día disponible del docente
   DateTime _buscarProximoDiaDisponible() {
     final ahora = DateTime.now();
     final hoy = DateTime(ahora.year, ahora.month, ahora.day);
     
-    // Buscar en los próximos 90 días
     for (int i = 1; i <= 90; i++) {
       final fecha = hoy.add(Duration(days: i));
       final diaSemana = fecha.weekday;
@@ -89,15 +95,12 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       }
     }
     
-    // Si no encuentra ninguno, devolver mañana (fallback)
     return hoy.add(const Duration(days: 1));
   }
 
-  // ✅ MÉTODO MEJORADO: Identificar la materia original de forma robusta
   String? _identificarMateriaOriginal(
     Map<String, List<Map<String, dynamic>>> disponibilidad,
   ) {
-    // PRIORIDAD 1: Buscar por bloqueDocenteId si existe
     if (widget.tutoria['bloqueDocenteId'] != null) {
       final bloqueId = widget.tutoria['bloqueDocenteId'];
       
@@ -114,7 +117,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       }
     }
     
-    // PRIORIDAD 2: Buscar por coincidencia exacta de horario
     final fechaOriginal = DateTime.parse(widget.tutoria['fecha']);
     final diaOriginal = _obtenerDiaSemana(fechaOriginal);
     final horaInicioOriginal = widget.tutoria['horaInicio'];
@@ -124,7 +126,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     print('   Día: $diaOriginal');
     print('   Hora: $horaInicioOriginal - $horaFinOriginal');
     
-    // Lista de coincidencias (puede haber múltiples)
     List<String> materiasCoincidentes = [];
     
     for (var entrada in disponibilidad.entries) {
@@ -138,7 +139,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
           final tutoriaInicio = _convertirAMinutos(horaInicioOriginal);
           final tutoriaFin = _convertirAMinutos(horaFinOriginal);
           
-          // Verificar si el horario de la tutoría está contenido en el bloque
           if (tutoriaInicio >= bloqueInicio && tutoriaFin <= bloqueFin) {
             materiasCoincidentes.add(materia);
           }
@@ -153,7 +153,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     
     if (materiasCoincidentes.length > 1) {
       print('⚠️ Múltiples materias coincidentes: ${materiasCoincidentes.join(", ")}');
-      // Si hay múltiples, intentar usar el campo 'materia' de la tutoría como desempate
       if (widget.tutoria['materia'] != null) {
         final materiaTutoria = widget.tutoria['materia'];
         if (materiasCoincidentes.contains(materiaTutoria)) {
@@ -167,16 +166,13 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     return materiasCoincidentes.first;
   }
 
-  // ✅ Cargar días disponibles SOLO para la materia de la tutoría
   Future<void> _cargarDiasDisponiblesDocente() async {
     setState(() => _cargandoDias = true);
 
     try {
       final docenteId = widget.tutoria['docente']['_id'];
-
       print('📅 Cargando días disponibles del docente: $docenteId');
 
-      // PASO 1: Obtener la disponibilidad COMPLETA del docente
       final disponibilidad = await HorarioService.obtenerDisponibilidadCompleta(
         docenteId: docenteId,
       );
@@ -193,7 +189,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
 
       print('📚 Materias disponibles: ${disponibilidad.keys.join(", ")}');
 
-      // PASO 2: Identificar la MATERIA ORIGINAL de la tutoría
       _materiaOriginal = _identificarMateriaOriginal(disponibilidad);
 
       if (_materiaOriginal == null) {
@@ -209,7 +204,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
 
       print('✅ Materia original de la tutoría: $_materiaOriginal');
 
-      // PASO 3: Extraer SOLO los días de esa materia específica
       final bloquesMateria = disponibilidad[_materiaOriginal] ?? [];
       
       if (bloquesMateria.isEmpty) {
@@ -230,7 +224,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
 
       print('📅 Días disponibles para "$_materiaOriginal": ${diasDisponibles.join(", ")}');
 
-      // PASO 4: Convertir nombres de días a números (1=Lunes, 7=Domingo)
       final mapaDias = {
         'Lunes': 1,
         'Martes': 2,
@@ -254,7 +247,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
           _cargandoDias = false;
         });
 
-        // Si la fecha seleccionada no es válida, buscar próximo día disponible
         if (_fechaSeleccionada == null || 
             _fechaSeleccionada!.isBefore(DateTime.now()) ||
             !_diasDisponiblesDocente.contains(_fechaSeleccionada!.weekday)) {
@@ -262,7 +254,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
           print('📅 Usando próximo día disponible: $_fechaSeleccionada');
         }
 
-        // Cargar disponibilidad del día inicial
         _cargarDisponibilidadDelDia();
       }
     } catch (e) {
@@ -276,7 +267,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     }
   }
 
-  // ✅ Método auxiliar para convertir hora a minutos
   int _convertirAMinutos(String hora) {
     try {
       final partes = hora.split(':');
@@ -289,7 +279,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     }
   }
 
-  // ✅ Obtener día de la semana en español
   String _obtenerDiaSemana(DateTime fecha) {
     const dias = [
       'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
@@ -297,7 +286,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     return dias[fecha.weekday - 1];
   }
 
-  // ✅ Cargar bloques disponibles del día seleccionado SOLO DE LA MATERIA ORIGINAL
   Future<void> _cargarDisponibilidadDelDia() async {
     if (_fechaSeleccionada == null || _materiaOriginal == null) return;
 
@@ -317,7 +305,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
 
       print('🔍 Buscando disponibilidad para: $diaSemana en materia $_materiaOriginal');
 
-      // Obtener disponibilidad completa
       final disponibilidad = await HorarioService.obtenerDisponibilidadCompleta(
         docenteId: docenteId,
       );
@@ -330,7 +317,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
         return;
       }
 
-      // Extraer bloques SOLO de la materia original para el día seleccionado
       final bloquesMateria = disponibilidad[_materiaOriginal] ?? [];
       List<Map<String, dynamic>> bloquesDelDia = [];
 
@@ -350,7 +336,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
         return;
       }
 
-      // Verificar turnos ocupados
       final fechaStr = _fechaSeleccionada!.toIso8601String().split('T')[0];
       final bloquesOcupados = await TutoriaService.listarTutorias(
         incluirCanceladas: false,
@@ -363,7 +348,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
             (t['estado'] == 'pendiente' || t['estado'] == 'confirmada');
       }).toList();
 
-      // Generar turnos de 20 minutos para cada bloque
       List<Map<String, dynamic>> turnosDisponibles = [];
 
       for (var bloque in bloquesDelDia) {
@@ -373,7 +357,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
         );
 
         for (var turno in turnos) {
-          // Verificar si el turno está ocupado
           final ocupado = ocupadosEnFecha.any((tutoria) {
             return !(
               turno['horaFin'] <= tutoria['horaInicio'] ||
@@ -391,7 +374,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
         _bloquesDisponibles = turnosDisponibles;
         _cargandoDisponibilidad = false;
 
-        // Validar si el horario actual sigue disponible
         final horarioActualDisponible = turnosDisponibles.any((t) =>
             t['horaInicio'] == _horaInicio && t['horaFin'] == _horaFin);
 
@@ -410,7 +392,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     }
   }
 
-  // ✅ Generar turnos de 20 minutos
   List<Map<String, dynamic>> _generarTurnos20Min(String inicio, String fin) {
     final convertirAMinutos = (String hora) {
       final partes = hora.split(':');
@@ -441,12 +422,10 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     return turnos;
   }
 
-  // ✅ Selector de fecha con validación de días disponibles
   Future<void> _seleccionarFecha() async {
     final ahora = DateTime.now();
     final hoy = DateTime(ahora.year, ahora.month, ahora.day);
     
-    // Asegurar que initialDate sea válida (no anterior a hoy)
     DateTime fechaInicial;
     if (_fechaSeleccionada != null && !_fechaSeleccionada!.isBefore(hoy)) {
       fechaInicial = _fechaSeleccionada!;
@@ -460,7 +439,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       firstDate: hoy,
       lastDate: DateTime.now().add(const Duration(days: 90)),
       locale: const Locale('es', 'ES'),
-      // CRÍTICO: Solo permitir días en los que el docente tiene disponibilidad
       selectableDayPredicate: (DateTime date) {
         final diaSemana = date.weekday;
         return _diasDisponiblesDocente.contains(diaSemana);
@@ -470,7 +448,10 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
               primary: Color(0xFF1565C0),
+              onPrimary: Colors.white,
+              surface: Colors.white,
             ),
+            dialogBackgroundColor: Colors.white,
           ),
           child: child!,
         );
@@ -488,7 +469,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
     }
   }
 
-  // ✅ Reagendar con validaciones completas
   Future<void> _reagendar() async {
     if (_fechaSeleccionada == null) {
       _mostrarError('Selecciona una fecha');
@@ -500,7 +480,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       return;
     }
 
-    // Validar que el turno sigue disponible
     final turnoValido = _bloquesDisponibles.any((t) =>
         t['horaInicio'] == _horaInicio && t['horaFin'] == _horaFin);
 
@@ -509,7 +488,6 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       return;
     }
 
-    // Validación: No reagendar a menos de 2 horas
     final fechaHoraNueva = DateTime(
       _fechaSeleccionada!.year,
       _fechaSeleccionada!.month,
@@ -553,9 +531,17 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
   void _mostrarError(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(mensaje),
-        backgroundColor: Colors.red,
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(mensaje)),
+          ],
+        ),
+        backgroundColor: Colors.red[700],
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
@@ -570,23 +556,30 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // Mostrar loading mientras se cargan los días disponibles
     if (_cargandoDias) {
       return Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Container(
           padding: const EdgeInsets.all(40),
-          child: const Column(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 20),
-              Text(
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  shape: BoxShape.circle,
+                ),
+                child: const CircularProgressIndicator(strokeWidth: 3),
+              ),
+              const SizedBox(height: 24),
+              const Text(
                 'Verificando disponibilidad del docente...',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -594,28 +587,44 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       );
     }
 
-    // Mostrar error si no hay días disponibles
     if (_error != null && _diasDisponiblesDocente.isEmpty) {
       return Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 60, color: Colors.red),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.error_outline, size: 60, color: Colors.red[700]),
+              ),
               const SizedBox(height: 20),
               Text(
                 _error!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
+                style: const TextStyle(fontSize: 16, height: 1.4),
               ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cerrar'),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red[600],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text('Cerrar'),
+                ),
               ),
             ],
           ),
@@ -623,448 +632,615 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> {
       );
     }
 
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
-        child: Column(
-          children: [
-            // Header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                color: Color(0xFF1565C0),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.event_repeat, color: Colors.white, size: 28),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Reagendar Tutoría',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-            ),
-
-            // Contenido
-            Expanded(
-              child: SingleChildScrollView(
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 8,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
                 padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
+                  ),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                ),
+                child: Row(
                   children: [
-                    // Horario actual
                     Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.orange[50],
+                        color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.info_outline,
-                                  color: Colors.orange[700], size: 20),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Horario Actual',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.orange[700],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          
-                          // ✅ Mostrar materia identificada
-                          if (_materiaOriginal != null) ...[
-                            Row(
-                              children: [
-                                const Icon(Icons.book, size: 16, color: Colors.orange),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    'Materia: $_materiaOriginal',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                          ] else if (widget.tutoria['materia'] != null) ...[
-                            Row(
-                              children: [
-                                const Icon(Icons.book, size: 16, color: Colors.orange),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    'Materia: ${widget.tutoria['materia']}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                          ],
-                          
-                          Text(
-                            '📅 ${widget.tutoria['fecha'] != null 
-                                ? _formatearFecha(DateTime.parse(widget.tutoria['fecha'])) 
-                                : 'Fecha no disponible'}',
-                          ),
-                          Text(
-                            '🕐 ${widget.tutoria['horaInicio'] ?? '--:--'} - ${widget.tutoria['horaFin'] ?? '--:--'}',
-                          ),
-                          
-                          // Advertencia si la fecha ya pasó
-                          if (widget.tutoria['fecha'] != null &&
-                              DateTime.parse(widget.tutoria['fecha'])
-                                  .isBefore(DateTime.now())) ...[
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.red[100],
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.warning, color: Colors.red, size: 16),
-                                  SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'Esta fecha ya pasó. Selecciona una fecha futura.',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
+                      child: const Icon(
+                        Icons.event_repeat,
+                        color: Colors.white,
+                        size: 24,
                       ),
                     ),
-
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Nuevo Horario',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1565C0),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Selector de fecha
-                    InkWell(
-                      onTap: _seleccionarFecha,
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey[300]!),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.calendar_today,
-                                color: Color(0xFF1565C0)),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Fecha',
-                                    style: TextStyle(
-                                        fontSize: 12, color: Colors.grey),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _fechaSeleccionada != null
-                                        ? _formatearFecha(_fechaSeleccionada!)
-                                        : 'Seleccionar fecha',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Icon(Icons.arrow_forward_ios, size: 16),
-                          ],
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Reagendar Tutoría',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-
-                    const SizedBox(height: 16),
-
-                    // Bloques disponibles
-                    if (_cargandoDisponibilidad)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: CircularProgressIndicator(),
-                        ),
-                      )
-                    else if (_error != null)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.red[50],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.red),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.error_outline, color: Colors.red),
-                            const SizedBox(width: 12),
-                            Expanded(child: Text(_error!)),
-                          ],
-                        ),
-                      )
-                    else if (_bloquesDisponibles.isEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.orange[50],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.orange),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.warning_amber,
-                                    color: Colors.orange, size: 24),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    'No hay turnos disponibles para ${_formatearFecha(_fechaSeleccionada!)}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'El docente no tiene horarios libres en este día para la materia "$_materiaOriginal". Por favor, elige otro día de la semana.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[700],
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 12),
-                            ElevatedButton.icon(
-                              onPressed: _seleccionarFecha,
-                              icon: const Icon(Icons.calendar_today, size: 18),
-                              label: const Text('Elegir otro día'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orange,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                'Turnos Disponibles (${_bloquesDisponibles.length})',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // ✅ Badge indicando que son solo de la materia específica
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF1565C0).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: const Color(0xFF1565C0).withOpacity(0.3),
-                                  ),
-                                ),
-                                child: Text(
-                                  _materiaOriginal ?? 'Materia',
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF1565C0),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          ..._bloquesDisponibles.map((turno) {
-                            final isSelected = _horaInicio == turno['horaInicio'] &&
-                                _horaFin == turno['horaFin'];
-
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _horaInicio = turno['horaInicio'];
-                                    _horaFin = turno['horaFin'];
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? const Color(0xFF1565C0).withOpacity(0.1)
-                                        : Colors.grey[50],
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? const Color(0xFF1565C0)
-                                          : Colors.grey[300]!,
-                                      width: isSelected ? 2 : 1,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        isSelected
-                                            ? Icons.check_circle
-                                            : Icons.schedule,
-                                        color: isSelected
-                                            ? const Color(0xFF1565C0)
-                                            : Colors.grey,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        '${turno['horaInicio']} - ${turno['horaFin']}',
-                                        style: TextStyle(
-                                          fontWeight: isSelected
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                          color: isSelected
-                                              ? const Color(0xFF1565C0)
-                                              : Colors.black,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ],
-                      ),
-
-                    const SizedBox(height: 16),
-
-                    // Motivo
-                    TextField(
-                      controller: _motivoController,
-                      decoration: InputDecoration(
-                        labelText: 'Motivo (opcional)',
-                        hintText: 'Ejemplo: Tengo un compromiso académico',
-                        prefixIcon: const Icon(Icons.comment),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      maxLines: 3,
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
                     ),
                   ],
                 ),
               ),
-            ),
 
-            // Footer
-            Container(
-              padding: const EdgeInsets.all(20),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: (_isLoading || _cargandoDisponibilidad || _horaInicio == null)
-                      ? null
-                      : _reagendar,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1565C0),
-                    disabledBackgroundColor: Colors.grey,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.orange[50]!, Colors.orange[100]!],
                           ),
-                        )
-                      : Text(
-                          _horaInicio == null
-                              ? 'Selecciona un horario'
-                              : 'Confirmar Reagendamiento',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.orange[300]!, width: 1.5),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.info_outline,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Horario Actual',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange[900],
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            
+                            if (_materiaOriginal != null) ...[
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.book, size: 18, color: Colors.orange[700]),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Materia: $_materiaOriginal',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            
+                            Row(
+                              children: [
+                                Icon(Icons.calendar_today, size: 16, color: Colors.orange[800]),
+                                const SizedBox(width: 8),
+                                Text(
+                                  widget.tutoria['fecha'] != null 
+                                    ? _formatearFecha(DateTime.parse(widget.tutoria['fecha'])) 
+                                    : 'Fecha no disponible',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Icon(Icons.access_time, size: 16, color: Colors.orange[800]),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${widget.tutoria['horaInicio'] ?? '--:--'} - ${widget.tutoria['horaFin'] ?? '--:--'}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            
+                            if (widget.tutoria['fecha'] != null &&
+                                DateTime.parse(widget.tutoria['fecha'])
+                                    .isBefore(DateTime.now())) ...[
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.red[100],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.red[300]!),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.warning, color: Colors.red[700], size: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Esta fecha ya pasó. Selecciona una fecha futura.',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.red[900],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1565C0).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.edit_calendar,
+                              size: 20,
+                              color: Color(0xFF1565C0),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Nuevo Horario',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1565C0),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      InkWell(
+                        onTap: _seleccionarFecha,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            border: Border.all(color: Colors.grey[300]!),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1565C0).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.calendar_today,
+                                  color: Color(0xFF1565C0),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Fecha',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _fechaSeleccionada != null
+                                          ? _formatearFecha(_fechaSeleccionada!)
+                                          : 'Seleccionar fecha',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: Colors.grey[600],
+                              ),
+                            ],
                           ),
                         ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      if (_cargandoDisponibilidad)
+                        Container(
+                          padding: const EdgeInsets.all(32),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[50],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Column(
+                              children: [
+                                CircularProgressIndicator(strokeWidth: 3),
+                                SizedBox(height: 16),
+                                Text(
+                                  'Cargando turnos...',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else if (_error != null)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.red[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.red[300]!),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline, color: Colors.red[700]),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _error!,
+                                  style: TextStyle(color: Colors.red[900]),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else if (_bloquesDisponibles.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.orange[300]!),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(Icons.warning_amber, color: Colors.orange[700], size: 48),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No hay turnos disponibles para ${_formatearFecha(_fechaSeleccionada!)}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'El docente no tiene horarios libres en este día para la materia "$_materiaOriginal".',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[700],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: _seleccionarFecha,
+                                  icon: const Icon(Icons.calendar_today, size: 18),
+                                  label: const Text('Elegir otro día'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange[600],
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Colors.blue[50]!, Colors.blue[100]!],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.schedule,
+                                      size: 18,
+                                      color: Colors.blue[700],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Turnos Disponibles (${_bloquesDisponibles.length})',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue[900],
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1565C0),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      _materiaOriginal ?? 'Materia',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            ..._bloquesDisponibles.map((turno) {
+                              final isSelected = _horaInicio == turno['horaInicio'] &&
+                                  _horaFin == turno['horaFin'];
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _horaInicio = turno['horaInicio'];
+                                      _horaFin = turno['horaFin'];
+                                    });
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? const Color(0xFF1565C0).withOpacity(0.15)
+                                          : Colors.grey[50],
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? const Color(0xFF1565C0)
+                                            : Colors.grey[300]!,
+                                        width: isSelected ? 2 : 1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: isSelected
+                                          ? [
+                                              BoxShadow(
+                                                color: const Color(0xFF1565C0)
+                                                    .withOpacity(0.2),
+                                                blurRadius: 8,
+                                                spreadRadius: 1,
+                                              ),
+                                            ]
+                                          : null,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? const Color(0xFF1565C0)
+                                                : Colors.green.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Icon(
+                                            isSelected
+                                                ? Icons.check_circle
+                                                : Icons.schedule,
+                                            color: isSelected
+                                                ? Colors.white
+                                                : Colors.green[700],
+                                            size: 20,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            '${turno['horaInicio']} - ${turno['horaFin']}',
+                                            style: TextStyle(
+                                              fontWeight: isSelected
+                                                  ? FontWeight.bold
+                                                  : FontWeight.w600,
+                                              color: isSelected
+                                                  ? const Color(0xFF1565C0)
+                                                  : Colors.black87,
+                                              fontSize: 15,
+                                            ),
+                                          ),
+                                        ),
+                                        if (isSelected)
+                                          const Icon(
+                                            Icons.arrow_forward_ios,
+                                            size: 16,
+                                            color: Color(0xFF1565C0),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ],
+                        ),
+
+                      const SizedBox(height: 16),
+
+                      TextField(
+                        controller: _motivoController,
+                        decoration: InputDecoration(
+                          labelText: 'Motivo (opcional)',
+                          hintText: 'Ejemplo: Tengo un compromiso académico',
+                          prefixIcon: Icon(Icons.comment, color: Colors.blue[700]),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF1565C0),
+                              width: 2,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                        ),
+                        maxLines: 3,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, -3),
+                    ),
+                  ],
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: (_isLoading || _cargandoDisponibilidad || _horaInicio == null)
+                        ? null
+                        : _reagendar,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1565C0),
+                      disabledBackgroundColor: Colors.grey[300],
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.check_circle_outline, size: 22),
+                              const SizedBox(width: 8),
+                              Text(
+                                _horaInicio == null
+                                    ? 'Selecciona un horario'
+                                    : 'Confirmar Reagendamiento',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
