@@ -1,4 +1,3 @@
-// lib/pantallas/estudiante/mis_tutorias_screen.dart - CON FILTROS COMPLETOS
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/tutoria_service.dart';
@@ -20,8 +19,8 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
   List<Map<String, dynamic>> _tutoriasFiltradas = [];
   bool _isLoading = true;
   late TabController _tabController;
+  late AnimationController _fabAnimationController;
   
-  // ✅ NUEVAS VARIABLES PARA FILTROS
   String? _filtroEstado;
   final List<String> _estadosDisponibles = [
     'Todos',
@@ -45,7 +44,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
       if (_tabController.indexIsChanging) {
         setState(() {
           _tabIndex = _tabController.index;
-          _filtroEstado = null; // Resetear filtro al cambiar tab
+          _filtroEstado = null;
         });
         _cargarTutorias();
       }
@@ -68,7 +67,6 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
       List<Map<String, dynamic>> tutorias;
 
       if (_tabIndex == 0) {
-        // Tab "Activas": solo pendientes y confirmadas
         tutorias = await TutoriaService.listarTutorias(
           incluirCanceladas: false,
         );
@@ -78,7 +76,6 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
           return estado == 'pendiente' || estado == 'confirmada';
         }).toList();
       } else {
-        // Tab "Historial": todas incluyendo canceladas
         final resultado = await TutoriaService.obtenerHistorialTutorias(
           incluirCanceladas: true,
           limit: 100,
@@ -107,7 +104,6 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
     }
   }
 
-  // ✅ NUEVA FUNCIÓN: Aplicar filtros
   void _aplicarFiltros() {
     if (_filtroEstado == null || _filtroEstado == 'Todos') {
       _tutoriasFiltradas = List.from(_todasTutorias);
@@ -126,19 +122,40 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
     final motivo = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Cancelar Tutoría'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.cancel, color: Colors.red, size: 28),
+            ),
+            const SizedBox(width: 12),
+            const Text('Cancelar Tutoría'),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('¿Estás seguro de cancelar esta tutoría?'),
-            const SizedBox(height: 16),
+            const Text(
+              '¿Estás seguro de cancelar esta tutoría?',
+              style: TextStyle(fontSize: 15),
+            ),
+            const SizedBox(height: 20),
             TextField(
               controller: motivoController,
               decoration: InputDecoration(
                 labelText: 'Motivo (opcional)',
+                hintText: 'Ej: Tengo un compromiso académico',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+                prefixIcon: const Icon(Icons.edit_note),
+                filled: true,
+                fillColor: Colors.grey[50],
               ),
               maxLines: 3,
             ),
@@ -147,12 +164,21 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('No'),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            child: const Text('No, mantener'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, motivoController.text),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
             ),
             child: const Text('Sí, cancelar'),
           ),
@@ -200,16 +226,21 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(20),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 8,
+          child: const Padding(
+            padding: EdgeInsets.all(32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Procesando...'),
+                CircularProgressIndicator(strokeWidth: 3),
+                SizedBox(height: 20),
+                Text(
+                  'Procesando...',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
               ],
             ),
           ),
@@ -221,9 +252,18 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
   void _mostrarError(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(mensaje),
-        backgroundColor: Colors.red,
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(mensaje)),
+          ],
+        ),
+        backgroundColor: Colors.red[700],
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -231,9 +271,17 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
   void _mostrarExito(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(mensaje),
-        backgroundColor: Colors.green,
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(mensaje)),
+          ],
+        ),
+        backgroundColor: Colors.green[700],
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
@@ -241,20 +289,20 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
   Color _getEstadoColor(String estado) {
     switch (estado) {
       case 'pendiente':
-        return Colors.orange;
+        return Colors.amber[700]!;
       case 'confirmada':
-        return Colors.green;
+        return Colors.green[600]!;
       case 'rechazada':
-        return Colors.red;
+        return Colors.red[600]!;
       case 'finalizada':
-        return Colors.blue;
+        return Colors.blue[600]!;
       case 'cancelada_por_estudiante':
       case 'cancelada_por_docente':
-        return Colors.grey;
-      case 'expirada':  // ✅ NUEVO
-        return Colors.brown;
+        return Colors.grey[600]!;
+      case 'expirada':
+        return Colors.brown[600]!;
       default:
-        return Colors.grey;
+        return Colors.grey[600]!;
     }
   }
 
@@ -272,7 +320,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
         return 'CANCELADA';
       case 'cancelada_por_docente':
         return 'CANCELADA POR DOCENTE';
-      case 'expirada':  // ✅ NUEVO
+      case 'expirada':
         return 'EXPIRADA';
       default:
         return estado.toUpperCase();
@@ -292,103 +340,197 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Mis Tutorías'),
+        title: const Text(
+          'Mis Tutorías',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         backgroundColor: const Color(0xFF1565C0),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          indicatorWeight: 3,
-          tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: Container(
+            color: const Color(0xFF1565C0),
+            child: TabBar(
+              controller: _tabController,
+              indicatorColor: Colors.white,
+              indicatorWeight: 3,
+              indicatorSize: TabBarIndicatorSize.label,
+              labelStyle: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.normal,
+              ),
+              tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
+            ),
+          ),
         ),
         actions: [
-          // ✅ NUEVO: Botón de filtros (solo en Historial)
           if (_tabIndex == 1)
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.filter_list),
-              tooltip: 'Filtrar por estado',
-              onSelected: (value) {
-                setState(() {
-                  _filtroEstado = value == 'Todos' ? null : value;
-                  _aplicarFiltros();
-                });
-              },
-              itemBuilder: (context) {
-                return _estadosDisponibles.map((estado) {
-                  final isSelected = (_filtroEstado == estado) || 
-                                    (estado == 'Todos' && _filtroEstado == null);
-                  
-                  return PopupMenuItem<String>(
-                    value: estado,
-                    child: Row(
-                      children: [
-                        if (isSelected)
-                          const Icon(Icons.check, size: 18, color: Color(0xFF1565C0))
-                        else
-                          const SizedBox(width: 18),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            estado == 'Todos' 
-                              ? 'Mostrar todos' 
-                              : _getEstadoTexto(estado),
-                            style: TextStyle(
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              child: PopupMenuButton<String>(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.filter_list, size: 20),
+                ),
+                tooltip: 'Filtrar por estado',
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                offset: const Offset(0, 48),
+                onSelected: (value) {
+                  setState(() {
+                    _filtroEstado = value == 'Todos' ? null : value;
+                    _aplicarFiltros();
+                  });
+                },
+                itemBuilder: (context) {
+                  return _estadosDisponibles.map((estado) {
+                    final isSelected = (_filtroEstado == estado) || 
+                                      (estado == 'Todos' && _filtroEstado == null);
+                    
+                    return PopupMenuItem<String>(
+                      value: estado,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Icon(
+                              isSelected ? Icons.check_circle : Icons.circle_outlined,
+                              size: 20,
+                              color: isSelected ? const Color(0xFF1565C0) : Colors.grey[400],
                             ),
-                          ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                estado == 'Todos' 
+                                  ? 'Mostrar todos' 
+                                  : _getEstadoTexto(estado),
+                                style: TextStyle(
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  );
-                }).toList();
-              },
+                      ),
+                    );
+                  }).toList();
+                },
+              ),
             ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.refresh, size: 20),
+            ),
             onPressed: _cargarTutorias,
             tooltip: 'Recargar',
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Column(
         children: [
-          // ✅ NUEVO: Chip de filtro activo
           if (_filtroEstado != null && _tabIndex == 1)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Colors.blue[50],
-              child: Wrap(
-                spacing: 8,
-                children: [
-                  Chip(
-                    avatar: const Icon(Icons.filter_list, size: 18),
-                    label: Text('Filtro: ${_getEstadoTexto(_filtroEstado!)}'),
-                    onDeleted: () {
-                      setState(() {
-                        _filtroEstado = null;
-                        _aplicarFiltros();
-                      });
-                    },
-                    deleteIcon: const Icon(Icons.close, size: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue[50]!, Colors.blue[100]!],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
                   ),
-                  Text(
-                    '${_tutoriasFiltradas.length} de ${_todasTutorias.length} tutorías',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[700],
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Chip(
+                      avatar: Icon(
+                        Icons.filter_list,
+                        size: 18,
+                        color: Colors.blue[700],
+                      ),
+                      label: Text(
+                        'Filtro: ${_getEstadoTexto(_filtroEstado!)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue[900],
+                        ),
+                      ),
+                      onDeleted: () {
+                        setState(() {
+                          _filtroEstado = null;
+                          _aplicarFiltros();
+                        });
+                      },
+                      deleteIcon: Icon(
+                        Icons.close,
+                        size: 18,
+                        color: Colors.blue[700],
+                      ),
+                      backgroundColor: Colors.white,
+                      elevation: 2,
+                      shadowColor: Colors.blue.withOpacity(0.3),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.withOpacity(0.2),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      '${_tutoriasFiltradas.length} de ${_todasTutorias.length}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue[900],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
           
-          // Lista de tutorías
           Expanded(
             child: RefreshIndicator(
               onRefresh: _cargarTutorias,
+              color: const Color(0xFF1565C0),
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(
+                      child: CircularProgressIndicator(strokeWidth: 3),
+                    )
                   : _tutoriasFiltradas.isEmpty
                       ? _buildEmptyState()
                       : _buildListaTutorias(),
@@ -407,50 +549,95 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
             : 'No tienes historial de tutorías');
 
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.event_busy,
-            size: 80,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            mensaje,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
-            ),
-            textAlign: TextAlign.center,
-          ),
-          if (_filtroEstado != null) ...[
-            const SizedBox(height: 16),
-            TextButton.icon(
-              onPressed: () {
-                setState(() {
-                  _filtroEstado = null;
-                  _aplicarFiltros();
-                });
-              },
-              icon: const Icon(Icons.clear),
-              label: const Text('Limpiar filtro'),
-            ),
-          ],
-          if (_tabIndex == 0 && _filtroEstado == null) ...[
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Agendar Tutoría'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1565C0),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.event_busy,
+                  size: 80,
+                  color: Colors.grey[400],
+                ),
               ),
-            ),
-          ],
-        ],
+              const SizedBox(height: 24),
+              Text(
+                mensaje,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[700],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _filtroEstado != null
+                    ? 'Intenta con otro filtro'
+                    : (_tabIndex == 0
+                        ? 'Agenda una tutoría para comenzar'
+                        : 'Tus tutorías aparecerán aquí'),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              if (_filtroEstado != null) ...[
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _filtroEstado = null;
+                      _aplicarFiltros();
+                    });
+                  },
+                  icon: const Icon(Icons.clear_all, size: 20),
+                  label: const Text('Limpiar filtro'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[600],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ],
+              if (_tabIndex == 0 && _filtroEstado == null) ...[
+                const SizedBox(height: 32),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.add_circle_outline, size: 22),
+                  label: const Text('Agendar Tutoría'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1565C0),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -461,7 +648,11 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
       itemCount: _tutoriasFiltradas.length,
       itemBuilder: (context, index) {
         final tutoria = _tutoriasFiltradas[index];
-        return _buildTutoriaCard(tutoria);
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          child: _buildTutoriaCard(tutoria),
+        );
       },
     );
   }
@@ -475,192 +666,308 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: 3,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
+      elevation: 2,
+      shadowColor: Colors.black.withOpacity(0.1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                color: _getEstadoColor(estado),
+                width: 4,
+              ),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 25,
-                  backgroundImage: NetworkImage(
-                    docente?['avatarDocente'] ??
-                        'https://cdn-icons-png.flaticon.com/512/4715/4715329.png',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        docente?['nombreDocente'] ?? 'Sin nombre',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                Row(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: _getEstadoColor(estado).withOpacity(0.3),
+                            blurRadius: 8,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: CircleAvatar(
+                        radius: 28,
+                        backgroundColor: Colors.grey[200],
+                        backgroundImage: NetworkImage(
+                          docente?['avatarDocente'] ??
+                              'https://cdn-icons-png.flaticon.com/512/4715/4715329.png',
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        docente?['oficinaDocente'] ?? '',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            docente?['nombreDocente'] ?? 'Sin nombre',
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                size: 14,
+                                color: Colors.grey[600],
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  docente?['oficinaDocente'] ?? 'Sin oficina',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getEstadoColor(estado).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: _getEstadoColor(estado),
+                          width: 1.5,
                         ),
+                      ),
+                      child: Text(
+                        _getEstadoTexto(estado),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: _getEstadoColor(estado),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+                Container(
+                  height: 1,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.grey[300]!,
+                        Colors.grey[100]!,
+                        Colors.grey[300]!,
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.blue[50],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.calendar_today,
+                              size: 18,
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            _formatearFecha(tutoria['fecha']),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.access_time,
+                              size: 18,
+                              color: Colors.green[700],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            '${tutoria['horaInicio']} - ${tutoria['horaFin']}',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (reagendada) ...[
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Colors.blue[400]!, Colors.blue[600]!],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.blue.withOpacity(0.3),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.update,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Reagendada',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getEstadoColor(estado).withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: _getEstadoColor(estado),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Text(
-                    _getEstadoTexto(estado),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: _getEstadoColor(estado),
-                    ),
-                  ),
-                ),
-              ],
-            ),
 
-            const Divider(height: 24),
+                if (estado == 'rechazada' && tutoria['motivoRechazo'] != null) ...[
+                  const SizedBox(height: 12),
+                  _buildInfoBox(
+                    icon: Icons.info_outline,
+                    color: Colors.red,
+                    title: 'Motivo de rechazo',
+                    content: tutoria['motivoRechazo'],
+                  ),
+                ],
 
-            // Información
-            Row(
-              children: [
-                const Icon(Icons.calendar_today, size: 18),
-                const SizedBox(width: 8),
-                Text(_formatearFecha(tutoria['fecha'])),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.access_time, size: 18),
-                const SizedBox(width: 8),
-                Text('${tutoria['horaInicio']} - ${tutoria['horaFin']}'),
-                if (reagendada) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.update, size: 12, color: Colors.blue[700]),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Reagendada',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.blue[700],
-                            fontWeight: FontWeight.w600,
+                if ((estado == 'cancelada_por_estudiante' || 
+                     estado == 'cancelada_por_docente') && 
+                     tutoria['motivoCancelacion'] != null) ...[
+                  const SizedBox(height: 12),
+                  _buildInfoBox(
+                    icon: Icons.cancel_outlined,
+                    color: Colors.orange,
+                    title: 'Motivo de cancelación',
+                    content: tutoria['motivoCancelacion'],
+                  ),
+                ],
+
+                if (reagendada && tutoria['motivoReagendamiento'] != null) ...[
+                  const SizedBox(height: 12),
+                  _buildInfoBox(
+                    icon: Icons.update,
+                    color: Colors.blue,
+                    title: 'Motivo de reagendamiento',
+                    content: tutoria['motivoReagendamiento'],
+                  ),
+                ],
+
+                if (puedeCancelar || puedeReagendar) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      if (puedeReagendar) ...[
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => _reagendarTutoria(tutoria),
+                            icon: const Icon(Icons.event_repeat, size: 18),
+                            label: const Text('Reagendar'),
+                            style: ElevatedButton.styleFrom(
+                              foregroundColor: Colors.blue[700],
+                              backgroundColor: Colors.blue[50],
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(color: Colors.blue[200]!, width: 1.5),
+                              ),
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 12),
                       ],
-                    ),
+                      if (puedeCancelar)
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => _cancelarTutoria(tutoria['_id']),
+                            icon: const Icon(Icons.cancel, size: 18),
+                            label: const Text('Cancelar'),
+                            style: ElevatedButton.styleFrom(
+                              foregroundColor: Colors.red[700],
+                              backgroundColor: Colors.red[50],
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(color: Colors.red[200]!, width: 1.5),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ],
             ),
-
-            // Motivos
-            if (estado == 'rechazada' && tutoria['motivoRechazo'] != null) ...[
-              const SizedBox(height: 12),
-              _buildInfoBox(
-                icon: Icons.info_outline,
-                color: Colors.red,
-                title: 'Motivo de rechazo',
-                content: tutoria['motivoRechazo'],
-              ),
-            ],
-
-            if ((estado == 'cancelada_por_estudiante' || 
-                 estado == 'cancelada_por_docente') && 
-                 tutoria['motivoCancelacion'] != null) ...[
-              const SizedBox(height: 12),
-              _buildInfoBox(
-                icon: Icons.cancel_outlined,
-                color: Colors.orange,
-                title: 'Motivo de cancelación',
-                content: tutoria['motivoCancelacion'],
-              ),
-            ],
-
-            if (reagendada && tutoria['motivoReagendamiento'] != null) ...[
-              const SizedBox(height: 12),
-              _buildInfoBox(
-                icon: Icons.update,
-                color: Colors.blue,
-                title: 'Motivo de reagendamiento',
-                content: tutoria['motivoReagendamiento'],
-              ),
-            ],
-
-            // Botones de acción
-            if (puedeCancelar || puedeReagendar) ...[
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  if (puedeReagendar) ...[
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _reagendarTutoria(tutoria),
-                        icon: const Icon(Icons.event_repeat, size: 18),
-                        label: const Text('Reagendar'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.blue,
-                          side: const BorderSide(color: Colors.blue),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                  ],
-                  if (puedeCancelar)
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _cancelarTutoria(tutoria['_id']),
-                        icon: const Icon(Icons.cancel, size: 18),
-                        label: const Text('Cancelar'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: const BorderSide(color: Colors.red),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );
@@ -673,17 +980,24 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
     required String content,
   }) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color),
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3), width: 1.5),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -691,15 +1005,20 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: color,
+                    letterSpacing: 0.3,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
                   content,
-                  style: const TextStyle(fontSize: 13),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[800],
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),

@@ -1,4 +1,4 @@
-// lib/pantallas/estudiante/seleccionar_turno_dialog.dart
+// lib/pantallas/estudiante/seleccionar_turno_dialog.dart - ESTILOS MEJORADOS
 import 'package:flutter/material.dart';
 import '../../servicios/tutoria_service.dart';
 
@@ -22,15 +22,36 @@ class SeleccionarTurnoDialog extends StatefulWidget {
   State<SeleccionarTurnoDialog> createState() => _SeleccionarTurnoDialogState();
 }
 
-class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog> {
+class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog> 
+    with SingleTickerProviderStateMixin {
   bool _isLoading = true;
   Map<String, dynamic>? _turnosData;
   String? _turnoSeleccionado;
+  
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
+    
+    _animationController.forward();
     _cargarTurnos();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _cargarTurnos() async {
@@ -64,7 +85,6 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog> {
       return;
     }
 
-    // Extraer horas del turno seleccionado
     final partes = _turnoSeleccionado!.split(' - ');
     if (partes.length != 2) {
       _mostrarError('Turno inválido');
@@ -74,37 +94,62 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog> {
     final horaInicio = partes[0];
     final horaFin = partes[1];
 
-    // Mostrar diálogo de confirmación
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirmar Turno'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
           children: [
-            Text(
-              'Docente: ${widget.nombreDocente}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.check_circle, color: Colors.green[700], size: 28),
             ),
-            const SizedBox(height: 8),
-            Text('Fecha: ${_formatearFecha(widget.fecha)}'),
-            const SizedBox(height: 8),
-            Text('Turno: $horaInicio - $horaFin'),
-            const SizedBox(height: 8),
-            Text('Duración: 20 minutos',
-                style: TextStyle(color: Colors.grey[600])),
+            const SizedBox(width: 12),
+            const Text('Confirmar Turno'),
           ],
+        ),
+        content: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue[50],
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildInfoRow(Icons.person, 'Docente', widget.nombreDocente),
+              const SizedBox(height: 12),
+              _buildInfoRow(Icons.calendar_today, 'Fecha', _formatearFecha(widget.fecha)),
+              const SizedBox(height: 12),
+              _buildInfoRow(Icons.access_time, 'Turno', '$horaInicio - $horaFin'),
+              const SizedBox(height: 12),
+              _buildInfoRow(Icons.timer, 'Duración', '20 minutos'),
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1565C0),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
             ),
             child: const Text('Confirmar'),
           ),
@@ -114,7 +159,6 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog> {
 
     if (confirmar != true) return;
 
-    // Mostrar loading
     _mostrarCargando();
 
     final fechaStr = widget.fecha.toIso8601String().split('T')[0];
@@ -127,16 +171,39 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog> {
     );
 
     if (!mounted) return;
-    Navigator.pop(context); // Cerrar loading
+    Navigator.pop(context);
 
     if (resultado != null && !resultado.containsKey('error')) {
       _mostrarExito('¡Turno agendado! El docente revisará tu solicitud');
       await Future.delayed(const Duration(seconds: 2));
       if (!mounted) return;
-      Navigator.pop(context, true); // Cerrar diálogo con éxito
+      Navigator.pop(context, true);
     } else {
       _mostrarError(resultado?['error'] ?? 'Error al agendar turno');
     }
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: Colors.blue[700]),
+        const SizedBox(width: 8),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
+              children: [
+                TextSpan(
+                  text: '$label: ',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                TextSpan(text: value),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   String _formatearFecha(DateTime fecha) {
@@ -157,16 +224,21 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(20),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 8,
+          child: const Padding(
+            padding: EdgeInsets.all(32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Agendando turno...'),
+                CircularProgressIndicator(strokeWidth: 3),
+                SizedBox(height: 20),
+                Text(
+                  'Agendando turno...',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
               ],
             ),
           ),
@@ -178,9 +250,17 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog> {
   void _mostrarError(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(mensaje),
-        backgroundColor: Colors.red,
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(mensaje)),
+          ],
+        ),
+        backgroundColor: Colors.red[700],
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
@@ -188,169 +268,253 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog> {
   void _mostrarExito(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(mensaje),
-        backgroundColor: Colors.green,
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(mensaje)),
+          ],
+        ),
+        backgroundColor: Colors.green[700],
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1565C0),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 8,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
+                  ),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.schedule, color: Colors.white),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'Seleccionar Turno',
-                          style: TextStyle(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.schedule,
                             color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                            size: 24,
                           ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Turnos de 20 minutos',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Info del bloque
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              color: Colors.blue[50],
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.person, size: 20, color: Colors.blue[700]),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          widget.nombreDocente,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Seleccionar Turno',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.calendar_today, size: 18, color: Colors.blue[700]),
-                      const SizedBox(width: 8),
-                      Text(_formatearFecha(widget.fecha)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.access_time, size: 18, color: Colors.blue[700]),
-                      const SizedBox(width: 8),
-                      Text('${widget.bloqueInicio} - ${widget.bloqueFin}'),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Lista de turnos
-            Expanded(
-              child: _isLoading
-                  ? const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          CircularProgressIndicator(),
-                          SizedBox(height: 16),
-                          Text('Cargando turnos disponibles...'),
+                          Icon(Icons.timer, color: Colors.white, size: 14),
+                          SizedBox(width: 6),
+                          Text(
+                            'Turnos de 20 minutos',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ],
                       ),
-                    )
-                  : _turnosData == null
-                      ? const Center(
-                          child: Text('Error al cargar turnos'),
-                        )
-                      : _buildListaTurnos(),
-            ),
-
-            // Footer con botón
-            if (!_isLoading && _turnosData != null)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, -2),
                     ),
                   ],
                 ),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _turnoSeleccionado != null ? _agendarTurno : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1565C0),
-                      disabledBackgroundColor: Colors.grey,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+              ),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue[50]!, Colors.blue[100]!],
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(Icons.person, size: 20, color: Colors.blue[700]),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            widget.nombreDocente,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      _turnoSeleccionado != null
-                          ? 'Agendar Turno'
-                          : 'Selecciona un turno',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today, size: 16, color: Colors.blue[700]),
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatearFecha(widget.fecha),
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.access_time, size: 16, color: Colors.blue[700]),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${widget.bloqueInicio} - ${widget.bloqueFin}',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              Expanded(
+                child: _isLoading
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.blue[50],
+                                shape: BoxShape.circle,
+                              ),
+                              child: const CircularProgressIndicator(strokeWidth: 3),
+                            ),
+                            const SizedBox(height: 20),
+                            const Text(
+                              'Cargando turnos disponibles...',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _turnosData == null
+                        ? const Center(
+                            child: Text('Error al cargar turnos'),
+                          )
+                        : _buildListaTurnos(),
+              ),
+
+              if (!_isLoading && _turnosData != null)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, -3),
+                      ),
+                    ],
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: _turnoSeleccionado != null ? _agendarTurno : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1565C0),
+                        disabledBackgroundColor: Colors.grey[300],
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _turnoSeleccionado != null 
+                                ? Icons.check_circle_outline 
+                                : Icons.schedule,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _turnoSeleccionado != null
+                                ? 'Agendar Turno'
+                                : 'Selecciona un turno',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -364,28 +528,44 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog> {
 
     if (disponibles == 0) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.event_busy, size: 60, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            const Text(
-              'No hay turnos disponibles',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Todos los turnos ($total) están ocupados',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.event_busy, size: 60, color: Colors.grey[400]),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'No hay turnos disponibles',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Todos los turnos ($total) están ocupados',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       );
     }
 
     return Column(
       children: [
-        // Estadísticas
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
@@ -414,9 +594,16 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog> {
           ),
         ),
 
-        const Divider(height: 1),
+        Container(
+          height: 1,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.grey[300]!, Colors.grey[100]!, Colors.grey[300]!],
+            ),
+          ),
+        ),
 
-        // Lista de turnos
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -428,40 +615,74 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog> {
               final turnoKey = '$horaInicio - $horaFin';
               final isSelected = _turnoSeleccionado == turnoKey;
 
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                elevation: isSelected ? 8 : 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(
-                    color: isSelected
-                        ? const Color(0xFF1565C0)
-                        : Colors.transparent,
-                    width: 2,
-                  ),
-                ),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
                 child: InkWell(
                   onTap: () {
                     setState(() {
                       _turnoSeleccionado = turnoKey;
                     });
                   },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
+                  borderRadius: BorderRadius.circular(16),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? const Color(0xFF1565C0).withOpacity(0.15)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFF1565C0)
+                            : Colors.grey[300]!,
+                        width: isSelected ? 2 : 1,
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF1565C0).withOpacity(0.2),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 4,
+                              ),
+                            ],
+                    ),
                     child: Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xFF1565C0)
-                                : Colors.green.withOpacity(0.1),
+                            gradient: isSelected
+                                ? const LinearGradient(
+                                    colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
+                                  )
+                                : LinearGradient(
+                                    colors: [
+                                      Colors.green[400]!,
+                                      Colors.green[600]!,
+                                    ],
+                                  ),
                             borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: (isSelected
+                                        ? const Color(0xFF1565C0)
+                                        : Colors.green)
+                                    .withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
                           child: Icon(
                             isSelected ? Icons.check_circle : Icons.access_time,
-                            color: isSelected ? Colors.white : Colors.green,
+                            color: Colors.white,
                             size: 28,
                           ),
                         ),
@@ -477,16 +698,26 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog> {
                                   fontWeight: FontWeight.bold,
                                   color: isSelected
                                       ? const Color(0xFF1565C0)
-                                      : Colors.black,
+                                      : Colors.black87,
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              Text(
-                                '20 minutos',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.timer,
+                                    size: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '20 minutos',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -510,26 +741,35 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog> {
   }
 
   Widget _buildStat(String label, String value, Color color, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: color,
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[700],
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

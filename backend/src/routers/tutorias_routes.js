@@ -23,7 +23,8 @@ import {
   reagendarTutoria,
   obtenerHistorialTutorias,
   generarReportePorMaterias,
-  finalizarTutoria
+  finalizarTutoria,
+  generarReporteGeneralAdmin
 } from "../controllers/tutorias_controller.js";
 
 import { verificarTokenJWT } from "../middlewares/JWT.js";
@@ -198,6 +199,36 @@ routerTutorias.get(
   verificarTokenJWT,
   verificarRol(["Estudiante", "Docente"]),
   obtenerHistorialTutorias
+);
+
+// =====================================================
+// REPORTES Y ESTADÍSTICAS PARA ADMINISTRADOR
+// =====================================================
+
+/**
+ * Generar reporte general del sistema (solo admin)
+ * Incluye estadísticas globales, por materia, por docente, etc.
+ * Query params opcionales:
+ * - fechaInicio: Filtrar desde fecha (YYYY-MM-DD)
+ * - fechaFin: Filtrar hasta fecha (YYYY-MM-DD)
+ */
+routerTutorias.get(
+  "/admin/reporte-general",
+  verificarTokenJWT,
+  verificarRol(["Administrador"]),
+  async (req, res) => {
+    try {
+      const { generarReporteGeneralAdmin } = await import('../controllers/tutorias_controller.js');
+      return generarReporteGeneralAdmin(req, res);
+    } catch (error) {
+      console.error("❌ Error en ruta admin/reporte-general:", error);
+      res.status(500).json({ 
+        success: false,
+        msg: "Error al generar reporte", 
+        error: error.message 
+      });
+    }
+  }
 );
 
 // =====================================================
@@ -436,6 +467,7 @@ routerTutorias.get(
   generarReportePorMaterias
 );
 
+// Finalizar tutoría
 routerTutorias.put(
   "/tutoria/finalizar/:id",
   verificarTokenJWT,

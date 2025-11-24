@@ -1,10 +1,9 @@
-// lib/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart - VERSIÓN CON TURNOS DE 20 MIN
+// lib/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart - ESTILOS MEJORADOS
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/docente_service.dart';
 import '../../servicios/horario_service.dart';
-import '../../servicios/tutoria_service.dart';
-import 'seleccionar_turno_dialog.dart'; // ✅ NUEVO IMPORT
+import 'seleccionar_turno_dialog.dart';
 
 class VerDisponibilidadDocentesScreen extends StatefulWidget {
   final Usuario usuario;
@@ -19,7 +18,6 @@ class VerDisponibilidadDocentesScreen extends StatefulWidget {
 class _VerDisponibilidadDocentesScreenState
     extends State<VerDisponibilidadDocentesScreen> with AutomaticKeepAliveClientMixin {
   
-  // ✅ NUEVO: Mantener el estado vivo
   @override
   bool get wantKeepAlive => true;
   
@@ -48,12 +46,10 @@ class _VerDisponibilidadDocentesScreenState
     _cargarDocentes();
   }
 
-  // ✅ NUEVO: Detectar cuando la pantalla vuelve a ser visible
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     
-    // Si hay un docente seleccionado, recargar su disponibilidad
     if (_docenteSeleccionado != null && mounted) {
       print('🔄 Pantalla visible de nuevo, recargando disponibilidad...');
       _recargarDisponibilidadSilenciosamente();
@@ -131,7 +127,6 @@ class _VerDisponibilidadDocentesScreenState
           _isLoadingDisponibilidad = false;
 
           if (_disponibilidad != null && _disponibilidad!.isNotEmpty) {
-            // Si la materia seleccionada ya no existe, seleccionar la primera disponible
             if (_materiaSeleccionada == null || 
                 !_disponibilidad!.containsKey(_materiaSeleccionada)) {
               _materiaSeleccionada = _disponibilidad!.keys.first;
@@ -149,7 +144,6 @@ class _VerDisponibilidadDocentesScreenState
     }
   }
 
-  // ✅ NUEVO: Recargar disponibilidad sin mostrar loading completo
   Future<void> _recargarDisponibilidadSilenciosamente() async {
     if (_docenteSeleccionado == null) return;
 
@@ -171,7 +165,6 @@ class _VerDisponibilidadDocentesScreenState
         });
       }
 
-      // Verificar si hay cambios
       final hayDiferencias = _hayDiferenciasEnDisponibilidad(
         _disponibilidad, 
         disponibilidadNormalizada
@@ -183,11 +176,9 @@ class _VerDisponibilidadDocentesScreenState
         setState(() {
           _disponibilidad = disponibilidadNormalizada;
 
-          // Mantener la materia seleccionada si todavía existe
           if (_materiaSeleccionada != null && 
               _disponibilidad != null &&
               !_disponibilidad!.containsKey(_materiaSeleccionada)) {
-            // La materia seleccionada ya no existe, seleccionar otra
             _materiaSeleccionada = _disponibilidad!.isNotEmpty 
                 ? _disponibilidad!.keys.first 
                 : null;
@@ -200,11 +191,9 @@ class _VerDisponibilidadDocentesScreenState
       }
     } catch (e) {
       print('❌ Error recargando disponibilidad: $e');
-      // No mostrar error al usuario para no interrumpir
     }
   }
 
-  // ✅ NUEVO: Comparar si hay diferencias en la disponibilidad
   bool _hayDiferenciasEnDisponibilidad(
     Map<String, List<Map<String, dynamic>>>? anterior,
     Map<String, List<Map<String, dynamic>>>? nueva,
@@ -221,7 +210,6 @@ class _VerDisponibilidadDocentesScreenState
       
       if (bloquesAnteriores.length != bloquesNuevos.length) return true;
       
-      // Comparación simple (podría mejorarse)
       for (int i = 0; i < bloquesAnteriores.length; i++) {
         if (bloquesAnteriores[i].toString() != bloquesNuevos[i].toString()) {
           return true;
@@ -249,9 +237,7 @@ class _VerDisponibilidadDocentesScreenState
     return resultado;
   }
 
-  // ✅ FUNCIÓN MODIFICADA: Ahora abre el diálogo de selección de turnos
   Future<void> _agendarTutoria(Map<String, dynamic> bloque, String dia) async {
-    // Paso 1: Seleccionar fecha
     final DateTime? fechaSeleccionada = await showDatePicker(
       context: context,
       initialDate: _obtenerProximaFechaDelDia(dia),
@@ -259,7 +245,6 @@ class _VerDisponibilidadDocentesScreenState
       lastDate: DateTime.now().add(const Duration(days: 30)),
       locale: const Locale('es', 'ES'),
       selectableDayPredicate: (DateTime date) {
-        // Solo permitir seleccionar el día de la semana correspondiente
         return _obtenerDiaSemana(date) == dia;
       },
       builder: (context, child) {
@@ -267,6 +252,8 @@ class _VerDisponibilidadDocentesScreenState
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
               primary: Color(0xFF1565C0),
+              onPrimary: Colors.white,
+              surface: Colors.white,
             ),
           ),
           child: child!,
@@ -276,7 +263,6 @@ class _VerDisponibilidadDocentesScreenState
 
     if (fechaSeleccionada == null) return;
 
-    // ✅ NUEVO: Mostrar diálogo de selección de turnos
     final bool? resultado = await showDialog<bool>(
       context: context,
       builder: (context) => SeleccionarTurnoDialog(
@@ -288,9 +274,7 @@ class _VerDisponibilidadDocentesScreenState
       ),
     );
 
-    // Si el resultado es true, el turno se agendó exitosamente
     if (resultado == true && mounted) {
-      // Opcional: Recargar disponibilidad
       _recargarDisponibilidadSilenciosamente();
     }
   }
@@ -321,50 +305,20 @@ class _VerDisponibilidadDocentesScreenState
     return dias[fecha.weekday - 1];
   }
 
-  String _formatearFecha(DateTime fecha) {
-    final dia = _obtenerDiaSemana(fecha);
-    return '$dia ${fecha.day}/${fecha.month}/${fecha.year}';
-  }
-
-  void _mostrarCargando() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Agendando tutoría...'),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   void _mostrarError(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(mensaje),
-        backgroundColor: Colors.red,
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(mensaje)),
+          ],
+        ),
+        backgroundColor: Colors.red[700],
         behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _mostrarExito(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(mensaje),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
@@ -372,9 +326,17 @@ class _VerDisponibilidadDocentesScreenState
   void _mostrarInfo(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(mensaje),
-        backgroundColor: Colors.blue,
+        content: Row(
+          children: [
+            const Icon(Icons.info_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            Text(mensaje),
+          ],
+        ),
+        backgroundColor: Colors.blue[700],
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -382,14 +344,19 @@ class _VerDisponibilidadDocentesScreenState
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // ✅ REQUERIDO por AutomaticKeepAliveClientMixin
+    super.build(context);
     
     final isLargeScreen = MediaQuery.of(context).size.width > 600;
 
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Agendar Tutoría'),
+        title: const Text(
+          'Agendar Tutoría',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         backgroundColor: const Color(0xFF1565C0),
+        elevation: 0,
         leading: (!isLargeScreen && !_mostrarListaDocentes)
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
@@ -401,14 +368,23 @@ class _VerDisponibilidadDocentesScreenState
                 },
               )
             : null,
-        // ✅ NUEVO: Botón de recarga manual
         actions: _docenteSeleccionado != null ? [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _isLoadingDisponibilidad 
-                ? null 
-                : () => _cargarDisponibilidad(_docenteSeleccionado!),
-            tooltip: 'Actualizar horarios',
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.refresh, size: 20),
+              ),
+              onPressed: _isLoadingDisponibilidad 
+                  ? null 
+                  : () => _cargarDisponibilidad(_docenteSeleccionado!),
+              tooltip: 'Actualizar horarios',
+            ),
           ),
         ] : null,
       ),
@@ -422,8 +398,14 @@ class _VerDisponibilidadDocentesScreenState
         Container(
           width: 320,
           decoration: BoxDecoration(
-            color: Colors.grey[100],
-            border: Border(right: BorderSide(color: Colors.grey[300]!)),
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(2, 0),
+              ),
+            ],
           ),
           child: _buildListaDocentes(),
         ),
@@ -444,42 +426,72 @@ class _VerDisponibilidadDocentesScreenState
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          color: Colors.white,
-          child: const Column(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue[50]!, Colors.white],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Paso 1: Selecciona un Docente',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1565C0),
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                'Elige el docente con quien deseas agendar',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey,
-                ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1565C0).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.person_search,
+                      color: Color(0xFF1565C0),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Paso 1: Selecciona un Docente',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1565C0),
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Elige el docente con quien deseas agendar',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
 
-        // Campo de búsqueda
         Padding(
           padding: const EdgeInsets.all(12),
           child: TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Buscar docente por nombre u oficina',
-              prefixIcon: const Icon(Icons.search),
+              hintText: 'Buscar docente...',
+              hintStyle: TextStyle(color: Colors.grey[400]),
+              prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.clear),
+                      icon: const Icon(Icons.clear, size: 20),
                       onPressed: () {
                         _searchController.clear();
                         _filtrarDocentes();
@@ -487,74 +499,150 @@ class _VerDisponibilidadDocentesScreenState
                     )
                   : null,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[300]!),
               ),
-              isDense: true,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[300]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2),
+              ),
+              filled: true,
+              fillColor: Colors.grey[50],
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
             ),
             onChanged: (_) => _filtrarDocentes(),
           ),
         ),
 
-        // Lista de docentes
         Expanded(
           child: _isLoadingDocentes
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(
+                  child: CircularProgressIndicator(strokeWidth: 3),
+                )
               : _docentesFiltrados.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No hay docentes disponibles',
-                        textAlign: TextAlign.center,
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No se encontraron docentes',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     )
                   : ListView.builder(
                       itemCount: _docentesFiltrados.length,
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       itemBuilder: (context, index) {
                         final docente = _docentesFiltrados[index];
                         final isSelected =
                             _docenteSeleccionado?['_id'] == docente['_id'];
 
-                        return Card(
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          elevation: isSelected ? 4 : 1,
-                          color: isSelected
-                              ? const Color(0xFF1565C0).withOpacity(0.1)
-                              : null,
-                          child: ListTile(
-                            onTap: () => _cargarDisponibilidad(docente),
-                            leading: CircleAvatar(
-                              backgroundImage: NetworkImage(
-                                docente['avatarDocente'] ??
-                                    'https://cdn-icons-png.flaticon.com/512/4715/4715329.png',
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Card(
+                            elevation: isSelected ? 4 : 1,
+                            shadowColor: isSelected
+                                ? const Color(0xFF1565C0).withOpacity(0.3)
+                                : Colors.black.withOpacity(0.1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: isSelected
+                                    ? const Color(0xFF1565C0)
+                                    : Colors.transparent,
+                                width: 2,
                               ),
-                              radius: 24,
                             ),
-                            title: Text(
-                              docente['nombreDocente'] ?? 'Sin nombre',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
+                            child: ListTile(
+                              onTap: () => _cargarDisponibilidad(docente),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Text(
-                              docente['oficinaDocente'] ?? 'Sin oficina',
-                              style: const TextStyle(fontSize: 12),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: Icon(
-                              isSelected 
-                                ? Icons.check_circle 
-                                : Icons.chevron_right,
-                              color: isSelected
-                                  ? const Color(0xFF1565C0)
-                                  : Colors.grey,
+                              leading: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  boxShadow: isSelected
+                                      ? [
+                                          BoxShadow(
+                                            color: const Color(0xFF1565C0)
+                                                .withOpacity(0.3),
+                                            blurRadius: 8,
+                                            spreadRadius: 2,
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                child: CircleAvatar(
+                                  backgroundImage: NetworkImage(
+                                    docente['avatarDocente'] ??
+                                        'https://cdn-icons-png.flaticon.com/512/4715/4715329.png',
+                                  ),
+                                  radius: 28,
+                                  backgroundColor: Colors.grey[200],
+                                ),
+                              ),
+                              title: Text(
+                                docente['nombreDocente'] ?? 'Sin nombre',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.w600,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      size: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        docente['oficinaDocente'] ?? 'Sin oficina',
+                                        style: const TextStyle(fontSize: 12),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              trailing: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? const Color(0xFF1565C0).withOpacity(0.1)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  isSelected 
+                                    ? Icons.check_circle 
+                                    : Icons.chevron_right,
+                                  color: isSelected
+                                      ? const Color(0xFF1565C0)
+                                      : Colors.grey,
+                                  size: 24,
+                                ),
+                              ),
                             ),
                           ),
                         );
@@ -571,12 +659,31 @@ class _VerDisponibilidadDocentesScreenState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.person_search, size: 80, color: Colors.grey[400]),
-            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.person_search, size: 80, color: Colors.grey[400]),
+            ),
+            const SizedBox(height: 24),
             Text(
-              'Selecciona un docente para ver\nsu disponibilidad',
+              'Selecciona un docente',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Podrás ver su disponibilidad\ny agendar una tutoría',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
             ),
           ],
         ),
@@ -584,13 +691,26 @@ class _VerDisponibilidadDocentesScreenState
     }
 
     if (_isLoadingDisponibilidad) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Cargando disponibilidad...'),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                shape: BoxShape.circle,
+              ),
+              child: const CircularProgressIndicator(strokeWidth: 3),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Cargando disponibilidad...',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       );
@@ -598,16 +718,15 @@ class _VerDisponibilidadDocentesScreenState
 
     return Column(
       children: [
-        // Header con info del docente
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.05),
-                blurRadius: 4,
+                blurRadius: 10,
                 offset: const Offset(0, 2),
               ),
             ],
@@ -615,23 +734,81 @@ class _VerDisponibilidadDocentesScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Paso 2: Selecciona Horario',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1565C0),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1565C0).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.event_available,
+                      color: Color(0xFF1565C0),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Paso 2: Selecciona Horario',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1565C0),
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Elige un día y horario disponible',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                height: 1,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.grey[300]!,
+                      Colors.grey[100]!,
+                      Colors.grey[300]!,
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
               
               Row(
                 children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundImage: NetworkImage(
-                      _docenteSeleccionado!['avatarDocente'] ??
-                          'https://cdn-icons-png.flaticon.com/512/4715/4715329.png',
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF1565C0).withOpacity(0.2),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: CircleAvatar(
+                      radius: 32,
+                      backgroundColor: Colors.grey[200],
+                      backgroundImage: NetworkImage(
+                        _docenteSeleccionado!['avatarDocente'] ??
+                            'https://cdn-icons-png.flaticon.com/512/4715/4715329.png',
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -648,13 +825,21 @@ class _VerDisponibilidadDocentesScreenState
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _docenteSeleccionado!['oficinaDocente'] ?? 'Sin oficina',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                _docenteSeleccionado!['oficinaDocente'] ?? 'Sin oficina',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -664,28 +849,52 @@ class _VerDisponibilidadDocentesScreenState
 
               if (_disponibilidad != null && _disponibilidad!.isNotEmpty) ...[
                 const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 12),
-                
-                const Text(
-                  'Materia:',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+                Container(
+                  height: 1,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.grey[300]!,
+                        Colors.grey[100]!,
+                        Colors.grey[300]!,
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
+                
+                Row(
+                  children: [
+                    Icon(Icons.book, size: 20, color: Colors.blue[700]),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Materia:',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey[300]!),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.grey[50],
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: _materiaSeleccionada,
                       isExpanded: true,
+                      icon: Icon(Icons.arrow_drop_down, color: Colors.blue[700]),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
                       items: _disponibilidad!.keys.map((materia) {
                         return DropdownMenuItem(
                           value: materia,
@@ -705,19 +914,37 @@ class _VerDisponibilidadDocentesScreenState
           ),
         ),
 
-        // Horarios disponibles
         Expanded(
           child: _disponibilidad == null || _disponibilidad!.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.event_busy, size: 80, color: Colors.grey[400]),
-                      const SizedBox(height: 16),
-                      const Text(
+                      Container(
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[50],
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.event_busy, size: 80, color: Colors.orange[300]),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Sin horarios disponibles',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
                         'Este docente no tiene\nhorarios registrados',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
                       ),
                     ],
                   ),
@@ -730,6 +957,10 @@ class _VerDisponibilidadDocentesScreenState
                     return Card(
                       margin: const EdgeInsets.only(bottom: 16),
                       elevation: 2,
+                      shadowColor: Colors.black.withOpacity(0.1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -737,46 +968,124 @@ class _VerDisponibilidadDocentesScreenState
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1565C0).withOpacity(0.1),
+                              gradient: LinearGradient(
+                                colors: bloques.isNotEmpty
+                                    ? [
+                                        const Color(0xFF1565C0).withOpacity(0.15),
+                                        const Color(0xFF1565C0).withOpacity(0.05),
+                                      ]
+                                    : [
+                                        Colors.grey[100]!,
+                                        Colors.grey[50]!,
+                                      ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
                               borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(12),
-                                topRight: Radius.circular(12),
+                                topLeft: Radius.circular(16),
+                                topRight: Radius.circular(16),
                               ),
                             ),
                             child: Row(
                               children: [
-                                const Icon(
-                                  Icons.calendar_today,
-                                  size: 18,
-                                  color: Color(0xFF1565C0),
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: bloques.isNotEmpty
+                                        ? const Color(0xFF1565C0).withOpacity(0.2)
+                                        : Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.calendar_today,
+                                    size: 18,
+                                    color: bloques.isNotEmpty
+                                        ? const Color(0xFF1565C0)
+                                        : Colors.grey[600],
+                                  ),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 12),
                                 Text(
                                   dia,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF1565C0),
+                                    color: bloques.isNotEmpty
+                                        ? const Color(0xFF1565C0)
+                                        : Colors.grey[600],
                                   ),
                                 ),
                                 const Spacer(),
                                 if (bloques.isNotEmpty)
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
+                                      horizontal: 10,
+                                      vertical: 5,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.green,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      '${bloques.length} ${bloques.length == 1 ? "bloque" : "bloques"}',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.green[400]!,
+                                          Colors.green[600]!,
+                                        ],
                                       ),
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.green.withOpacity(0.3),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.check_circle,
+                                          size: 14,
+                                          color: Colors.white,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${bloques.length} ${bloques.length == 1 ? "bloque" : "bloques"}',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                else
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[300],
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.cancel,
+                                          size: 14,
+                                          color: Colors.grey[600],
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Sin horarios',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey[600],
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                               ],
@@ -784,40 +1093,64 @@ class _VerDisponibilidadDocentesScreenState
                           ),
                           
                           if (bloques.isEmpty)
-                            const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Text(
-                                'No hay horarios disponibles',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey,
+                            Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Center(
+                                child: Text(
+                                  'No hay horarios disponibles este día',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                    fontStyle: FontStyle.italic,
+                                  ),
                                 ),
                               ),
                             )
                           else
-                            ...bloques.map((bloque) {
+                            ...bloques.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final bloque = entry.value;
+                              final isLast = index == bloques.length - 1;
+                              
                               return InkWell(
                                 onTap: () => _agendarTutoria(bloque, dia),
+                                borderRadius: BorderRadius.only(
+                                  bottomLeft: isLast ? const Radius.circular(16) : Radius.zero,
+                                  bottomRight: isLast ? const Radius.circular(16) : Radius.zero,
+                                ),
                                 child: Container(
-                                  padding: const EdgeInsets.all(16),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
                                   decoration: BoxDecoration(
+                                    color: Colors.white,
                                     border: Border(
-                                      bottom: BorderSide(
-                                        color: Colors.grey[200]!,
-                                      ),
+                                      bottom: isLast
+                                          ? BorderSide.none
+                                          : BorderSide(
+                                              color: Colors.grey[200]!,
+                                              width: 1,
+                                            ),
                                     ),
                                   ),
                                   child: Row(
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.all(8),
+                                        padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
-                                          color: Colors.green.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(8),
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              Colors.green[400]!.withOpacity(0.2),
+                                              Colors.green[300]!.withOpacity(0.1),
+                                            ],
+                                          ),
+                                          borderRadius: BorderRadius.circular(12),
                                         ),
                                         child: const Icon(
                                           Icons.schedule,
                                           color: Colors.green,
+                                          size: 24,
                                         ),
                                       ),
                                       const SizedBox(width: 16),
@@ -825,28 +1158,70 @@ class _VerDisponibilidadDocentesScreenState
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text(
-                                              '${bloque['horaInicio']} - ${bloque['horaFin']}',
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 15,
-                                              ),
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  '${bloque['horaInicio']} - ${bloque['horaFin']}',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                    color: Colors.black87,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 2,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.blue[50],
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: Text(
+                                                    'Disponible',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      color: Colors.blue[700],
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                             const SizedBox(height: 4),
-                                            const Text(
-                                              'Toca para agendar',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey,
-                                              ),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.touch_app,
+                                                  size: 12,
+                                                  color: Colors.grey[500],
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  'Toca para agendar tu tutoría',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ],
                                         ),
                                       ),
-                                      const Icon(
-                                        Icons.arrow_forward_ios,
-                                        size: 16,
-                                        color: Colors.grey,
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF1565C0).withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Icon(
+                                          Icons.arrow_forward_ios,
+                                          size: 14,
+                                          color: Color(0xFF1565C0),
+                                        ),
                                       ),
                                     ],
                                   ),

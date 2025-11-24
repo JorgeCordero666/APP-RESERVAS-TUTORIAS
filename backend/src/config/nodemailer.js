@@ -280,10 +280,243 @@ const sendMailWithCredentials = async (email, nombreAdministrador, passwordGener
     throw error;
   }
 };
+// ========== EMAILS PARA REAGENDAMIENTO DE TUTORÍAS ==========
+
+/**
+ * Email al ESTUDIANTE cuando el DOCENTE reagenda la tutoría
+ */
+const sendMailReagendamientoDocente = async (emailEstudiante, nombreEstudiante, nombreDocente, datosReagendamiento) => {
+  try {
+    const { fechaAnterior, horaInicioAnterior, horaFinAnterior, fechaNueva, horaInicioNueva, horaFinNueva, motivo } = datosReagendamiento;
+
+    await transporter.sendMail({
+      from: "Tutorías ESFOT <tutorias.esfot@gmail.com>",
+      to: emailEstudiante,
+      subject: "📅 Tu tutoría ha sido reagendada - Tutorías ESFOT",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4;">
+          <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); padding: 40px 20px; text-align: center;">
+              <div style="background-color: white; width: 80px; height: 80px; margin: 0 auto 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                <span style="font-size: 40px;">📅</span>
+              </div>
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">
+                Tutoría Reagendada
+              </h1>
+              <p style="color: #FFF3E0; margin: 10px 0 0; font-size: 16px;">
+                Tu docente ha modificado el horario
+              </p>
+            </div>
+            
+            <!-- Body -->
+            <div style="padding: 40px 30px;">
+              <h2 style="color: #F57C00; font-size: 22px; margin: 0 0 20px; font-weight: 600;">
+                Hola ${nombreEstudiante},
+              </h2>
+              
+              <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                El docente <strong>${nombreDocente}</strong> ha reagendado tu tutoría. A continuación encontrarás los nuevos detalles:
+              </p>
+              
+              <!-- Horario Anterior -->
+              <div style="background-color: #FFEBEE; border-left: 4px solid #F44336; padding: 15px; margin: 25px 0; border-radius: 4px;">
+                <p style="color: #C62828; font-size: 14px; margin: 0 0 10px; font-weight: bold;">
+                  ❌ Horario Anterior (cancelado):
+                </p>
+                <p style="color: #666; margin: 5px 0;">
+                  📅 Fecha: <strong>${fechaAnterior}</strong>
+                </p>
+                <p style="color: #666; margin: 5px 0;">
+                  🕐 Hora: <strong>${horaInicioAnterior} - ${horaFinAnterior}</strong>
+                </p>
+              </div>
+              
+              <!-- Horario Nuevo -->
+              <div style="background-color: #E8F5E9; border-left: 4px solid #4CAF50; padding: 15px; margin: 25px 0; border-radius: 4px;">
+                <p style="color: #2E7D32; font-size: 14px; margin: 0 0 10px; font-weight: bold;">
+                  ✅ Nuevo Horario:
+                </p>
+                <p style="color: #666; margin: 5px 0;">
+                  📅 Fecha: <strong>${fechaNueva}</strong>
+                </p>
+                <p style="color: #666; margin: 5px 0;">
+                  🕐 Hora: <strong>${horaInicioNueva} - ${horaFinNueva}</strong>
+                </p>
+              </div>
+              
+              ${motivo ? `
+              <!-- Motivo -->
+              <div style="background-color: #E3F2FD; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                <p style="color: #1565C0; font-size: 14px; margin: 0 0 8px; font-weight: bold;">
+                  💬 Motivo del cambio:
+                </p>
+                <p style="color: #424242; font-size: 14px; margin: 0; line-height: 1.5;">
+                  "${motivo}"
+                </p>
+              </div>
+              ` : ''}
+              
+              <!-- Instrucciones -->
+              <div style="background-color: #FFF3E0; padding: 15px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #FF9800;">
+                <p style="color: #E65100; font-size: 14px; margin: 0; line-height: 1.5;">
+                  ⚠️ <strong>Importante:</strong> La tutoría ahora está <strong>pendiente de confirmación</strong>. Por favor, confirma tu asistencia en la aplicación o contacta a tu docente si no puedes asistir en el nuevo horario.
+                </p>
+              </div>
+              
+              <p style="color: #999999; font-size: 13px; line-height: 1.5; margin: 25px 0 0;">
+                Si tienes alguna pregunta o necesitas reagendar nuevamente, puedes hacerlo desde la aplicación o contactar directamente a tu docente.
+              </p>
+            </div>
+            
+            <!-- Footer -->
+            <div style="background-color: #F5F5F5; padding: 20px 30px; border-top: 1px solid #E0E0E0;">
+              <p style="color: #999999; font-size: 12px; margin: 0; text-align: center; line-height: 1.5;">
+                Accede a la aplicación para más detalles.<br>
+                © 2025 <strong>ESFOT Tutorías</strong>. Todos los derechos reservados.
+              </p>
+            </div>
+            
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    console.log(`✅ Email de reagendamiento enviado al estudiante: ${emailEstudiante}`);
+  } catch (error) {
+    console.error("❌ Error enviando email de reagendamiento al estudiante:", error);
+    throw error;
+  }
+};
+
+/**
+ * Email al DOCENTE cuando el ESTUDIANTE reagenda la tutoría
+ */
+const sendMailReagendamientoEstudiante = async (emailDocente, nombreDocente, nombreEstudiante, datosReagendamiento) => {
+  try {
+    const { fechaAnterior, horaInicioAnterior, horaFinAnterior, fechaNueva, horaInicioNueva, horaFinNueva, motivo } = datosReagendamiento;
+
+    await transporter.sendMail({
+      from: "Tutorías ESFOT <tutorias.esfot@gmail.com>",
+      to: emailDocente,
+      subject: "📅 Un estudiante ha reagendado una tutoría - Tutorías ESFOT",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4;">
+          <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%); padding: 40px 20px; text-align: center;">
+              <div style="background-color: white; width: 80px; height: 80px; margin: 0 auto 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                <span style="font-size: 40px;">🔄</span>
+              </div>
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">
+                Solicitud de Reagendamiento
+              </h1>
+              <p style="color: #E3F2FD; margin: 10px 0 0; font-size: 16px;">
+                Un estudiante ha modificado el horario
+              </p>
+            </div>
+            
+            <!-- Body -->
+            <div style="padding: 40px 30px;">
+              <h2 style="color: #1565C0; font-size: 22px; margin: 0 0 20px; font-weight: 600;">
+                Hola ${nombreDocente},
+              </h2>
+              
+              <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                El estudiante <strong>${nombreEstudiante}</strong> ha reagendado su tutoría. A continuación encontrarás los nuevos detalles:
+              </p>
+              
+              <!-- Horario Anterior -->
+              <div style="background-color: #FFEBEE; border-left: 4px solid #F44336; padding: 15px; margin: 25px 0; border-radius: 4px;">
+                <p style="color: #C62828; font-size: 14px; margin: 0 0 10px; font-weight: bold;">
+                  ❌ Horario Anterior (cancelado):
+                </p>
+                <p style="color: #666; margin: 5px 0;">
+                  📅 Fecha: <strong>${fechaAnterior}</strong>
+                </p>
+                <p style="color: #666; margin: 5px 0;">
+                  🕐 Hora: <strong>${horaInicioAnterior} - ${horaFinAnterior}</strong>
+                </p>
+              </div>
+              
+              <!-- Horario Nuevo -->
+              <div style="background-color: #E8F5E9; border-left: 4px solid #4CAF50; padding: 15px; margin: 25px 0; border-radius: 4px;">
+                <p style="color: #2E7D32; font-size: 14px; margin: 0 0 10px; font-weight: bold;">
+                  ✅ Nuevo Horario Propuesto:
+                </p>
+                <p style="color: #666; margin: 5px 0;">
+                  📅 Fecha: <strong>${fechaNueva}</strong>
+                </p>
+                <p style="color: #666; margin: 5px 0;">
+                  🕐 Hora: <strong>${horaInicioNueva} - ${horaFinNueva}</strong>
+                </p>
+              </div>
+              
+              ${motivo ? `
+              <!-- Motivo -->
+              <div style="background-color: #E3F2FD; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                <p style="color: #1565C0; font-size: 14px; margin: 0 0 8px; font-weight: bold;">
+                  💬 Motivo del cambio:
+                </p>
+                <p style="color: #424242; font-size: 14px; margin: 0; line-height: 1.5;">
+                  "${motivo}"
+                </p>
+              </div>
+              ` : ''}
+              
+              <!-- Acción Requerida -->
+              <div style="background-color: #FFF3E0; padding: 15px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #FF9800;">
+                <p style="color: #E65100; font-size: 14px; margin: 0; line-height: 1.5;">
+                  ⚠️ <strong>Acción requerida:</strong> Por favor, revisa el nuevo horario y confirma o rechaza la tutoría desde la aplicación lo antes posible.
+                </p>
+              </div>
+              
+              <p style="color: #999999; font-size: 13px; line-height: 1.5; margin: 25px 0 0;">
+                Puedes gestionar todas tus tutorías pendientes desde la sección "Solicitudes" en la aplicación.
+              </p>
+            </div>
+            
+            <!-- Footer -->
+            <div style="background-color: #F5F5F5; padding: 20px 30px; border-top: 1px solid #E0E0E0;">
+              <p style="color: #999999; font-size: 12px; margin: 0; text-align: center; line-height: 1.5;">
+                Accede a la aplicación para gestionar esta solicitud.<br>
+                © 2025 <strong>ESFOT Tutorías</strong>. Todos los derechos reservados.
+              </p>
+            </div>
+            
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    console.log(`✅ Email de reagendamiento enviado al docente: ${emailDocente}`);
+  } catch (error) {
+    console.error("❌ Error enviando email de reagendamiento al docente:", error);
+    throw error;
+  }
+};
 
 export {
   sendMailToRegister,
   sendMailToRecoveryPassword,
   sendMailToOwner,
   sendMailWithCredentials,
+  sendMailReagendamientoDocente,
+  sendMailReagendamientoEstudiante
 };

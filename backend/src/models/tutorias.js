@@ -6,7 +6,7 @@ const tutoriaSchema = new Schema({
     ref: "Estudiante", 
     required: true 
   },
-  docente: { 
+  docente: {  
     type: Schema.Types.ObjectId, 
     ref: "Docente", 
     required: true 
