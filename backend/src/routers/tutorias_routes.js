@@ -45,13 +45,7 @@ const routerTutorias = Router();
  * - horaFin: Hora fin del bloque (ej: "09:00")
  * - materia: Nombre de la materia
  */
-routerTutorias.get(
-  "/turnos-disponibles",
-  verificarTokenJWT,
-  verificarRol(["Estudiante"]),
-  obtenerTurnosDisponibles
-);
-
+routerTutorias.get("/turnos-disponibles",verificarTokenJWT,verificarRol(["Estudiante"]),obtenerTurnosDisponibles);
 /**
  * Registrar tutoría con sistema de turnos de 20 minutos
  * Body:
@@ -64,19 +58,9 @@ routerTutorias.get(
  *   tema: "Álgebra lineal"
  * }
  */
-routerTutorias.post(
-  "/tutoria/registrar-turno",
-  verificarTokenJWT,
-  verificarRol(["Estudiante"]),
-  registrarTutoriaConTurnos
-);
+routerTutorias.post("/tutoria/registrar-turno",verificarTokenJWT,verificarRol(["Estudiante"]),registrarTutoriaConTurnos);
 
-routerTutorias.put(
-  "/tutoria/reagendar/:id",
-  verificarTokenJWT,
-  verificarRol(["Estudiante", "Docente"]),
-  reagendarTutoria
-);
+routerTutorias.put("/tutoria/reagendar/:id",verificarTokenJWT,verificarRol(["Estudiante", "Docente"]),reagendarTutoria);
 
 // =====================================================
 // GESTIÓN DE TUTORÍAS (RUTAS EXISTENTES)
@@ -86,44 +70,15 @@ routerTutorias.put(
  * Registrar tutoría - Método tradicional o compatible con turnos
  * Mantener para compatibilidad con versiones anteriores
  */
-routerTutorias.post(
-  "/tutoria/registro",
-  verificarTokenJWT,
-  verificarRol(["Estudiante"]),
-  registrarTutoriaConTurnos  // Usar nueva función que soporta ambos modos
-);
-
+routerTutorias.post("/tutoria/registro",verificarTokenJWT,verificarRol(["Estudiante"]),registrarTutoriaConTurnos);  // Usar nueva función que soporta ambos modos
 // Listar tutorías activas (sin canceladas por defecto)
-routerTutorias.get(
-  "/tutorias",
-  verificarTokenJWT,
-  verificarRol(["Docente", "Estudiante"]),
-  listarTutorias
-);
-
+routerTutorias.get("/tutorias",verificarTokenJWT,verificarRol(["Docente", "Estudiante"]),listarTutorias);
 // Actualizar tutoría
-routerTutorias.put(
-  "/tutoria/actualizar/:id",
-  verificarTokenJWT,
-  verificarRol(["Estudiante"]),
-  actualizarTutoria
-);
-
+routerTutorias.put("/tutoria/actualizar/:id",verificarTokenJWT,verificarRol(["Estudiante"]),actualizarTutoria);
 // Cancelar tutoría
-routerTutorias.delete(
-  "/tutoria/cancelar/:id",
-  verificarTokenJWT,
-  verificarRol(["Estudiante", "Docente"]),
-  cancelarTutoria
-);
-
+routerTutorias.delete("/tutoria/cancelar/:id",verificarTokenJWT,verificarRol(["Estudiante", "Docente"]),cancelarTutoria);
 // Registrar asistencia
-routerTutorias.put(
-  "/tutoria/registrar-asistencia/:id",
-  verificarTokenJWT,
-  verificarRol(["Docente"]),
-  registrarAsistencia
-);
+routerTutorias.put("/tutoria/registrar-asistencia/:id",verificarTokenJWT,verificarRol(["Docente"]),registrarAsistencia);
 
 // =====================================================
 // HISTORIAL DE TUTORÍAS (incluye canceladas)
