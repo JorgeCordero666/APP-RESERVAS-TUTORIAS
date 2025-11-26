@@ -64,6 +64,16 @@ const tutoriaSchema = new Schema({
   motivoCancelacion: { type: String, default: null },
   observacionesDocente: { type: String, default: null },
 
+  // NUEVOS CAMPOS PARA CONTROL DE RECORDATORIOS
+  recordatorio24hEnviado: { 
+    type: Boolean, 
+    default: false 
+  },
+  recordatorio3hEnviado: { 
+    type: Boolean, 
+    default: false 
+  },
+
   creadaEn: { type: Date, default: Date.now },
   actualizadaEn: { type: Date, default: Date.now }
 });

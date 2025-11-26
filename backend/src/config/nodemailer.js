@@ -512,11 +512,296 @@ const sendMailReagendamientoEstudiante = async (emailDocente, nombreDocente, nom
   }
 };
 
+// ========== EMAIL DE CANCELACIÓN DE TUTORÍA (PARA DOCENTE) ==========
+const sendMailCancelacionParaDocente = async (emailDocente, nombreDocente, nombreEstudiante, datosTutoria, motivo) => {
+  try {
+    await transporter.sendMail({
+      from: "Tutorías ESFOT <tutorias.esfot@gmail.com>",
+      to: emailDocente,
+      subject: "❌ Tutoría cancelada - Tutorías ESFOT",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4;">
+          <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #EF5350 0%, #D32F2F 100%); padding: 40px 20px; text-align: center;">
+              <div style="background-color: white; width: 80px; height: 80px; margin: 0 auto 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                <span style="font-size: 40px;">❌</span>
+              </div>
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">
+                Tutoría Cancelada
+              </h1>
+              <p style="color: #FFEBEE; margin: 10px 0 0; font-size: 16px;">
+                Notificación de cancelación
+              </p>
+            </div>
+            
+            <!-- Body -->
+            <div style="padding: 40px 30px;">
+              <h2 style="color: #D32F2F; font-size: 22px; margin: 0 0 20px; font-weight: 600;">
+                Hola ${nombreDocente},
+              </h2>
+              
+              <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                El estudiante <strong>${nombreEstudiante}</strong> ha cancelado la siguiente tutoría:
+              </p>
+              
+              <!-- Detalles de la tutoría -->
+              <div style="background-color: #FFEBEE; border-left: 4px solid #D32F2F; padding: 15px; margin: 25px 0; border-radius: 4px;">
+                <p style="color: #C62828; font-size: 14px; margin: 0 0 10px; font-weight: bold;">
+                  📅 Detalles de la tutoría cancelada:
+                </p>
+                <p style="color: #666; margin: 5px 0;">
+                  <strong>Fecha:</strong> ${datosTutoria.fecha}
+                </p>
+                <p style="color: #666; margin: 5px 0;">
+                  <strong>Hora:</strong> ${datosTutoria.horaInicio} - ${datosTutoria.horaFin}
+                </p>
+              </div>
+              
+              ${motivo ? `
+              <!-- Motivo -->
+              <div style="background-color: #E3F2FD; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                <p style="color: #1565C0; font-size: 14px; margin: 0 0 8px; font-weight: bold;">
+                  💬 Motivo de cancelación:
+                </p>
+                <p style="color: #424242; font-size: 14px; margin: 0; line-height: 1.5;">
+                  "${motivo}"
+                </p>
+              </div>
+              ` : ''}
+              
+              <p style="color: #999999; font-size: 13px; line-height: 1.5; margin: 25px 0 0;">
+                Este horario ahora está disponible para otros estudiantes.
+              </p>
+            </div>
+            
+            <!-- Footer -->
+            <div style="background-color: #F5F5F5; padding: 20px 30px; border-top: 1px solid #E0E0E0;">
+              <p style="color: #999999; font-size: 12px; margin: 0; text-align: center; line-height: 1.5;">
+                © 2025 <strong>ESFOT Tutorías</strong>. Todos los derechos reservados.
+              </p>
+            </div>
+            
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    console.log(`✅ Email de cancelación enviado al docente: ${emailDocente}`);
+  } catch (error) {
+    console.error("❌ Error enviando email de cancelación al docente:", error);
+    throw error;
+  }
+};
+
+// ========== EMAIL DE CANCELACIÓN DE TUTORÍA (PARA ESTUDIANTE) ==========
+const sendMailCancelacionParaEstudiante = async (emailEstudiante, nombreEstudiante, nombreDocente, datosTutoria, motivo) => {
+  try {
+    await transporter.sendMail({
+      from: "Tutorías ESFOT <tutorias.esfot@gmail.com>",
+      to: emailEstudiante,
+      subject: "❌ Tutoría cancelada - Tutorías ESFOT",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4;">
+          <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #EF5350 0%, #D32F2F 100%); padding: 40px 20px; text-align: center;">
+              <div style="background-color: white; width: 80px; height: 80px; margin: 0 auto 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                <span style="font-size: 40px;">❌</span>
+              </div>
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">
+                Tutoría Cancelada
+              </h1>
+              <p style="color: #FFEBEE; margin: 10px 0 0; font-size: 16px;">
+                Notificación de cancelación
+              </p>
+            </div>
+            
+            <!-- Body -->
+            <div style="padding: 40px 30px;">
+              <h2 style="color: #D32F2F; font-size: 22px; margin: 0 0 20px; font-weight: 600;">
+                Hola ${nombreEstudiante},
+              </h2>
+              
+              <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                El docente <strong>${nombreDocente}</strong> ha cancelado la siguiente tutoría:
+              </p>
+              
+              <!-- Detalles de la tutoría -->
+              <div style="background-color: #FFEBEE; border-left: 4px solid #D32F2F; padding: 15px; margin: 25px 0; border-radius: 4px;">
+                <p style="color: #C62828; font-size: 14px; margin: 0 0 10px; font-weight: bold;">
+                  📅 Detalles de la tutoría cancelada:
+                </p>
+                <p style="color: #666; margin: 5px 0;">
+                  <strong>Fecha:</strong> ${datosTutoria.fecha}
+                </p>
+                <p style="color: #666; margin: 5px 0;">
+                  <strong>Hora:</strong> ${datosTutoria.horaInicio} - ${datosTutoria.horaFin}
+                </p>
+              </div>
+              
+              ${motivo ? `
+              <!-- Motivo -->
+              <div style="background-color: #E3F2FD; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                <p style="color: #1565C0; font-size: 14px; margin: 0 0 8px; font-weight: bold;">
+                  💬 Motivo de cancelación:
+                </p>
+                <p style="color: #424242; font-size: 14px; margin: 0; line-height: 1.5;">
+                  "${motivo}"
+                </p>
+              </div>
+              ` : ''}
+              
+              <!-- Info adicional -->
+              <div style="background-color: #E3F2FD; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                <p style="color: #1565C0; font-size: 14px; margin: 0; line-height: 1.5;">
+                  💡 <strong>Puedes agendar una nueva tutoría</strong> desde la aplicación con el mismo docente u otro disponible.
+                </p>
+              </div>
+            </div>
+            
+            <!-- Footer -->
+            <div style="background-color: #F5F5F5; padding: 20px 30px; border-top: 1px solid #E0E0E0;">
+              <p style="color: #999999; font-size: 12px; margin: 0; text-align: center; line-height: 1.5;">
+                © 2025 <strong>ESFOT Tutorías</strong>. Todos los derechos reservados.
+              </p>
+            </div>
+            
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    console.log(`✅ Email de cancelación enviado al estudiante: ${emailEstudiante}`);
+  } catch (error) {
+    console.error("❌ Error enviando email de cancelación al estudiante:", error);
+    throw error;
+  }
+};
+
+// ========== EMAIL DE RECORDATORIO DE TUTORÍA ==========
+const sendMailRecordatorioTutoria = async (emailDestinatario, nombreDestinatario, esDocente, datosTutoria) => {
+  try {
+    const nombreOtraParte = esDocente ? datosTutoria.nombreEstudiante : datosTutoria.nombreDocente;
+    const rolOtraParte = esDocente ? 'estudiante' : 'docente';
+    
+    await transporter.sendMail({
+      from: "Tutorías ESFOT <tutorias.esfot@gmail.com>",
+      to: emailDestinatario,
+      subject: "⏰ Recordatorio de tutoría - Tutorías ESFOT",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4;">
+          <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%); padding: 40px 20px; text-align: center;">
+              <div style="background-color: white; width: 80px; height: 80px; margin: 0 auto 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                <span style="font-size: 40px;">⏰</span>
+              </div>
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">
+                Recordatorio de Tutoría
+              </h1>
+              <p style="color: #E3F2FD; margin: 10px 0 0; font-size: 16px;">
+                Tienes una tutoría próxima
+              </p>
+            </div>
+            
+            <!-- Body -->
+            <div style="padding: 40px 30px;">
+              <h2 style="color: #1565C0; font-size: 22px; margin: 0 0 20px; font-weight: 600;">
+                Hola ${nombreDestinatario},
+              </h2>
+              
+              <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                Te recordamos que tienes una tutoría ${datosTutoria.tiempoRestante} con <strong>${nombreOtraParte}</strong>:
+              </p>
+              
+              <!-- Detalles de la tutoría -->
+              <div style="background-color: #E3F2FD; border-left: 4px solid #1565C0; padding: 15px; margin: 25px 0; border-radius: 4px;">
+                <p style="color: #1565C0; font-size: 14px; margin: 0 0 10px; font-weight: bold;">
+                  📅 Detalles de la tutoría:
+                </p>
+                <p style="color: #666; margin: 5px 0;">
+                  <strong>Fecha:</strong> ${datosTutoria.fecha}
+                </p>
+                <p style="color: #666; margin: 5px 0;">
+                  <strong>Hora:</strong> ${datosTutoria.horaInicio} - ${datosTutoria.horaFin}
+                </p>
+                <p style="color: #666; margin: 5px 0;">
+                  <strong>${esDocente ? 'Estudiante' : 'Docente'}:</strong> ${nombreOtraParte}
+                </p>
+                ${esDocente && datosTutoria.oficinaDocente ? `
+                <p style="color: #666; margin: 5px 0;">
+                  <strong>Oficina:</strong> ${datosTutoria.oficinaDocente}
+                </p>
+                ` : ''}
+              </div>
+              
+              <!-- Instrucciones -->
+              <div style="background-color: #FFF3E0; padding: 15px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #FF9800;">
+                <p style="color: #E65100; font-size: 14px; margin: 0; line-height: 1.5;">
+                  ⚠️ <strong>Importante:</strong> Si no podrás asistir, por favor cancela la tutoría desde la aplicación con anticipación para que el ${rolOtraParte} pueda reorganizar su tiempo.
+                </p>
+              </div>
+              
+              <div style="background-color: #E8F5E9; padding: 15px; border-radius: 8px; margin: 25px 0;">
+                <p style="color: #2E7D32; font-size: 14px; margin: 0; line-height: 1.5;">
+                  💡 <strong>Consejo:</strong> Prepara tus preguntas o temas con anticipación para aprovechar al máximo la sesión.
+                </p>
+              </div>
+            </div>
+            
+            <!-- Footer -->
+            <div style="background-color: #F5F5F5; padding: 20px 30px; border-top: 1px solid #E0E0E0;">
+              <p style="color: #999999; font-size: 12px; margin: 0; text-align: center; line-height: 1.5;">
+                Este es un recordatorio automático.<br>
+                © 2025 <strong>ESFOT Tutorías</strong>. Todos los derechos reservados.
+              </p>
+            </div>
+            
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    console.log(`✅ Email de recordatorio enviado a: ${emailDestinatario}`);
+  } catch (error) {
+    console.error("❌ Error enviando email de recordatorio:", error);
+    throw error;
+  }
+};
+
 export {
   sendMailToRegister,
   sendMailToRecoveryPassword,
   sendMailToOwner,
   sendMailWithCredentials,
   sendMailReagendamientoDocente,
-  sendMailReagendamientoEstudiante
+  sendMailReagendamientoEstudiante,
+  sendMailCancelacionParaDocente,         
+  sendMailCancelacionParaEstudiante,      
+  sendMailRecordatorioTutoria             
 };
