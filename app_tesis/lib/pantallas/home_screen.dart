@@ -80,22 +80,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return const [
         BottomNavigationBarItem(
           icon: Icon(Icons.dashboard_outlined),
-          activeIcon: Icon(Icons.dashboard),
+          activeIcon: Icon(Icons.dashboard_rounded),
           label: 'Inicio',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.people_outline),
-          activeIcon: Icon(Icons.people),
+          icon: Icon(Icons.people_outline_rounded),
+          activeIcon: Icon(Icons.people_rounded),
           label: 'Docentes',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.school_outlined),
-          activeIcon: Icon(Icons.school),
+          activeIcon: Icon(Icons.school_rounded),
           label: 'Estudiantes',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          activeIcon: Icon(Icons.person),
+          icon: Icon(Icons.person_outline_rounded),
+          activeIcon: Icon(Icons.person_rounded),
           label: 'Perfil',
         ),
       ];
@@ -103,12 +103,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return const [
         BottomNavigationBarItem(
           icon: Icon(Icons.dashboard_outlined),
-          activeIcon: Icon(Icons.dashboard),
+          activeIcon: Icon(Icons.dashboard_rounded),
           label: 'Inicio',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.book_outlined),
-          activeIcon: Icon(Icons.book),
+          activeIcon: Icon(Icons.book_rounded),
           label: 'Materias',
         ),
         BottomNavigationBarItem(
@@ -117,8 +117,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           label: 'Horarios',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          activeIcon: Icon(Icons.person),
+          icon: Icon(Icons.person_outline_rounded),
+          activeIcon: Icon(Icons.person_rounded),
           label: 'Perfil',
         ),
       ];
@@ -126,17 +126,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return const [
         BottomNavigationBarItem(
           icon: Icon(Icons.dashboard_outlined),
-          activeIcon: Icon(Icons.dashboard),
+          activeIcon: Icon(Icons.dashboard_rounded),
           label: 'Inicio',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.calendar_today_outlined),
-          activeIcon: Icon(Icons.calendar_today),
+          activeIcon: Icon(Icons.calendar_today_rounded),
           label: 'Disponibilidad',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          activeIcon: Icon(Icons.person),
+          icon: Icon(Icons.person_outline_rounded),
+          activeIcon: Icon(Icons.person_rounded),
           label: 'Perfil',
         ),
       ];
@@ -145,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildDashboardAdmin() {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: const Color(0xFFF8FAFB),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
@@ -158,16 +158,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildWelcomeCard(),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 28),
                   
-                  _buildSectionTitle('Gestión del Sistema'),
+                  _buildSectionTitle('Gestión del Sistema', Icons.settings_rounded),
                   const SizedBox(height: 16),
                   
                   _buildActionCard(
                     title: 'Gestión de Docentes',
                     subtitle: 'Administrar docentes del sistema',
-                    icon: Icons.people,
-                    color: const Color(0xFF1565C0),
+                    icon: Icons.people_rounded,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+                    ),
                     onTap: () => setState(() => _selectedIndex = 1),
                   ),
                   const SizedBox(height: 12),
@@ -175,8 +177,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   _buildActionCard(
                     title: 'Gestión de Estudiantes',
                     subtitle: 'Administrar estudiantes',
-                    icon: Icons.school,
-                    color: const Color(0xFF2E7D32),
+                    icon: Icons.school_rounded,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+                    ),
                     onTap: () => setState(() => _selectedIndex = 2),
                   ),
                   const SizedBox(height: 12),
@@ -184,8 +188,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   _buildActionCard(
                     title: 'Gestión de Materias',
                     subtitle: 'Administrar catálogo de materias',
-                    icon: Icons.menu_book,
-                    color: const Color(0xFF7B1FA2),
+                    icon: Icons.menu_book_rounded,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF7B1FA2), Color(0xFF8E24AA)],
+                    ),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -196,15 +202,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     },
                   ),
                   
-                  const SizedBox(height: 32),
-                  _buildSectionTitle('Reportes y Análisis'),
+                  const SizedBox(height: 28),
+                  _buildSectionTitle('Reportes y Análisis', Icons.analytics_rounded),
                   const SizedBox(height: 16),
                   
                   _buildActionCard(
                     title: 'Reportes Generales',
                     subtitle: 'Ver estadísticas del sistema',
-                    icon: Icons.analytics,
-                    color: const Color(0xFFE65100),
+                    icon: Icons.bar_chart_rounded,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFE65100), Color(0xFFF57C00)],
+                    ),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -219,8 +227,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   _buildActionCard(
                     title: 'Historial de Tutorías',
                     subtitle: 'Ver todas las tutorías del sistema',
-                    icon: Icons.history,
-                    color: const Color(0xFF00695C),
+                    icon: Icons.history_rounded,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF00695C), Color(0xFF00897B)],
+                    ),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -230,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       );
                     },
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -242,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildDashboardDocente() {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: const Color(0xFFF8FAFB),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
@@ -255,16 +265,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildWelcomeCard(),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 28),
                   
-                  _buildSectionTitle('Configuración'),
+                  _buildSectionTitle('Configuración', Icons.tune_rounded),
                   const SizedBox(height: 16),
                   
                   _buildActionCard(
                     title: 'Mis Materias',
                     subtitle: 'Gestionar materias asignadas',
-                    icon: Icons.book,
-                    color: const Color(0xFFE65100),
+                    icon: Icons.book_rounded,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFE65100), Color(0xFFF57C00)],
+                    ),
                     onTap: () => setState(() => _selectedIndex = 1),
                   ),
                   const SizedBox(height: 12),
@@ -273,19 +285,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     title: 'Horarios de Atención',
                     subtitle: 'Configurar disponibilidad',
                     icon: Icons.schedule,
-                    color: const Color(0xFF7B1FA2),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF7B1FA2), Color(0xFF8E24AA)],
+                    ),
                     onTap: () => setState(() => _selectedIndex = 2),
                   ),
                   
-                  const SizedBox(height: 32),
-                  _buildSectionTitle('Tutorías'),
+                  const SizedBox(height: 28),
+                  _buildSectionTitle('Tutorías', Icons.event_note_rounded),
                   const SizedBox(height: 16),
                   
                   _buildActionCard(
                     title: 'Solicitudes Pendientes',
                     subtitle: 'Gestionar tutorías solicitadas',
-                    icon: Icons.notifications_active,
-                    color: const Color(0xFFC62828),
+                    icon: Icons.notifications_active_rounded,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFC62828), Color(0xFFD32F2F)],
+                    ),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -300,8 +316,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   _buildActionCard(
                     title: 'Reportes de Tutorías',
                     subtitle: 'Ver estadísticas por materia',
-                    icon: Icons.analytics,
-                    color: const Color(0xFF1565C0),
+                    icon: Icons.analytics_rounded,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+                    ),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -311,7 +329,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       );
                     },
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -323,7 +341,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildDashboardEstudiante() {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: const Color(0xFFF8FAFB),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
@@ -336,16 +354,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildWelcomeCard(),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 28),
                   
-                  _buildSectionTitle('Mis Tutorías'),
+                  _buildSectionTitle('Mis Tutorías', Icons.school_rounded),
                   const SizedBox(height: 16),
                   
                   _buildActionCard(
                     title: 'Agendar Tutoría',
                     subtitle: 'Solicitar nueva tutoría con un docente',
-                    icon: Icons.add_circle,
-                    color: const Color(0xFF2E7D32),
+                    icon: Icons.add_circle_rounded,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+                    ),
                     onTap: () => setState(() => _selectedIndex = 1),
                   ),
                   const SizedBox(height: 12),
@@ -353,8 +373,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   _buildActionCard(
                     title: 'Mis Tutorías',
                     subtitle: 'Ver tutorías agendadas',
-                    icon: Icons.event_note,
-                    color: const Color(0xFF1565C0),
+                    icon: Icons.event_note_rounded,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+                    ),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -364,7 +386,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       );
                     },
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -376,62 +398,120 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildSliverAppBar(String title) {
     return SliverAppBar(
-      expandedHeight: 120,
+      expandedHeight: 140,
       floating: false,
       pinned: true,
       elevation: 0,
       backgroundColor: const Color(0xFF1565C0),
       flexibleSpace: FlexibleSpaceBar(
+        titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
         title: Text(
           title,
           style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            fontSize: 22,
             letterSpacing: 0.3,
+            color: Colors.white,
           ),
         ),
-        background: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF1976D2), Color(0xFF1565C0)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+        background: Stack(
+          children: [
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFF42A5F5),
+                    Color(0xFF1E88E5),
+                    Color(0xFF1565C0),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
             ),
-          ),
+            // Decoración con círculos
+            Positioned(
+              top: -30,
+              right: -30,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.05),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -20,
+              left: -20,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.05),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
       actions: [
         Padding(
           padding: const EdgeInsets.only(right: 12),
-          child: IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-            tooltip: 'Cerrar sesión',
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.logout_rounded, color: Colors.white),
+              onPressed: _logout,
+              tooltip: 'Cerrar sesión',
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
+  Widget _buildSectionTitle(String title, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF1565C0).withOpacity(0.08),
+            const Color(0xFF42A5F5).withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF1565C0).withOpacity(0.1),
+          width: 1,
+        ),
+      ),
       child: Row(
         children: [
           Container(
-            width: 4,
-            height: 24,
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
+              color: const Color(0xFF1565C0).withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
               color: const Color(0xFF1565C0),
-              borderRadius: BorderRadius.circular(2),
+              size: 20,
             ),
           ),
           const SizedBox(width: 12),
           Text(
             title,
             style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
               color: Color(0xFF1E3A5F),
               letterSpacing: 0.3,
             ),
@@ -446,24 +526,64 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1976D2), Color(0xFF1565C0)],
+          colors: [
+            Color(0xFF42A5F5),
+            Color(0xFF1E88E5),
+            Color(0xFF1565C0),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1565C0).withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: 2,
+          ),
+        ],
       ),
       child: Row(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3),
-            ),
-            child: CircleAvatar(
-              radius: 36,
-              backgroundImage: NetworkImage(_usuario.fotoPerfilUrl),
-              backgroundColor: Colors.white,
-            ),
+          Stack(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: CircleAvatar(
+                  radius: 40,
+                  backgroundImage: NetworkImage(_usuario.fotoPerfilUrl),
+                  backgroundColor: Colors.white,
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4CAF50),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: const Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: 12,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 20),
           Expanded(
@@ -471,11 +591,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Bienvenido',
+                  '¡Hola!',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
+                    letterSpacing: 0.5,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -484,21 +605,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.2,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.3,
+                    height: 1.2,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                    horizontal: 14,
+                    vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.white.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: Colors.white.withOpacity(0.3),
                       width: 1,
@@ -518,7 +640,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ],
@@ -533,45 +656,90 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   IconData _getRolIcon() {
-    if (_usuario.esAdministrador) return Icons.admin_panel_settings;
-    if (_usuario.esDocente) return Icons.school;
-    return Icons.person;
+    if (_usuario.esAdministrador) return Icons.admin_panel_settings_rounded;
+    if (_usuario.esDocente) return Icons.school_rounded;
+    return Icons.person_rounded;
   }
 
   Widget _buildActionCard({
     required String title,
     required String subtitle,
     required IconData icon,
-    required Color color,
+    required Gradient gradient,
     required VoidCallback onTap,
+    String? badge,
   }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[200]!),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.grey.shade100,
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.08),
+                blurRadius: 15,
+                offset: const Offset(0, 4),
+                spreadRadius: 1,
+              ),
+            ],
           ),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 28,
-                ),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: gradient,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: gradient.colors.first.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      icon,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  if (badge != null)
+                    Positioned(
+                      top: -4,
+                      right: -4,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: Text(
+                          badge,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 18),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -580,16 +748,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       title,
                       style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w700,
                         color: Color(0xFF1E3A5F),
+                        letterSpacing: 0.2,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
                       subtitle,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         color: Colors.grey[600],
+                        height: 1.3,
+                        letterSpacing: 0.2,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -598,10 +769,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ),
               const SizedBox(width: 12),
-              Icon(
-                Icons.arrow_forward_ios,
-                color: Colors.grey[400],
-                size: 18,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: Colors.grey[400],
+                  size: 16,
+                ),
               ),
             ],
           ),
@@ -615,51 +793,102 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
         ),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.red[50],
-                borderRadius: BorderRadius.circular(8),
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.red[400]!,
+                    Colors.red[600]!,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(Icons.logout, color: Colors.red[700], size: 24),
+              child: const Icon(
+                Icons.logout_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
             ),
-            const SizedBox(width: 12),
-            const Text(
-              'Cerrar sesión',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Text(
+                'Cerrar sesión',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ],
         ),
-        content: const Text(
-          '¿Está seguro de que desea cerrar sesión?',
-          style: TextStyle(fontSize: 16),
+        content: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Text(
+            '¿Estás seguro de que deseas cerrar sesión?',
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.grey[700],
+              height: 1.5,
+            ),
+          ),
         ),
+        actionsPadding: const EdgeInsets.all(20),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
             child: Text(
               'Cancelar',
               style: TextStyle(
                 color: Colors.grey[700],
                 fontWeight: FontWeight.w600,
+                fontSize: 15,
               ),
             ),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red[600],
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.red[400]!, Colors.red[600]!],
               ),
-              elevation: 0,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.red.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            child: const Text('Cerrar sesión'),
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Cerrar sesión',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -680,18 +909,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         index: _selectedIndex,
         children: _buildScreens(),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        items: _buildNavItems(),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF1565C0),
-        unselectedItemColor: Colors.grey[400],
-        selectedFontSize: 12,
-        unselectedFontSize: 11,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
-        backgroundColor: Colors.white,
-        elevation: 8,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.15),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: (index) => setState(() => _selectedIndex = index),
+          items: _buildNavItems(),
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: const Color(0xFF1565C0),
+          unselectedItemColor: Colors.grey[400],
+          selectedFontSize: 12,
+          unselectedFontSize: 11,
+          selectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w500,
+          ),
+          backgroundColor: Colors.white,
+          elevation: 0,
+        ),
       ),
     );
   }
