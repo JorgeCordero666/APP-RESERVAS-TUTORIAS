@@ -59,97 +59,44 @@ class _PerfilScreenState extends State<PerfilScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFB),
       appBar: AppBar(
-        title: const Text('Mi Perfil'),
-        backgroundColor: const Color(0xFF1565C0),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: _navegarAEditar,
-            tooltip: 'Editar perfil',
+        title: const Text(
+          'Mi Perfil',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 20,
           ),
-        ],
+        ),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: const Color(0xFF1565C0),
+        foregroundColor: Colors.white,
       ),
       body: RefreshIndicator(
         onRefresh: _actualizarUsuario,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // Foto de perfil
-              Center(
-                child: Stack(
+              // Header con foto de perfil
+              _buildHeader(),
+              
+              // Contenido principal
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
                   children: [
-                    CircleAvatar(
-                      radius: 60,
-                      backgroundImage: NetworkImage(_usuario.fotoPerfilUrl),
-                      backgroundColor: Colors.grey[300],
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: _navegarAEditar,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1565C0),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                    ),
+                    // Información del perfil
+                    _buildInfoSection(),
+                    const SizedBox(height: 20),
+                    
+                    // Botones de acción
+                    _buildActionButtons(),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-
-              // Nombre
-              Text(
-                _usuario.nombre,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-
-              // Rol
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1565C0).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  _usuario.rol,
-                  style: const TextStyle(
-                    color: Color(0xFF1565C0),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Información del perfil
-              _buildInfoSection(),
-
-              const SizedBox(height: 24),
-
-              // Botones de acción
-              _buildActionButtons(),
             ],
           ),
         ),
@@ -157,76 +104,287 @@ class _PerfilScreenState extends State<PerfilScreen> {
     );
   }
 
-  Widget _buildInfoSection() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF1565C0),
+            const Color(0xFF1976D2),
+            const Color(0xFF42A5F5),
+          ],
+        ),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(40),
+          bottomRight: Radius.circular(40),
+        ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Información Personal',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1565C0),
+      child: Stack(
+        children: [
+          // Decoración con círculos sutiles
+          Positioned(
+            top: -50,
+            right: -30,
+            child: Container(
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.05),
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Email
-            _buildInfoItem(
-              icon: Icons.email,
-              label: 'Correo electrónico',
-              value: _usuario.email,
+          ),
+          Positioned(
+            bottom: -30,
+            left: -20,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.05),
+              ),
             ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 30, 20, 50),
+            child: Column(
+              children: [
+                // Foto de perfil
+                Stack(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                        ),
+                        child: CircleAvatar(
+                          radius: 60,
+                          backgroundImage: NetworkImage(_usuario.fotoPerfilUrl),
+                          backgroundColor: Colors.grey[200],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _navegarAEditar,
+                          borderRadius: BorderRadius.circular(25),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
+                              ),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 3,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
 
-            // Campos específicos por rol
-            if (_usuario.esDocente) ...[
-              const Divider(height: 24),
-              _buildInfoItem(
-                icon: Icons.badge,
-                label: 'Cédula',
-                value: _usuario.cedula ?? 'No especificado',
-              ),
-              const Divider(height: 24),
-              _buildInfoItem(
-                icon: Icons.phone,
-                label: 'Celular',
-                value: _usuario.celular ?? 'No especificado',
-              ),
-              const Divider(height: 24),
-              _buildInfoItem(
-                icon: Icons.meeting_room,
-                label: 'Oficina',
-                value: _usuario.oficina ?? 'No especificado',
-              ),
-              const Divider(height: 24),
-              _buildInfoItem(
-                icon: Icons.alternate_email,
-                label: 'Email alternativo',
-                value: _usuario.emailAlternativo ?? 'No especificado',
-              ),
-              if (_usuario.asignaturas != null &&
-                  _usuario.asignaturas!.isNotEmpty) ...[
-                const Divider(height: 24),
-                _buildAsignaturasItem(),
-              ],
-            ] else if (_usuario.esEstudiante) ...[
-              if (_usuario.telefono != null) ...[
-                const Divider(height: 24),
-                _buildInfoItem(
-                  icon: Icons.phone,
-                  label: 'Teléfono',
-                  value: _usuario.telefono!,
+                // Nombre
+                Text(
+                  _usuario.nombre,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: 0.3,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+
+                // Rol
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _usuario.esDocente ? Icons.school_rounded : Icons.person_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _usuario.rol,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoSection() {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      color: Colors.white,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white,
+              Colors.blue.shade50.withOpacity(0.3),
             ],
-          ],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF1565C0).withOpacity(0.1),
+                          const Color(0xFF42A5F5).withOpacity(0.1),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.info_outline_rounded,
+                      color: Color(0xFF1565C0),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Información Personal',
+                    style: TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1565C0),
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Email
+              _buildInfoItem(
+                icon: Icons.email_rounded,
+                label: 'Correo electrónico',
+                value: _usuario.email,
+              ),
+
+              // Campos específicos por rol
+              if (_usuario.esDocente) ...[
+                const SizedBox(height: 16),
+                _buildInfoItem(
+                  icon: Icons.badge_rounded,
+                  label: 'Cédula',
+                  value: _usuario.cedula ?? 'No especificado',
+                ),
+                const SizedBox(height: 16),
+                _buildInfoItem(
+                  icon: Icons.phone_android_rounded,
+                  label: 'Celular',
+                  value: _usuario.celular ?? 'No especificado',
+                ),
+                const SizedBox(height: 16),
+                _buildInfoItem(
+                  icon: Icons.business_rounded,
+                  label: 'Oficina',
+                  value: _usuario.oficina ?? 'No especificado',
+                ),
+                const SizedBox(height: 16),
+                _buildInfoItem(
+                  icon: Icons.alternate_email_rounded,
+                  label: 'Email alternativo',
+                  value: _usuario.emailAlternativo ?? 'No especificado',
+                ),
+                if (_usuario.asignaturas != null &&
+                    _usuario.asignaturas!.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  _buildAsignaturasItem(),
+                ],
+              ] else if (_usuario.esEstudiante) ...[
+                if (_usuario.telefono != null) ...[
+                  const SizedBox(height: 16),
+                  _buildInfoItem(
+                    icon: Icons.phone_rounded,
+                    label: 'Teléfono',
+                    value: _usuario.telefono!,
+                  ),
+                ],
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -237,126 +395,306 @@ class _PerfilScreenState extends State<PerfilScreen> {
     required String label,
     required String value,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          icon,
-          color: const Color(0xFF1565C0),
-          size: 20,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.grey.shade100,
+          width: 1,
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.shade50.withOpacity(0.5),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-        ),
-      ],
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF42A5F5).withOpacity(0.15),
+                  const Color(0xFF1E88E5).withOpacity(0.15),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: const Color(0xFF1565C0),
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildAsignaturasItem() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(
-              Icons.book,
-              color: Color(0xFF1565C0),
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Materias',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.grey.shade100,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.shade50.withOpacity(0.5),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF42A5F5).withOpacity(0.15),
+                      const Color(0xFF1E88E5).withOpacity(0.15),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.menu_book_rounded,
+                  color: Color(0xFF1565C0),
+                  size: 22,
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _usuario.asignaturas!
-              .map((materia) => Chip(
-                    label: Text(
-                      materia,
-                      style: const TextStyle(fontSize: 12),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Materias',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
                     ),
-                    backgroundColor: const Color(0xFF1565C0).withOpacity(0.1),
-                    labelStyle: const TextStyle(
-                      color: Color(0xFF1565C0),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_usuario.asignaturas!.length} asignatura(s)',
+                    style: const TextStyle(
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
+                      color: Color(0xFF1565C0),
                     ),
-                  ))
-              .toList(),
-        ),
-      ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: _usuario.asignaturas!
+                .map((materia) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF42A5F5).withOpacity(0.1),
+                            const Color(0xFF1E88E5).withOpacity(0.15),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(
+                          color: const Color(0xFF42A5F5).withOpacity(0.3),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.circle,
+                            size: 8,
+                            color: Color(0xFF1565C0),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            materia,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF1565C0),
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ))
+                .toList(),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildActionButtons() {
     return Column(
       children: [
-        SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: ElevatedButton.icon(
-            onPressed: _navegarAEditar,
-            icon: const Icon(Icons.edit),
-            label: const Text(
-              'Editar Perfil',
-              style: TextStyle(fontSize: 16),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1565C0),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+        // Botón Editar Perfil
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _navegarAEditar,
+            borderRadius: BorderRadius.circular(20),
+            child: Ink(
+              height: 58,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF42A5F5),
+                    Color(0xFF1E88E5),
+                    Color(0xFF1565C0),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF1565C0).withOpacity(0.4),
+                    blurRadius: 15,
+                    offset: const Offset(0, 6),
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: Container(
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.edit_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Editar Perfil',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: OutlinedButton.icon(
-            onPressed: _navegarACambiarPassword,
-            icon: const Icon(Icons.lock),
-            label: const Text(
-              'Cambiar Contraseña',
-              style: TextStyle(fontSize: 16),
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF1565C0),
-              side: const BorderSide(
-                color: Color(0xFF1565C0),
-                width: 2,
+        const SizedBox(height: 14),
+
+        // Botón Cambiar Contraseña
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _navegarACambiarPassword,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              height: 58,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                color: Colors.white,
+                border: Border.all(
+                  color: const Color(0xFF1565C0),
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.15),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1565C0).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.lock_rounded,
+                      color: Color(0xFF1565C0),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Cambiar Contraseña',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1565C0),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

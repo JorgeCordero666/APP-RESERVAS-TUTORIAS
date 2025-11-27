@@ -549,7 +549,7 @@ const actualizarTutoria = async (req, res) => {
 };
 
 // =====================================================
-// ✅ CANCELAR TUTORIA
+// ✅ CANCELAR TUTORIA (ACTUALIZADO CON EMAILS)
 // =====================================================
 const cancelarTutoria = async (req, res) => {
   try {
@@ -559,7 +559,10 @@ const cancelarTutoria = async (req, res) => {
     console.log(`🗑️ Intentando cancelar tutoría: ${id}`);
     console.log(`   Cancelada por: ${canceladaPor}`);
 
-    const tutoria = await Tutoria.findById(id);
+    const tutoria = await Tutoria.findById(id)
+      .populate('estudiante', 'nombreEstudiante emailEstudiante')
+      .populate('docente', 'nombreDocente emailDocente oficinaDocente');
+      
     if (!tutoria) {
       return res.status(404).json({ msg: 'Tutoría no encontrada.' });
     }
@@ -569,18 +572,17 @@ const cancelarTutoria = async (req, res) => {
       return res.status(400).json({ msg: 'Esta tutoría ya fue cancelada.' });
     }
 
-    // ✅ CORRECCIÓN: Validar fecha Y hora
+    // Validar fecha Y hora
     const ahora = moment();
     const fechaTutoria = moment(`${tutoria.fecha} ${tutoria.horaInicio}`, 'YYYY-MM-DD HH:mm');
 
-    // Permitir cancelación si la tutoría no ha comenzado
     if (fechaTutoria.isSameOrBefore(ahora)) {
       return res.status(400).json({ 
         msg: 'No puedes cancelar una tutoría que ya comenzó o finalizó.' 
       });
     }
 
-    // ✅ OPCIONAL: Límite de tiempo para cancelación (2 horas antes)
+    // Límite de tiempo para cancelación (2 horas antes)
     const horasAnticipacion = fechaTutoria.diff(ahora, 'hours');
     if (horasAnticipacion < 2) {
       return res.status(400).json({ 
@@ -606,9 +608,59 @@ const cancelarTutoria = async (req, res) => {
     console.log(`✅ Tutoría cancelada: ${tutoria._id}`);
     console.log(`   Nuevo estado: ${tutoria.estado}`);
 
+    // =====================================================
+    // ✅ ENVIAR EMAILS DE NOTIFICACIÓN DE CANCELACIÓN
+    // =====================================================
+    try {
+      const { 
+        sendMailCancelacionParaDocente,
+        sendMailCancelacionParaEstudiante 
+      } = await import('../config/nodemailer.js');
+
+      // Formatear fecha para el email
+      const formatearFecha = (fecha) => {
+        const date = moment(fecha, 'YYYY-MM-DD');
+        const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const dia = dias[date.day()];
+        return `${dia} ${date.format('DD/MM/YYYY')}`;
+      };
+
+      const datosTutoria = {
+        fecha: formatearFecha(tutoria.fecha),
+        horaInicio: tutoria.horaInicio,
+        horaFin: tutoria.horaFin,
+        oficinaDocente: tutoria.docente.oficinaDocente
+      };
+
+      if (canceladaPor === 'Estudiante') {
+        // Notificar al docente
+        await sendMailCancelacionParaDocente(
+          tutoria.docente.emailDocente,
+          tutoria.docente.nombreDocente,
+          tutoria.estudiante.nombreEstudiante,
+          datosTutoria,
+          motivo
+        );
+        console.log('📧 Email de cancelación enviado al docente');
+      } else {
+        // Notificar al estudiante
+        await sendMailCancelacionParaEstudiante(
+          tutoria.estudiante.emailEstudiante,
+          tutoria.estudiante.nombreEstudiante,
+          tutoria.docente.nombreDocente,
+          datosTutoria,
+          motivo
+        );
+        console.log('📧 Email de cancelación enviado al estudiante');
+      }
+    } catch (emailError) {
+      // No fallar la operación si el email falla
+      console.error('⚠️ Error enviando email de cancelación:', emailError);
+    }
+
     res.status(200).json({ 
       success: true,
-      msg: 'Tutoría cancelada correctamente.', 
+      msg: 'Tutoría cancelada correctamente. Se ha enviado una notificación por correo.', 
       tutoria: {
         _id: tutoria._id,
         estado: tutoria.estado,
