@@ -466,6 +466,57 @@ class _ReportesScreenState extends State<ReportesScreen>
     return stats;
   }
 
+  Map<String, Map<String, dynamic>> _calcularEstadisticasPorEstudiante() {
+    final Map<String, Map<String, dynamic>> estudiantesStats = {};
+    
+    for (var tutoria in _todasTutorias) {
+      final estudiante = tutoria['estudiante'] as Map<String, dynamic>?;
+      if (estudiante == null) continue;
+      
+      final estudianteId = estudiante['_id'] as String;
+      final nombreEstudiante = estudiante['nombreEstudiante'] as String? ?? 'Sin nombre';
+      final emailEstudiante = estudiante['emailEstudiante'] as String? ?? '';
+      final fotoPerfil = estudiante['fotoPerfil'] as String?;
+      final estado = tutoria['estado'] as String;
+      
+      if (!estudiantesStats.containsKey(estudianteId)) {
+        estudiantesStats[estudianteId] = {
+          'nombre': nombreEstudiante,
+          'email': emailEstudiante,
+          'fotoPerfil': fotoPerfil,
+          'total': 0,
+          'pendientes': 0,
+          'confirmadas': 0,
+          'finalizadas': 0,
+          'canceladas': 0,
+          'rechazadas': 0,
+          'asistencias': 0,
+          'inasistencias': 0,
+        };
+      }
+      
+      final stats = estudiantesStats[estudianteId]!;
+      stats['total'] = (stats['total'] as int) + 1;
+      
+      if (estado == 'pendiente') stats['pendientes'] = (stats['pendientes'] as int) + 1;
+      if (estado == 'confirmada') stats['confirmadas'] = (stats['confirmadas'] as int) + 1;
+      if (estado == 'finalizada') stats['finalizadas'] = (stats['finalizadas'] as int) + 1;
+      if (estado == 'rechazada') stats['rechazadas'] = (stats['rechazadas'] as int) + 1;
+      if (estado == 'cancelada_por_estudiante' || estado == 'cancelada_por_docente') {
+        stats['canceladas'] = (stats['canceladas'] as int) + 1;
+      }
+      
+      if (tutoria['asistenciaEstudiante'] == true) {
+        stats['asistencias'] = (stats['asistencias'] as int) + 1;
+      }
+      if (tutoria['asistenciaEstudiante'] == false) {
+        stats['inasistencias'] = (stats['inasistencias'] as int) + 1;
+      }
+    }
+    
+    return estudiantesStats;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -584,10 +635,14 @@ class _ReportesScreenState extends State<ReportesScreen>
         ? ((stats['asistencias']! / stats['finalizadas']!) * 100).toStringAsFixed(1)
         : 'N/A';
 
+    final estudiantesStats = _calcularEstadisticasPorEstudiante();
+    final estudiantesLista = estudiantesStats.entries.toList()
+      ..sort((a, b) => (b.value['total'] as int).compareTo(a.value['total'] as int));
+
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        // Resumen general mejorado
+        // Resumen General
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -655,7 +710,267 @@ class _ReportesScreenState extends State<ReportesScreen>
             ),
           ),
         ),
+
+        // Estadísticas por Estudiante
+        if (estudiantesLista.isNotEmpty) ...[
+          const SizedBox(height: 30),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF42A5F5).withOpacity(0.1),
+                  const Color(0xFF1E88E5).withOpacity(0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF66BB6A), Color(0xFF43A047)],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.people_rounded,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Text(
+                    'Estadísticas por Estudiante',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1E3A5F),
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1565C0).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${estudiantesLista.length}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1565C0),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'estudiantes',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1565C0).withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...estudiantesLista.map((entry) {
+            final stats = entry.value;
+            final tasaAsistencia = (stats['finalizadas'] as int) > 0
+                ? (((stats['asistencias'] as int) / (stats['finalizadas'] as int)) * 100).toStringAsFixed(1)
+                : 'N/A';
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFF1565C0).withOpacity(0.3),
+                              width: 3,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF1565C0).withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            radius: 30,
+                            backgroundImage: NetworkImage(
+                              stats['fotoPerfil'] ?? 'https://cdn-icons-png.flaticon.com/512/4715/4715329.png',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                stats['nombre'] as String,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF1E3A5F),
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                stats['email'] as String,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF1565C0).withOpacity(0.15),
+                                const Color(0xFF1565C0).withOpacity(0.05),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFF1565C0),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Text(
+                            '${stats['total']} tutorías',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1565C0),
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 28),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildMiniStat('Pendientes', '${stats['pendientes']}', Colors.orange),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildMiniStat('Confirmadas', '${stats['confirmadas']}', Colors.green),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildMiniStat('Finalizadas', '${stats['finalizadas']}', Colors.blue),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildMiniStat('Canceladas', '${stats['canceladas']}', Colors.red),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildMiniStat('Rechazadas', '${stats['rechazadas']}', Colors.red[300]!),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildMiniStat('Asistencia', tasaAsistencia, Colors.indigo),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ],
       ],
+    );
+  }
+
+  Widget _buildMiniStat(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            color.withOpacity(0.1),
+            color.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: color,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+              letterSpacing: 0.2,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
