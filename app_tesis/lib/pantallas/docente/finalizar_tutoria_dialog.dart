@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../servicios/tutoria_service.dart';
+import '../../config/responsive_helper.dart';
 
 class FinalizarTutoriaDialog extends StatefulWidget {
   final Map<String, dynamic> tutoria;
@@ -72,64 +73,78 @@ class _FinalizarTutoriaDialogState extends State<FinalizarTutoriaDialog> {
   @override
   Widget build(BuildContext context) {
     final estudiante = widget.tutoria['estudiante'] as Map<String, dynamic>?;
+    final isDesktop = context.isDesktop;
+    final isMobile = context.isMobile;
+    
+    final double dialogWidth = isDesktop ? 600 : (isMobile ? MediaQuery.of(context).size.width * 0.9 : 500);
+    final double iconSize = context.responsiveIconSize(28);
+    final double titleSize = context.responsiveFontSize(20);
+    final double contentPadding = context.responsivePadding;
 
     return Dialog(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(context.responsivePadding),
       ),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
+        constraints: BoxConstraints(
+          maxWidth: dialogWidth,
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
+            // Header responsive
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                color: Color(0xFF1565C0),
+              padding: EdgeInsets.all(contentPadding),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1565C0),
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+                  topLeft: Radius.circular(context.responsivePadding),
+                  topRight: Radius.circular(context.responsivePadding),
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle_outline, 
-                    color: Colors.white, size: 28),
-                  const SizedBox(width: 12),
-                  const Expanded(
+                  Icon(Icons.check_circle_outline, 
+                    color: Colors.white, 
+                    size: iconSize),
+                  SizedBox(width: context.responsiveSpacing),
+                  Expanded(
                     child: Text(
                       'Finalizar Tutoría',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: titleSize,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
+                    icon: Icon(Icons.close, 
+                      color: Colors.white,
+                      size: iconSize * 0.9),
                     onPressed: () => Navigator.pop(context),
+                    padding: EdgeInsets.all(isMobile ? 8 : 12),
                   ),
                 ],
               ),
             ),
 
-            // Contenido
+            // Contenido scrolleable
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(contentPadding),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Info de la tutoría
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(context.responsiveSpacing),
                       decoration: BoxDecoration(
                         color: Colors.blue[50],
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(context.responsiveSpacing),
                         border: Border.all(color: const Color(0xFF1565C0)),
                       ),
                       child: Column(
@@ -138,51 +153,70 @@ class _FinalizarTutoriaDialogState extends State<FinalizarTutoriaDialog> {
                           Row(
                             children: [
                               CircleAvatar(
-                                radius: 20,
+                                radius: isMobile ? 18 : 20,
                                 backgroundImage: NetworkImage(
                                   estudiante?['fotoPerfil'] ??
                                       'https://cdn-icons-png.flaticon.com/512/4715/4715329.png',
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              SizedBox(width: context.responsiveSpacing),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       estudiante?['nombreEstudiante'] ?? 'Sin nombre',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    Text(
-                                      estudiante?['emailEstudiante'] ?? '',
                                       style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: context.responsiveFontSize(16),
                                       ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
+                                    if (!isMobile) ...[
+                                      SizedBox(height: 4),
+                                      Text(
+                                        estudiante?['emailEstudiante'] ?? '',
+                                        style: TextStyle(
+                                          fontSize: context.responsiveFontSize(12),
+                                          color: Colors.grey[600],
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
                             ],
                           ),
-                          const Divider(height: 24),
+                          Divider(height: context.responsiveSpacing * 2),
                           Row(
                             children: [
-                              const Icon(Icons.calendar_today, size: 16),
-                              const SizedBox(width: 8),
-                              Text(_formatearFecha(widget.tutoria['fecha'])),
+                              Icon(Icons.calendar_today, 
+                                size: context.responsiveIconSize(16)),
+                              SizedBox(width: context.responsiveSpacing * 0.5),
+                              Flexible(
+                                child: Text(
+                                  _formatearFecha(widget.tutoria['fecha']),
+                                  style: TextStyle(
+                                    fontSize: context.responsiveFontSize(14),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: context.responsiveSpacing * 0.5),
                           Row(
                             children: [
-                              const Icon(Icons.access_time, size: 16),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${widget.tutoria['horaInicio']} - ${widget.tutoria['horaFin']}',
+                              Icon(Icons.access_time, 
+                                size: context.responsiveIconSize(16)),
+                              SizedBox(width: context.responsiveSpacing * 0.5),
+                              Flexible(
+                                child: Text(
+                                  '${widget.tutoria['horaInicio']} - ${widget.tutoria['horaFin']}',
+                                  style: TextStyle(
+                                    fontSize: context.responsiveFontSize(14),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -190,129 +224,85 @@ class _FinalizarTutoriaDialogState extends State<FinalizarTutoriaDialog> {
                       ),
                     ),
 
-                    const SizedBox(height: 24),
-                    const Text(
+                    SizedBox(height: context.responsiveSpacing * 2),
+                    Text(
                       '¿El estudiante asistió a la tutoría?',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: context.responsiveFontSize(16),
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1565C0),
+                        color: const Color(0xFF1565C0),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.responsiveSpacing),
 
-                    // Opciones de asistencia
-                    Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() => _asistio = true),
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: _asistio == true
-                                    ? Colors.green.withOpacity(0.1)
-                                    : Colors.grey[100],
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: _asistio == true
-                                      ? Colors.green
-                                      : Colors.grey[300]!,
-                                  width: _asistio == true ? 2 : 1,
+                    // Opciones de asistencia responsive
+                    isMobile
+                        ? Column(
+                            children: [
+                              _buildAsistenciaOption(
+                                true,
+                                'Sí asistió',
+                                Icons.check_circle,
+                                Colors.green,
+                                fullWidth: true,
+                              ),
+                              SizedBox(height: context.responsiveSpacing),
+                              _buildAsistenciaOption(
+                                false,
+                                'No asistió',
+                                Icons.cancel,
+                                Colors.red,
+                                fullWidth: true,
+                              ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              Expanded(
+                                child: _buildAsistenciaOption(
+                                  true,
+                                  'Sí asistió',
+                                  Icons.check_circle,
+                                  Colors.green,
                                 ),
                               ),
-                              child: Column(
-                                children: [
-                                  Icon(
-                                    Icons.check_circle,
-                                    color: _asistio == true
-                                        ? Colors.green
-                                        : Colors.grey,
-                                    size: 32,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Sí asistió',
-                                    style: TextStyle(
-                                      fontWeight: _asistio == true
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                      color: _asistio == true
-                                          ? Colors.green
-                                          : Colors.grey[700],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() => _asistio = false),
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: _asistio == false
-                                    ? Colors.red.withOpacity(0.1)
-                                    : Colors.grey[100],
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: _asistio == false
-                                      ? Colors.red
-                                      : Colors.grey[300]!,
-                                  width: _asistio == false ? 2 : 1,
+                              SizedBox(width: context.responsiveSpacing),
+                              Expanded(
+                                child: _buildAsistenciaOption(
+                                  false,
+                                  'No asistió',
+                                  Icons.cancel,
+                                  Colors.red,
                                 ),
                               ),
-                              child: Column(
-                                children: [
-                                  Icon(
-                                    Icons.cancel,
-                                    color: _asistio == false
-                                        ? Colors.red
-                                        : Colors.grey,
-                                    size: 32,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'No asistió',
-                                    style: TextStyle(
-                                      fontWeight: _asistio == false
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                      color: _asistio == false
-                                          ? Colors.red
-                                          : Colors.grey[700],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
 
-                    const SizedBox(height: 24),
-                    const Text(
+                    SizedBox(height: context.responsiveSpacing * 2),
+                    Text(
                       'Observaciones (opcional)',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: context.responsiveFontSize(14),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: context.responsiveSpacing * 0.5),
                     TextField(
                       controller: _observacionesController,
                       decoration: InputDecoration(
-                        hintText: 'Ejemplo: El estudiante mostró interés en el tema...',
-                        prefixIcon: const Icon(Icons.comment),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        hintText: 'Ejemplo: El estudiante mostró interés...',
+                        hintStyle: TextStyle(
+                          fontSize: context.responsiveFontSize(14),
                         ),
+                        prefixIcon: Icon(Icons.comment, 
+                          size: context.responsiveIconSize(20)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(context.responsiveSpacing),
+                        ),
+                        contentPadding: EdgeInsets.all(context.responsiveSpacing),
                       ),
-                      maxLines: 4,
+                      style: TextStyle(fontSize: context.responsiveFontSize(14)),
+                      maxLines: isMobile ? 3 : 4,
                       maxLength: 500,
                     ),
                   ],
@@ -320,9 +310,9 @@ class _FinalizarTutoriaDialogState extends State<FinalizarTutoriaDialog> {
               ),
             ),
 
-            // Footer con botón
+            // Footer con botón responsive
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(contentPadding),
               decoration: BoxDecoration(
                 color: Colors.white,
                 boxShadow: [
@@ -335,18 +325,18 @@ class _FinalizarTutoriaDialogState extends State<FinalizarTutoriaDialog> {
               ),
               child: SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: context.responsiveFontSize(50),
                 child: ElevatedButton(
                   onPressed: (_isLoading || _asistio == null) ? null : _finalizar,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1565C0),
                     disabledBackgroundColor: Colors.grey,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(context.responsiveSpacing),
                     ),
                   ),
                   child: _isLoading
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 24,
                           width: 24,
                           child: CircularProgressIndicator(
@@ -358,12 +348,59 @@ class _FinalizarTutoriaDialogState extends State<FinalizarTutoriaDialog> {
                           _asistio == null
                               ? 'Selecciona asistencia'
                               : 'Confirmar y Finalizar',
-                          style: const TextStyle(
-                            fontSize: 16,
+                          style: TextStyle(
+                            fontSize: context.responsiveFontSize(16),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAsistenciaOption(
+    bool value,
+    String label,
+    IconData icon,
+    Color color, {
+    bool fullWidth = false,
+  }) {
+    final isSelected = _asistio == value;
+    
+    return InkWell(
+      onTap: () => setState(() => _asistio = value),
+      child: Container(
+        width: fullWidth ? double.infinity : null,
+        padding: EdgeInsets.all(context.responsiveSpacing),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? color.withOpacity(0.1)
+              : Colors.grey[100],
+          borderRadius: BorderRadius.circular(context.responsiveSpacing),
+          border: Border.all(
+            color: isSelected ? color : Colors.grey[300]!,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? color : Colors.grey,
+              size: context.responsiveIconSize(32),
+            ),
+            SizedBox(height: context.responsiveSpacing * 0.5),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? color : Colors.grey[700],
+                fontSize: context.responsiveFontSize(14),
               ),
             ),
           ],

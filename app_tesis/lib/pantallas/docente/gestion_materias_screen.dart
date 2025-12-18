@@ -5,6 +5,7 @@ import '../../servicios/auth_service.dart';
 import '../../servicios/materia_service.dart';
 import '../../servicios/docente_service.dart';
 import '../../servicios/notification_service.dart';
+import '../../config/responsive_helper.dart';
 
 class GestionMateriasScreen extends StatefulWidget {
   final Usuario usuario;
@@ -39,15 +40,11 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
   }
 
   Future<void> _inicializarPantalla() async {
-    print('\n🚀 === INICIALIZANDO PANTALLA DE MATERIAS ===');
     await _validarMateriasDocente();
     await _cargarMateriasDisponibles();
-    print('=== FIN INICIALIZACIÓN ===\n');
   }
 
   Future<void> _validarMateriasDocente() async {
-    print('🔍 Validando materias del docente...');
-
     final resultado = await DocenteService.validarMaterias(_usuarioActual.id);
 
     if (resultado != null && !resultado.containsKey('error')) {
@@ -55,27 +52,19 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
       final bool fueronEliminadas = resultado['fueronEliminadas'] ?? false;
 
       if (fueronEliminadas) {
-        print('⚠️ Se detectaron materias eliminadas, sincronizando...');
         _materiasSeleccionadas = materiasValidas.map((m) => m.toString()).toList();
-
         final usuarioActualizado = await AuthService.obtenerPerfil();
 
         if (usuarioActualizado != null) {
           await AuthService.actualizarUsuario(usuarioActualizado);
           _usuarioActual = usuarioActualizado;
-
-          if (mounted) {
-            _mostrarInfo('Se eliminaron materias que ya no existen en el sistema');
-          }
+          if (mounted) _mostrarInfo('Materias eliminadas del sistema fueron sincronizadas');
         }
       } else {
         _materiasSeleccionadas = materiasValidas.map((m) => m.toString()).toList();
       }
-
-      print('✅ Materias validadas: ${_materiasSeleccionadas.join(", ")}');
     } else {
       _materiasSeleccionadas = List.from(_usuarioActual.asignaturas ?? []);
-      print('⚠️ No se pudo validar, usando materias locales');
     }
   }
 
@@ -83,37 +72,17 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
     setState(() => _cargandoMaterias = true);
 
     try {
-      print('📚 Cargando materias activas de la BD...');
-
       final materiasAgrupadas = await MateriaService.obtenerMateriasAgrupadas();
 
-      if (materiasAgrupadas.isEmpty) {
-        print('⚠️ No hay materias activas en el sistema');
-        if (mounted) {
-          _mostrarError('No hay materias disponibles. Contacta al administrador.');
-        }
+      if (materiasAgrupadas.isEmpty && mounted) {
+        _mostrarError('No hay materias disponibles');
       } else {
-        print('✅ Materias disponibles cargadas:');
-        materiasAgrupadas.forEach((semestre, materias) {
-          print('   $semestre: ${materias.length} materias');
-        });
-
-        final todasLasMaterias = materiasAgrupadas.values.expand((lista) => lista).toSet();
-
-        final materiasInvalidas = _materiasSeleccionadas
-            .where((m) => !todasLasMaterias.contains(m))
-            .toList();
+        final todasLasMaterias = materiasAgrupadas.values.expand((l) => l).toSet();
+        final materiasInvalidas = _materiasSeleccionadas.where((m) => !todasLasMaterias.contains(m)).toList();
 
         if (materiasInvalidas.isNotEmpty) {
-          print('⚠️ Materias inválidas detectadas: ${materiasInvalidas.join(", ")}');
-
           _materiasSeleccionadas.removeWhere((m) => materiasInvalidas.contains(m));
-
-          if (mounted) {
-            _mostrarAdvertencia(
-              'Se eliminaron ${materiasInvalidas.length} materia(s) que ya no están disponibles',
-            );
-          }
+          if (mounted) _mostrarAdvertencia('Se eliminaron ${materiasInvalidas.length} materias no disponibles');
         }
       }
 
@@ -124,7 +93,6 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
         });
       }
     } catch (e) {
-      print('❌ Error cargando materias: $e');
       if (mounted) {
         setState(() => _cargandoMaterias = false);
         _mostrarError('Error al cargar materias: $e');
@@ -143,52 +111,30 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
     });
   }
 
-  List<MapEntry<String, String>> _obtenerTodasLasMateriasConSemestre() {
-    List<MapEntry<String, String>> resultado = [];
-
-    _materiasDisponibles.forEach((semestre, materias) {
-      for (var materia in materias) {
-        resultado.add(MapEntry(semestre, materia));
-      }
-    });
-
-    resultado.sort((a, b) => a.value.compareTo(b.value));
-    return resultado;
-  }
-
   List<MapEntry<String, String>> _filtrarMaterias() {
-    final todasMaterias = _obtenerTodasLasMateriasConSemestre();
+    List<MapEntry<String, String>> resultado = [];
+    _materiasDisponibles.forEach((semestre, materias) {
+      for (var materia in materias) resultado.add(MapEntry(semestre, materia));
+    });
+    resultado.sort((a, b) => a.value.compareTo(b.value));
 
-    if (_searchQuery.isEmpty) {
-      return todasMaterias;
-    }
-
-    return todasMaterias.where((entry) {
-      return entry.value.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          entry.key.toLowerCase().contains(_searchQuery.toLowerCase());
-    }).toList();
+    if (_searchQuery.isEmpty) return resultado;
+    return resultado.where((e) =>
+        e.value.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+        e.key.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
   }
 
   Future<void> _guardarCambios() async {
     if (_materiasSeleccionadas.isEmpty) {
-      _mostrarError('Debes seleccionar al menos una materia');
+      _mostrarError('Selecciona al menos una materia');
       return;
     }
 
-    print('\n💾 === GUARDANDO CAMBIOS ===');
-    print('   Materias seleccionadas: ${_materiasSeleccionadas.join(", ")}');
-
-    final todasLasMaterias = _materiasDisponibles.values.expand((lista) => lista).toSet();
-    
-    final materiasInvalidas = _materiasSeleccionadas
-        .where((m) => !todasLasMaterias.contains(m))
-        .toList();
+    final todasLasMaterias = _materiasDisponibles.values.expand((l) => l).toSet();
+    final materiasInvalidas = _materiasSeleccionadas.where((m) => !todasLasMaterias.contains(m)).toList();
     
     if (materiasInvalidas.isNotEmpty) {
-      print('❌ Materias inválidas detectadas: ${materiasInvalidas.join(", ")}');
-      _mostrarError(
-        'Las siguientes materias ya no existen: ${materiasInvalidas.join(", ")}'
-      );
+      _mostrarError('Materias inválidas: ${materiasInvalidas.join(", ")}');
       return;
     }
 
@@ -210,141 +156,41 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
         _mostrarExito('Materias actualizadas correctamente');
         
         final usuarioActualizado = await AuthService.obtenerPerfil();
-        
         if (usuarioActualizado != null && mounted) {
           await AuthService.actualizarUsuario(usuarioActualizado);
-          
           setState(() {
             _usuarioActual = usuarioActualizado;
             _hasChanges = false;
             _materiasSeleccionadas = List.from(usuarioActualizado.asignaturas ?? []);
           });
-          
-          print('✅ Usuario actualizado en memoria y SharedPreferences');
-          print('   Materias finales: ${_usuarioActual.asignaturas}');
-          
           notificationService.notificarMateriasActualizadas();
-          print('🔔 Notificación enviada: materias actualizadas');
         }
-        
-        print('=== FIN GUARDADO ===\n');
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      _mostrarError('Error al guardar: $e');
+      _mostrarError('Error: $e');
     }
   }
 
-  void _mostrarError(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline_rounded, color: Colors.white, size: 24),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                mensaje,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFFD32F2F),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        duration: const Duration(seconds: 4),
-        elevation: 6,
-      ),
-    );
-  }
+  void _mostrarError(String m) => _mostrarSnackBar(m, const Color(0xFFD32F2F), Icons.error_outline_rounded);
+  void _mostrarExito(String m) => _mostrarSnackBar(m, const Color(0xFF43A047), Icons.check_circle_outline_rounded);
+  void _mostrarInfo(String m) => _mostrarSnackBar(m, const Color(0xFF1976D2), Icons.info_outline_rounded);
+  void _mostrarAdvertencia(String m) => _mostrarSnackBar(m, const Color(0xFFF57C00), Icons.warning_rounded);
 
-  void _mostrarExito(String mensaje) {
+  void _mostrarSnackBar(String mensaje, Color color, IconData icon) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 24),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                mensaje,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                ),
-              ),
-            ),
+            Icon(icon, color: Colors.white, size: context.responsiveIconSize(24)),
+            SizedBox(width: context.responsiveSpacing),
+            Expanded(child: Text(mensaje, style: const TextStyle(fontWeight: FontWeight.w600))),
           ],
         ),
-        backgroundColor: const Color(0xFF43A047),
+        backgroundColor: color,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        elevation: 6,
-      ),
-    );
-  }
-
-  void _mostrarInfo(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.info_outline_rounded, color: Colors.white, size: 24),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                mensaje,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF1976D2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        elevation: 6,
-      ),
-    );
-  }
-
-  void _mostrarAdvertencia(String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.warning_rounded, color: Colors.white, size: 24),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                mensaje,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFFF57C00),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        duration: const Duration(seconds: 4),
-        elevation: 6,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(context.responsivePadding),
       ),
     );
   }
@@ -352,768 +198,381 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
   @override
   Widget build(BuildContext context) {
     final materiasFiltradas = _filtrarMaterias();
+    final isMobile = context.isMobile;
+    final padding = context.responsivePadding;
 
     return WillPopScope(
       onWillPop: () async {
         if (_hasChanges) {
           final confirmar = await showDialog<bool>(
             context: context,
-            builder: (context) => AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(28),
-              ),
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.orange[400]!, Colors.orange[600]!],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(
-                      Icons.warning_rounded,
-                      color: Colors.white,
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Expanded(
-                    child: Text(
-                      '¿Descartar cambios?',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              content: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  'Tienes cambios sin guardar. ¿Deseas salir de todas formas?',
-                  style: TextStyle(fontSize: 15, height: 1.5),
-                ),
-              ),
-              actionsPadding: const EdgeInsets.all(20),
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Text('¿Descartar cambios?'),
+              content: const Text('Tienes cambios sin guardar'),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: Text(
-                    'Cancelar',
-                    style: TextStyle(
-                      color: Colors.grey[700],
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
-                  ),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.red[400]!, Colors.red[600]!],
-                    ),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.35),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: const Text(
-                      'Salir sin guardar',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
+                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: const Text('Salir sin guardar'),
                 ),
               ],
             ),
           );
-
           if (confirmar != true) return false;
         }
-
         Navigator.pop(context, _usuarioActual);
         return false;
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F7FA),
         appBar: AppBar(
-          title: const Text(
+          title: Text(
             'Mis Materias',
             style: TextStyle(
               fontWeight: FontWeight.w700,
-              fontSize: 21,
-              letterSpacing: 0.3,
+              fontSize: context.responsiveFontSize(21),
             ),
           ),
           centerTitle: true,
-          elevation: 0,
           backgroundColor: const Color(0xFF1565C0),
           foregroundColor: Colors.white,
           actions: [
             if (!_cargandoMaterias)
-              Padding(
-                padding: const EdgeInsets.only(right: 4),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-                    onPressed: () {
-                      _validarMateriasDocente();
-                      _cargarMateriasDisponibles();
-                    },
-                    tooltip: 'Recargar materias',
-                  ),
-                ),
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                onPressed: () {
+                  _validarMateriasDocente();
+                  _cargarMateriasDisponibles();
+                },
               ),
             if (_hasChanges && !_isLoading)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.25),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.check_rounded, color: Colors.white),
-                    onPressed: _guardarCambios,
-                    tooltip: 'Guardar cambios',
-                  ),
-                ),
+              IconButton(
+                icon: const Icon(Icons.check_rounded),
+                onPressed: _guardarCambios,
               ),
           ],
         ),
         body: _cargandoMaterias
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF1565C0).withOpacity(0.15),
-                            blurRadius: 24,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: const CircularProgressIndicator(
-                        strokeWidth: 3.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1565C0)),
+            ? _buildLoadingState()
+            : _materiasDisponibles.isEmpty
+                ? _buildEmptyState()
+                : _buildContent(materiasFiltradas, isMobile, padding),
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: context.responsiveSpacing * 2),
+          Text(
+            'Cargando materias...',
+            style: TextStyle(
+              fontSize: context.responsiveFontSize(16),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(context.responsivePadding * 2),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline_rounded, 
+              size: context.responsiveIconSize(90), 
+              color: Colors.orange),
+            SizedBox(height: context.responsiveSpacing * 2),
+            Text(
+              'No hay materias disponibles',
+              style: TextStyle(
+                fontSize: context.responsiveFontSize(22),
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: context.responsiveSpacing),
+            Text(
+              'El administrador debe crear materias',
+              style: TextStyle(
+                fontSize: context.responsiveFontSize(15),
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(List<MapEntry<String, String>> materiasFiltradas, bool isMobile, double padding) {
+    return Column(
+      children: [
+        // Header
+        Container(
+          padding: EdgeInsets.all(padding),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFF42A5F5).withOpacity(0.12),
+                const Color(0xFF1E88E5).withOpacity(0.06),
+              ],
+            ),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(isMobile ? 8 : 11),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1565C0).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.info_outline_rounded,
+                      color: const Color(0xFF1565C0),
+                      size: context.responsiveIconSize(24),
+                    ),
+                  ),
+                  SizedBox(width: context.responsiveSpacing),
+                  Expanded(
+                    child: Text(
+                      'Selecciona las materias que impartes',
+                      style: TextStyle(
+                        fontSize: context.responsiveFontSize(15),
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 28),
-                    const Text(
-                      'Cargando materias disponibles...',
+                  ),
+                ],
+              ),
+              SizedBox(height: context.responsiveSpacing),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF42A5F5), Color(0xFF1565C0)],
+                  ),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                    SizedBox(width: context.responsiveSpacing * 0.75),
+                    Text(
+                      '${_materiasSeleccionadas.length} materias seleccionadas',
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1E3A5F),
-                        letterSpacing: 0.2,
+                        color: Colors.white,
+                        fontSize: context.responsiveFontSize(14),
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
-              )
-            : _materiasDisponibles.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(36),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(28),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Colors.orange[100]!,
-                                  Colors.orange[50]!,
-                                ],
-                              ),
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.orange.withOpacity(0.2),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.error_outline_rounded,
-                              size: 90,
-                              color: Colors.orange[500],
-                            ),
-                          ),
-                          const SizedBox(height: 28),
-                          const Text(
-                            'No hay materias disponibles',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF1E3A5F),
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            'El administrador debe crear materias primero',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Colors.grey[600],
-                              height: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 36),
-                          Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                _validarMateriasDocente();
-                                _cargarMateriasDisponibles();
-                              },
-                              borderRadius: BorderRadius.circular(18),
-                              child: Ink(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 28,
-                                  vertical: 16,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF42A5F5), Color(0xFF1565C0)],
-                                  ),
-                                  borderRadius: BorderRadius.circular(18),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF1565C0).withOpacity(0.35),
-                                      blurRadius: 14,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ],
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
-                                    SizedBox(width: 10),
-                                    Text(
-                                      'Reintentar',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.3,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : Column(
+              ),
+            ],
+          ),
+        ),
+
+        // Buscador
+        Padding(
+          padding: EdgeInsets.all(padding),
+          child: TextField(
+            controller: _searchController,
+            style: TextStyle(fontSize: context.responsiveFontSize(15)),
+            decoration: InputDecoration(
+              hintText: 'Buscar materia o semestre...',
+              prefixIcon: Icon(Icons.search_rounded, size: context.responsiveIconSize(23)),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_rounded),
+                      onPressed: () {
+                        setState(() {
+                          _searchController.clear();
+                          _searchQuery = '';
+                        });
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: BorderSide.none,
+              ),
+              filled: true,
+              fillColor: Colors.white,
+            ),
+            onChanged: (v) => setState(() => _searchQuery = v),
+          ),
+        ),
+
+        // Lista
+        Expanded(
+          child: materiasFiltradas.isEmpty
+              ? _buildNoResults()
+              : ListView.builder(
+                  padding: EdgeInsets.fromLTRB(padding, 0, padding, padding),
+                  itemCount: materiasFiltradas.length,
+                  itemBuilder: (context, index) {
+                    final entry = materiasFiltradas[index];
+                    return _buildMateriaCard(entry.key, entry.value, padding);
+                  },
+                ),
+        ),
+
+        // Botón guardar
+        if (_hasChanges) _buildSaveButton(padding),
+      ],
+    );
+  }
+
+  Widget _buildNoResults() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off_rounded, 
+            size: context.responsiveIconSize(85), 
+            color: Colors.grey[400]),
+          SizedBox(height: context.responsiveSpacing * 2),
+          Text(
+            'No se encontraron materias',
+            style: TextStyle(
+              fontSize: context.responsiveFontSize(19),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMateriaCard(String semestre, String materia, double padding) {
+    final isSelected = _materiasSeleccionadas.contains(materia);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: EdgeInsets.only(bottom: context.responsiveSpacing),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isSelected ? const Color(0xFF1565C0) : Colors.grey[200]!,
+          width: isSelected ? 2.5 : 1.5,
+        ),
+        boxShadow: isSelected
+            ? [BoxShadow(color: const Color(0xFF1565C0).withOpacity(0.2), blurRadius: 16, offset: Offset(0, 6))]
+            : [BoxShadow(color: Colors.grey.withOpacity(0.08), blurRadius: 8, offset: Offset(0, 2))],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _toggleMateria(materia),
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: EdgeInsets.all(padding),
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    gradient: isSelected ? const LinearGradient(colors: [Color(0xFF42A5F5), Color(0xFF1565C0)]) : null,
+                    color: isSelected ? null : Colors.grey[200],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: isSelected ? Colors.transparent : Colors.grey[400]!, width: 2),
+                  ),
+                  child: isSelected ? const Icon(Icons.check_rounded, color: Colors.white, size: 18) : null,
+                ),
+                SizedBox(width: context.responsiveSpacing),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header con contador mejorado
+                      Text(
+                        materia,
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                          fontSize: context.responsiveFontSize(15.5),
+                        ),
+                      ),
+                      SizedBox(height: 6),
                       Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(22),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              const Color(0xFF42A5F5).withOpacity(0.12),
-                              const Color(0xFF1E88E5).withOpacity(0.06),
-                            ],
-                          ),
+                          color: isSelected ? const Color(0xFF1565C0).withOpacity(0.12) : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(11),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF1565C0).withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: const Icon(
-                                    Icons.info_outline_rounded,
-                                    color: Color(0xFF1565C0),
-                                    size: 24,
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                const Expanded(
-                                  child: Text(
-                                    'Selecciona las materias que impartes',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      color: Color(0xFF1E3A5F),
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.2,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 18),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 11,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF42A5F5), Color(0xFF1565C0)],
-                                ),
-                                borderRadius: BorderRadius.circular(22),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF1565C0).withOpacity(0.35),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(5),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.25),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.check_circle_rounded,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 11),
-                                  Text(
-                                    '${_materiasSeleccionadas.length} materias seleccionadas',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.4,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Buscador mejorado
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(18),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.1),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: TextField(
-                            controller: _searchController,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'Buscar materia o semestre...',
-                              hintStyle: TextStyle(
-                                color: Colors.grey[450],
-                                fontWeight: FontWeight.w500,
-                              ),
-                              prefixIcon: Container(
-                                margin: const EdgeInsets.all(12),
-                                padding: const EdgeInsets.all(9),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      const Color(0xFF42A5F5).withOpacity(0.15),
-                                      const Color(0xFF1E88E5).withOpacity(0.15),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.search_rounded,
-                                  color: Color(0xFF1565C0),
-                                  size: 23,
-                                ),
-                              ),
-                              suffixIcon: _searchQuery.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear_rounded),
-                                      color: Colors.grey[500],
-                                      onPressed: () {
-                                        setState(() {
-                                          _searchController.clear();
-                                          _searchQuery = '';
-                                        });
-                                      },
-                                    )
-                                  : null,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(18),
-                                borderSide: BorderSide.none,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(18),
-                                borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(18),
-                                borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2.5),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-                            ),
-                            onChanged: (value) {
-                              setState(() {
-                                _searchQuery = value;
-                              });
-                            },
+                        child: Text(
+                          semestre,
+                          style: TextStyle(
+                            fontSize: context.responsiveFontSize(12),
+                            fontWeight: FontWeight.w600,
+                            color: isSelected ? const Color(0xFF1565C0) : Colors.grey[600],
                           ),
                         ),
                       ),
-
-                      // Lista de materias mejorada
-                      Expanded(
-                        child: materiasFiltradas.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(26),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Colors.grey[100]!,
-                                            Colors.grey[50]!,
-                                          ],
-                                        ),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        Icons.search_off_rounded,
-                                        size: 85,
-                                        color: Colors.grey[400],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 26),
-                                    Text(
-                                      'No se encontraron materias',
-                                      style: TextStyle(
-                                        fontSize: 19,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.grey[700],
-                                        letterSpacing: 0.2,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Text(
-                                      'Intenta con otro término de búsqueda',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[500],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                                itemCount: materiasFiltradas.length,
-                                itemBuilder: (context, index) {
-                                  final entry = materiasFiltradas[index];
-                                  final semestre = entry.key;
-                                  final materia = entry.value;
-                                  final isSelected = _materiasSeleccionadas.contains(materia);
-
-                                  return AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
-                                    margin: const EdgeInsets.only(bottom: 14),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(18),
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? const Color(0xFF1565C0)
-                                            : Colors.grey[200]!,
-                                        width: isSelected ? 2.5 : 1.5,
-                                      ),
-                                      boxShadow: isSelected
-                                          ? [
-                                              BoxShadow(
-                                                color: const Color(0xFF1565C0).withOpacity(0.2),
-                                                blurRadius: 16,
-                                                offset: const Offset(0, 6),
-                                              ),
-                                            ]
-                                          : [
-                                              BoxShadow(
-                                                color: Colors.grey.withOpacity(0.08),
-                                                blurRadius: 8,
-                                                offset: const Offset(0, 2),
-                                              ),
-                                            ],
-                                    ),
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        onTap: () => _toggleMateria(materia),
-                                        borderRadius: BorderRadius.circular(18),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(16),
-                                          child: Row(
-                                            children: [
-                                              // Checkbox personalizado
-                                              AnimatedContainer(
-                                                duration: const Duration(milliseconds: 200),
-                                                width: 28,
-                                                height: 28,
-                                                decoration: BoxDecoration(
-                                                  gradient: isSelected
-                                                      ? const LinearGradient(
-                                                          colors: [
-                                                            Color(0xFF42A5F5),
-                                                            Color(0xFF1565C0),
-                                                          ],
-                                                        )
-                                                      : null,
-                                                  color: isSelected ? null : Colors.grey[200],
-                                                  borderRadius: BorderRadius.circular(8),
-                                                  border: Border.all(
-                                                    color: isSelected
-                                                        ? Colors.transparent
-                                                        : Colors.grey[400]!,
-                                                    width: 2,
-                                                  ),
-                                                ),
-                                                child: isSelected
-                                                    ? const Icon(
-                                                        Icons.check_rounded,
-                                                        color: Colors.white,
-                                                        size: 18,
-                                                      )
-                                                    : null,
-                                              ),
-                                              const SizedBox(width: 16),
-                                              
-                                              // Contenido de la materia
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      materia,
-                                                      style: TextStyle(
-                                                        fontWeight: isSelected
-                                                            ? FontWeight.w700
-                                                            : FontWeight.w600,
-                                                        fontSize: 15.5,
-                                                        color: isSelected
-                                                            ? const Color(0xFF1E3A5F)
-                                                            : Colors.grey[800],
-                                                        letterSpacing: 0.2,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 6),
-                                                    Container(
-                                                      padding: const EdgeInsets.symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 4,
-                                                      ),
-                                                      decoration: BoxDecoration(
-                                                        color: isSelected
-                                                            ? const Color(0xFF1565C0).withOpacity(0.12)
-                                                            : Colors.grey[100],
-                                                        borderRadius: BorderRadius.circular(8),
-                                                      ),
-                                                      child: Text(
-                                                        semestre,
-                                                        style: TextStyle(
-                                                          fontSize: 12,
-                                                          fontWeight: FontWeight.w600,
-                                                          color: isSelected
-                                                              ? const Color(0xFF1565C0)
-                                                              : Colors.grey[600],
-                                                          letterSpacing: 0.3,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              
-                                              // Indicador de selección
-                                              if (isSelected)
-                                                Container(
-                                                  padding: const EdgeInsets.all(8),
-                                                  decoration: BoxDecoration(
-                                                    gradient: LinearGradient(
-                                                      colors: [
-                                                        const Color(0xFF42A5F5).withOpacity(0.15),
-                                                        const Color(0xFF1565C0).withOpacity(0.15),
-                                                      ],
-                                                    ),
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  child: const Icon(
-                                                    Icons.check_circle_rounded,
-                                                    color: Color(0xFF1565C0),
-                                                    size: 22,
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                      ),
-
-                      // Botón guardar mejorado
-                      if (_hasChanges)
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
-                                blurRadius: 12,
-                                offset: const Offset(0, -4),
-                              ),
-                            ],
-                          ),
-                          child: SafeArea(
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: _isLoading ? null : _guardarCambios,
-                                borderRadius: BorderRadius.circular(18),
-                                child: Ink(
-                                  height: 56,
-                                  decoration: BoxDecoration(
-                                    gradient: _isLoading
-                                        ? LinearGradient(
-                                            colors: [
-                                              Colors.grey[400]!,
-                                              Colors.grey[500]!,
-                                            ],
-                                          )
-                                        : const LinearGradient(
-                                            colors: [
-                                              Color(0xFF43A047),
-                                              Color(0xFF2E7D32),
-                                            ],
-                                          ),
-                                    borderRadius: BorderRadius.circular(18),
-                                    boxShadow: _isLoading
-                                        ? null
-                                        : [
-                                            BoxShadow(
-                                              color: const Color(0xFF43A047).withOpacity(0.4),
-                                              blurRadius: 14,
-                                              offset: const Offset(0, 6),
-                                            ),
-                                          ],
-                                  ),
-                                  child: Center(
-                                    child: _isLoading
-                                        ? const SizedBox(
-                                            height: 26,
-                                            width: 26,
-                                            child: CircularProgressIndicator(
-                                              color: Colors.white,
-                                              strokeWidth: 3,
-                                            ),
-                                          )
-                                        : const Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.save_rounded,
-                                                color: Colors.white,
-                                                size: 22,
-                                              ),
-                                              SizedBox(width: 10),
-                                              Text(
-                                                'Guardar Cambios',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Colors.white,
-                                                  letterSpacing: 0.4,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
                     ],
                   ),
+                ),
+                if (isSelected)
+                  Icon(Icons.check_circle_rounded, color: const Color(0xFF1565C0), size: 22),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSaveButton(double padding) {
+    return Container(
+      padding: EdgeInsets.all(padding),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: Offset(0, -4))],
+      ),
+      child: SafeArea(
+        child: SizedBox(
+          width: double.infinity,
+          height: context.responsiveFontSize(56),
+          child: ElevatedButton(
+            onPressed: _isLoading ? null : _guardarCambios,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF43A047),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            ),
+            child: _isLoading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.save_rounded, size: 22),
+                      SizedBox(width: context.responsiveSpacing * 0.75),
+                      Text(
+                        'Guardar Cambios',
+                        style: TextStyle(
+                          fontSize: context.responsiveFontSize(16),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
       ),
     );
   }
