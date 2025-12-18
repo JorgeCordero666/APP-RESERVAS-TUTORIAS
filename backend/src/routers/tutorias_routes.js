@@ -45,13 +45,7 @@ const routerTutorias = Router();
  * - horaFin: Hora fin del bloque (ej: "09:00")
  * - materia: Nombre de la materia
  */
-routerTutorias.get(
-  "/turnos-disponibles",
-  verificarTokenJWT,
-  verificarRol(["Estudiante"]),
-  obtenerTurnosDisponibles
-);
-
+routerTutorias.get("/turnos-disponibles",verificarTokenJWT,verificarRol(["Estudiante"]),obtenerTurnosDisponibles);
 /**
  * Registrar tutoría con sistema de turnos de 20 minutos
  * Body:
@@ -64,19 +58,9 @@ routerTutorias.get(
  *   tema: "Álgebra lineal"
  * }
  */
-routerTutorias.post(
-  "/tutoria/registrar-turno",
-  verificarTokenJWT,
-  verificarRol(["Estudiante"]),
-  registrarTutoriaConTurnos
-);
+routerTutorias.post("/tutoria/registrar-turno",verificarTokenJWT,verificarRol(["Estudiante"]),registrarTutoriaConTurnos);
 
-routerTutorias.put(
-  "/tutoria/reagendar/:id",
-  verificarTokenJWT,
-  verificarRol(["Estudiante", "Docente"]),
-  reagendarTutoria
-);
+routerTutorias.put("/tutoria/reagendar/:id",verificarTokenJWT,verificarRol(["Estudiante", "Docente"]),reagendarTutoria);
 
 // =====================================================
 // GESTIÓN DE TUTORÍAS (RUTAS EXISTENTES)
@@ -86,44 +70,15 @@ routerTutorias.put(
  * Registrar tutoría - Método tradicional o compatible con turnos
  * Mantener para compatibilidad con versiones anteriores
  */
-routerTutorias.post(
-  "/tutoria/registro",
-  verificarTokenJWT,
-  verificarRol(["Estudiante"]),
-  registrarTutoriaConTurnos  // Usar nueva función que soporta ambos modos
-);
-
+routerTutorias.post("/tutoria/registro",verificarTokenJWT,verificarRol(["Estudiante"]),registrarTutoriaConTurnos);  // Usar nueva función que soporta ambos modos
 // Listar tutorías activas (sin canceladas por defecto)
-routerTutorias.get(
-  "/tutorias",
-  verificarTokenJWT,
-  verificarRol(["Docente", "Estudiante"]),
-  listarTutorias
-);
-
+routerTutorias.get("/tutorias",verificarTokenJWT,verificarRol(["Docente", "Estudiante"]),listarTutorias);
 // Actualizar tutoría
-routerTutorias.put(
-  "/tutoria/actualizar/:id",
-  verificarTokenJWT,
-  verificarRol(["Estudiante"]),
-  actualizarTutoria
-);
-
+routerTutorias.put("/tutoria/actualizar/:id",verificarTokenJWT,verificarRol(["Estudiante"]),actualizarTutoria);
 // Cancelar tutoría
-routerTutorias.delete(
-  "/tutoria/cancelar/:id",
-  verificarTokenJWT,
-  verificarRol(["Estudiante", "Docente"]),
-  cancelarTutoria
-);
-
+routerTutorias.delete("/tutoria/cancelar/:id",verificarTokenJWT,verificarRol(["Estudiante", "Docente"]),cancelarTutoria);
 // Registrar asistencia
-routerTutorias.put(
-  "/tutoria/registrar-asistencia/:id",
-  verificarTokenJWT,
-  verificarRol(["Docente"]),
-  registrarAsistencia
-);
+routerTutorias.put("/tutoria/registrar-asistencia/:id",verificarTokenJWT,verificarRol(["Docente"]),registrarAsistencia);
 
 // =====================================================
 // HISTORIAL DE TUTORÍAS (incluye canceladas)
@@ -287,42 +242,27 @@ routerTutorias.put(
 // 🎯 MÉTODO 3: Ver disponibilidad completa (TODAS las materias)
 // Usado por: HorarioService.obtenerDisponibilidadCompleta()
 // URL Flutter: /ver-disponibilidad-completa/$docenteId
-routerTutorias.get(
-  "/ver-disponibilidad-completa/:docenteId",
-  verificarTokenJWT,
-  verificarRol(["Estudiante", "Docente", "Administrador"]),
-  verDisponibilidadCompletaDocente
-);
+routerTutorias.get("/ver-disponibilidad-completa/:docenteId",verificarTokenJWT,verificarRol
+  (["Estudiante", "Docente", "Administrador"]),verDisponibilidadCompletaDocente);
 
 // =====================================================
 // OTRAS OPERACIONES DE DISPONIBILIDAD
 // =====================================================
 
 // Registrar/actualizar disponibilidad por materia y día (un día a la vez)
-routerTutorias.post(
-  "/tutorias/registrar-disponibilidad-materia",
-  verificarTokenJWT,
-  verificarRol(["Docente"]),
-  registrarDisponibilidadPorMateria
-);
+routerTutorias.post("/tutorias/registrar-disponibilidad-materia",verificarTokenJWT,verificarRol(["Docente"])
+  ,registrarDisponibilidadPorMateria);
 
 // Eliminar disponibilidad de materia + día específico
-routerTutorias.delete(
-  "/eliminar-disponibilidad-materia/:docenteId/:materia/:dia",
-  verificarTokenJWT,
-  verificarRol(["Docente"]),
-  eliminarDisponibilidadMateria
-);
+routerTutorias.delete("/eliminar-disponibilidad-materia/:docenteId/:materia/:dia",verificarTokenJWT,verificarRol(["Docente"])
+  ,eliminarDisponibilidadMateria);
 
 // =====================================================
 // VALIDACIONES (OPCIONAL - para validación previa)
 // =====================================================
 
 // Validar cruces internos de horarios
-routerTutorias.post(
-  "/validar-cruces-horarios",
-  verificarTokenJWT,
-  verificarRol(["Docente"]),
+routerTutorias.post("/validar-cruces-horarios",verificarTokenJWT,verificarRol(["Docente"]),
   async (req, res) => {
     try {
       const { bloques } = req.body;
@@ -355,10 +295,7 @@ routerTutorias.post(
 );
 
 // Validar cruces entre diferentes materias
-routerTutorias.post(
-  "/validar-cruces-materias",
-  verificarTokenJWT,
-  verificarRol(["Docente"]),
+routerTutorias.post("/validar-cruces-materias",verificarTokenJWT,verificarRol(["Docente"]),
   async (req, res) => {
     try {
       const { materia, diaSemana, bloques } = req.body;
@@ -403,10 +340,7 @@ routerTutorias.post(
 // =====================================================
 
 // Ver todas las disponibilidades del sistema
-routerTutorias.get(
-  "/admin/todas-disponibilidades",
-  verificarTokenJWT,
-  verificarRol(["Administrador"]),
+routerTutorias.get("/admin/todas-disponibilidades",verificarTokenJWT,verificarRol(["Administrador"]),
   async (req, res) => {
     try {
       const disponibilidadDocente = (await import('../models/disponibilidadDocente.js')).default;
@@ -436,43 +370,18 @@ routerTutorias.get(
 // =====================================================
 
 // Listar tutorías pendientes de confirmación
-routerTutorias.get(
-  "/tutorias/pendientes",
-  verificarTokenJWT,
-  verificarRol(["Docente"]),
-  listarTutoriasPendientes
-);
+routerTutorias.get("/tutorias/pendientes",verificarTokenJWT,verificarRol(["Docente"]),listarTutoriasPendientes);
 
 // Aceptar solicitud de tutoría
-routerTutorias.put(
-  "/tutoria/aceptar/:id",
-  verificarTokenJWT,
-  verificarRol(["Docente"]),
-  aceptarTutoria
-);
+routerTutorias.put("/tutoria/aceptar/:id",verificarTokenJWT,verificarRol(["Docente"]),aceptarTutoria);
 
 // Rechazar solicitud de tutoría
-routerTutorias.put(
-  "/tutoria/rechazar/:id",
-  verificarTokenJWT,
-  verificarRol(["Docente"]),
-  rechazarTutoria
-);
+routerTutorias.put("/tutoria/rechazar/:id",verificarTokenJWT,verificarRol(["Docente"]),rechazarTutoria);
 
 // Generar reporte por materias (solo docente)
-routerTutorias.get(
-  "/reporte-por-materias",
-  verificarTokenJWT,
-  verificarRol(["Docente"]),
-  generarReportePorMaterias
-);
+routerTutorias.get("/reporte-por-materias",verificarTokenJWT,verificarRol(["Docente"]),generarReportePorMaterias);
 
 // Finalizar tutoría
-routerTutorias.put(
-  "/tutoria/finalizar/:id",
-  verificarTokenJWT,
-  verificarRol(["Docente"]),
-  finalizarTutoria
-);
+routerTutorias.put("/tutoria/finalizar/:id",verificarTokenJWT,verificarRol(["Docente"]),finalizarTutoria);
 
 export default routerTutorias;

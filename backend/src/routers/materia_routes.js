@@ -16,50 +16,23 @@ const routerMateria = Router();
 // ========== RUTAS PÚBLICAS (con autenticación básica) ==========
 
 // Listar materias activas (todos los roles autenticados)
-routerMateria.get(
-  '/materias',
-  verificarTokenJWT,
-  listarMaterias
-);
+routerMateria.get('/materias',verificarTokenJWT,listarMaterias);
 
 // Buscar materias (todos los roles autenticados)
-routerMateria.get(
-  '/materias/buscar',
-  verificarTokenJWT,
-  buscarMaterias
-);
+routerMateria.get('/materias/buscar',verificarTokenJWT,buscarMaterias);
 
 // Detalle de materia (todos los roles autenticados)
-routerMateria.get(
-  '/materias/:id',
-  verificarTokenJWT,
-  detalleMateria
-);
+routerMateria.get('/materias/:id',verificarTokenJWT,detalleMateria);
 
 // ========== RUTAS PRIVADAS - SOLO ADMINISTRADOR ==========
 
 // Crear materia
-routerMateria.post(
-  '/materias',
-  verificarTokenJWT,
-  verificarRol(['Administrador']),
-  crearMateria
-);
+routerMateria.post('/materias',verificarTokenJWT,verificarRol(['Administrador']),crearMateria);
 
 // Actualizar materia
-routerMateria.put(
-  '/materias/:id',
-  verificarTokenJWT,
-  verificarRol(['Administrador']),
-  actualizarMateria
-);
+routerMateria.put('/materias/:id',verificarTokenJWT,verificarRol(['Administrador']),actualizarMateria);
 
 // Eliminar (desactivar) materia
-routerMateria.delete(
-  '/materias/:id',
-  verificarTokenJWT,
-  verificarRol(['Administrador']),
-  eliminarMateria
-);
+routerMateria.delete('/materias/:id',verificarTokenJWT,verificarRol(['Administrador']),eliminarMateria);
 
 export default routerMateria;

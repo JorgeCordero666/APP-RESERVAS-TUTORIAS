@@ -1,9 +1,6 @@
-// ============================================================================
-// CREAR DOCENTE SCREEN - ESTILOS MEJORADOS
-// ============================================================================
-
 import 'package:flutter/material.dart';
 import '../../servicios/docente_service.dart';
+import '../../config/responsive_helper.dart';
 
 class CrearDocenteScreen extends StatefulWidget {
   const CrearDocenteScreen({super.key});
@@ -93,7 +90,8 @@ class _CrearDocenteScreenState extends State<CrearDocenteScreen> {
               onPrimary: Colors.white,
               surface: Colors.white,
               onSurface: Colors.black87,
-            ), dialogTheme: DialogThemeData(backgroundColor: Colors.white),
+            ),
+            dialogTheme: DialogThemeData(backgroundColor: Colors.white),
           ),
           child: child!,
         );
@@ -218,201 +216,214 @@ class _CrearDocenteScreenState extends State<CrearDocenteScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Crear Docente',
           style: TextStyle(
             fontWeight: FontWeight.w600,
             letterSpacing: 0.5,
+            fontSize: context.responsiveFontSize(20),
           ),
         ),
         elevation: 0,
         backgroundColor: const Color(0xFF1565C0),
         foregroundColor: Colors.white,
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            // Banner informativo
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.blue[50]!,
-                    Colors.blue[100]!,
+      body: ResponsiveHelper.centerConstrainedBox(
+        context: context,
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: ResponsiveHelper.getContentPadding(context),
+            children: [
+              ResponsiveHelper.verticalSpace(context),
+              
+              // Banner informativo
+              Container(
+                padding: EdgeInsets.all(context.responsivePadding),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue[50]!, Colors.blue[100]!],
+                  ),
+                  borderRadius: BorderRadius.circular(
+                    ResponsiveHelper.getBorderRadius(context),
+                  ),
+                  border: Border.all(color: Colors.blue[200]!, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.info_outline,
+                        color: Colors.blue[700],
+                        size: context.responsiveIconSize(24),
+                      ),
+                    ),
+                    SizedBox(width: context.responsiveSpacing),
+                    Expanded(
+                      child: Text(
+                        'El sistema generará automáticamente una contraseña y la enviará por correo al docente.',
+                        style: TextStyle(
+                          fontSize: context.responsiveFontSize(13.5),
+                          color: Colors.blue[900],
+                          height: 1.4,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.blue[200]!, width: 1),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.info_outline,
-                      color: Colors.blue[700],
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      'El sistema generará automáticamente una contraseña y la enviará por correo al docente.',
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        color: Colors.blue[900],
-                        height: 1.4,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
+              
+              ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
+
+              // Sección: Información Personal
+              _buildSeccionTitulo('Información Personal', Icons.person_outline),
+              ResponsiveHelper.verticalSpace(context),
+
+              _buildTextField(
+                controller: _nombreController,
+                label: 'Nombre Completo',
+                icon: Icons.person,
+                hint: 'Dr. Juan Pérez',
+                validator: (value) => _validarRequerido(value, 'El nombre'),
               ),
-            ),
-            const SizedBox(height: 28),
+              ResponsiveHelper.verticalSpace(context),
 
-            // Sección: Información Personal
-            _buildSeccionTitulo('Información Personal', Icons.person_outline),
-            const SizedBox(height: 16),
-
-            _buildTextField(
-              controller: _nombreController,
-              label: 'Nombre Completo',
-              icon: Icons.person,
-              hint: 'Dr. Juan Pérez',
-              validator: (value) => _validarRequerido(value, 'El nombre'),
-            ),
-            const SizedBox(height: 16),
-
-            _buildTextField(
-              controller: _cedulaController,
-              label: 'Cédula',
-              icon: Icons.badge,
-              hint: '1234567890',
-              keyboardType: TextInputType.number,
-              maxLength: 10,
-              validator: _validarCedula,
-            ),
-            const SizedBox(height: 16),
-
-            _buildDateField(
-              label: 'Fecha de Nacimiento',
-              icon: Icons.cake_outlined,
-              fecha: _fechaNacimiento,
-              onTap: () => _seleccionarFecha(context, true),
-            ),
-            const SizedBox(height: 16),
-
-            _buildDateField(
-              label: 'Fecha de Ingreso',
-              icon: Icons.event_available,
-              fecha: _fechaIngreso,
-              onTap: () => _seleccionarFecha(context, false),
-            ),
-            const SizedBox(height: 28),
-
-            // Sección: Información de Contacto
-            _buildSeccionTitulo('Información de Contacto', Icons.contact_mail_outlined),
-            const SizedBox(height: 16),
-
-            _buildTextField(
-              controller: _emailController,
-              label: 'Correo Institucional',
-              icon: Icons.email,
-              hint: 'docente@epn.edu.ec',
-              keyboardType: TextInputType.emailAddress,
-              validator: _validarEmail,
-            ),
-            const SizedBox(height: 16),
-
-            _buildTextField(
-              controller: _emailAlternativoController,
-              label: 'Correo Alternativo',
-              icon: Icons.alternate_email,
-              hint: 'docente@gmail.com',
-              keyboardType: TextInputType.emailAddress,
-              validator: _validarEmail,
-            ),
-            const SizedBox(height: 16),
-
-            _buildTextField(
-              controller: _celularController,
-              label: 'Celular',
-              icon: Icons.phone_android,
-              hint: '0987654321',
-              keyboardType: TextInputType.phone,
-              validator: _validarTelefono,
-            ),
-            const SizedBox(height: 16),
-
-            _buildTextField(
-              controller: _oficinaController,
-              label: 'Oficina',
-              icon: Icons.meeting_room,
-              hint: 'Edificio A - Oficina 101',
-              validator: (value) => _validarRequerido(value, 'La oficina'),
-            ),
-            const SizedBox(height: 32),
-
-            // Botón registrar
-            Container(
-              height: 54,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF1565C0).withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
+              _buildTextField(
+                controller: _cedulaController,
+                label: 'Cédula',
+                icon: Icons.badge,
+                hint: '1234567890',
+                keyboardType: TextInputType.number,
+                maxLength: 10,
+                validator: _validarCedula,
               ),
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _registrarDocente,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1565C0),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              ResponsiveHelper.verticalSpace(context),
+
+              _buildDateField(
+                label: 'Fecha de Nacimiento',
+                icon: Icons.cake_outlined,
+                fecha: _fechaNacimiento,
+                onTap: () => _seleccionarFecha(context, true),
+              ),
+              ResponsiveHelper.verticalSpace(context),
+
+              _buildDateField(
+                label: 'Fecha de Ingreso',
+                icon: Icons.event_available,
+                fecha: _fechaIngreso,
+                onTap: () => _seleccionarFecha(context, false),
+              ),
+              
+              ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
+
+              // Sección: Información de Contacto
+              _buildSeccionTitulo('Información de Contacto', Icons.contact_mail_outlined),
+              ResponsiveHelper.verticalSpace(context),
+
+              _buildTextField(
+                controller: _emailController,
+                label: 'Correo Institucional',
+                icon: Icons.email,
+                hint: 'docente@epn.edu.ec',
+                keyboardType: TextInputType.emailAddress,
+                validator: _validarEmail,
+              ),
+              ResponsiveHelper.verticalSpace(context),
+
+              _buildTextField(
+                controller: _emailAlternativoController,
+                label: 'Correo Alternativo',
+                icon: Icons.alternate_email,
+                hint: 'docente@gmail.com',
+                keyboardType: TextInputType.emailAddress,
+                validator: _validarEmail,
+              ),
+              ResponsiveHelper.verticalSpace(context),
+
+              _buildTextField(
+                controller: _celularController,
+                label: 'Celular',
+                icon: Icons.phone_android,
+                hint: '0987654321',
+                keyboardType: TextInputType.phone,
+                validator: _validarTelefono,
+              ),
+              ResponsiveHelper.verticalSpace(context),
+
+              _buildTextField(
+                controller: _oficinaController,
+                label: 'Oficina',
+                icon: Icons.meeting_room,
+                hint: 'Edificio A - Oficina 101',
+                validator: (value) => _validarRequerido(value, 'La oficina'),
+              ),
+              
+              ResponsiveHelper.verticalSpace(context, multiplier: 2),
+
+              // Botón registrar
+              Container(
+                height: ResponsiveHelper.getButtonHeight(context),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(
+                    ResponsiveHelper.getBorderRadius(context),
                   ),
-                  disabledBackgroundColor: Colors.grey[300],
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF1565C0).withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2.5,
-                        ),
-                      )
-                    : const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.person_add, size: 22),
-                          SizedBox(width: 12),
-                          Text(
-                            'Registrar Docente',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _registrarDocente,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1565C0),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        ResponsiveHelper.getBorderRadius(context),
                       ),
+                    ),
+                    disabledBackgroundColor: Colors.grey[300],
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.person_add, 
+                              size: context.responsiveIconSize(22)),
+                            SizedBox(width: context.responsiveSpacing),
+                            Text(
+                              'Registrar Docente',
+                              style: TextStyle(
+                                fontSize: context.responsiveFontSize(16),
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-          ],
+              ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
+            ],
+          ),
         ),
       ),
     );
@@ -430,16 +441,16 @@ class _CrearDocenteScreenState extends State<CrearDocenteScreen> {
           child: Icon(
             icon,
             color: const Color(0xFF1565C0),
-            size: 22,
+            size: context.responsiveIconSize(22),
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: context.responsiveSpacing),
         Text(
           titulo,
-          style: const TextStyle(
-            fontSize: 18,
+          style: TextStyle(
+            fontSize: context.responsiveFontSize(18),
             fontWeight: FontWeight.w700,
-            color: Color(0xFF1565C0),
+            color: const Color(0xFF1565C0),
             letterSpacing: 0.3,
           ),
         ),
@@ -459,7 +470,9 @@ class _CrearDocenteScreenState extends State<CrearDocenteScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(
+          ResponsiveHelper.getBorderRadius(context),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -475,6 +488,12 @@ class _CrearDocenteScreenState extends State<CrearDocenteScreen> {
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
+          labelStyle: TextStyle(
+            fontSize: context.responsiveFontSize(14),
+          ),
+          hintStyle: TextStyle(
+            fontSize: context.responsiveFontSize(14),
+          ),
           prefixIcon: Container(
             margin: const EdgeInsets.all(12),
             padding: const EdgeInsets.all(8),
@@ -482,33 +501,49 @@ class _CrearDocenteScreenState extends State<CrearDocenteScreen> {
               color: const Color(0xFF1565C0).withOpacity(0.08),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 20, color: const Color(0xFF1565C0)),
+            child: Icon(icon, 
+              size: context.responsiveIconSize(20), 
+              color: const Color(0xFF1565C0)),
           ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
             borderSide: BorderSide.none,
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
             borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
             borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
             borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 1),
           ),
           focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
             borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 2),
           ),
           filled: true,
           fillColor: Colors.white,
           counterText: '',
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: context.responsivePadding,
+            vertical: 18,
+          ),
         ),
+        style: TextStyle(fontSize: context.responsiveFontSize(14)),
         validator: validator,
       ),
     );
@@ -522,12 +557,16 @@ class _CrearDocenteScreenState extends State<CrearDocenteScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(
+        ResponsiveHelper.getBorderRadius(context),
+      ),
       child: Container(
-        padding: const EdgeInsets.all(18),
+        padding: EdgeInsets.all(context.responsivePadding),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(
+            ResponsiveHelper.getBorderRadius(context),
+          ),
           border: Border.all(color: Colors.grey[200]!, width: 1),
           boxShadow: [
             BoxShadow(
@@ -545,9 +584,11 @@ class _CrearDocenteScreenState extends State<CrearDocenteScreen> {
                 color: const Color(0xFF1565C0).withOpacity(0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, size: 20, color: const Color(0xFF1565C0)),
+              child: Icon(icon, 
+                size: context.responsiveIconSize(20), 
+                color: const Color(0xFF1565C0)),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: context.responsiveSpacing),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -555,7 +596,7 @@ class _CrearDocenteScreenState extends State<CrearDocenteScreen> {
                   Text(
                     label,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: context.responsiveFontSize(12),
                       color: Colors.grey[600],
                       fontWeight: FontWeight.w500,
                     ),
@@ -566,7 +607,7 @@ class _CrearDocenteScreenState extends State<CrearDocenteScreen> {
                         ? 'Seleccionar fecha'
                         : '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: context.responsiveFontSize(16),
                       color: fecha == null ? Colors.grey[400] : Colors.black87,
                       fontWeight: FontWeight.w500,
                     ),
@@ -577,7 +618,7 @@ class _CrearDocenteScreenState extends State<CrearDocenteScreen> {
             Icon(
               Icons.calendar_month,
               color: Colors.grey[400],
-              size: 22,
+              size: context.responsiveIconSize(22),
             ),
           ],
         ),
@@ -585,4 +626,3 @@ class _CrearDocenteScreenState extends State<CrearDocenteScreen> {
     );
   }
 }
-

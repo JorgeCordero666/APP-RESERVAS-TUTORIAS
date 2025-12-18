@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../servicios/docente_service.dart';
+import '../../config/responsive_helper.dart';
 
 class EditarDocenteScreen extends StatefulWidget {
   final Map<String, dynamic> docente;
@@ -38,7 +39,6 @@ class _EditarDocenteScreenState extends State<EditarDocenteScreen> {
     _oficinaController = TextEditingController(text: widget.docente['oficinaDocente']);
     _emailAlternativoController = TextEditingController(text: widget.docente['emailAlternativoDocente']);
 
-    // Parsear fechas
     if (widget.docente['fechaNacimientoDocente'] != null) {
       try {
         _fechaNacimiento = DateTime.parse(widget.docente['fechaNacimientoDocente']);
@@ -150,7 +150,6 @@ class _EditarDocenteScreenState extends State<EditarDocenteScreen> {
       return;
     }
 
-    // Validar edad mínima (18 años) y año mínimo (1960)
     final fechaActual = DateTime.now();
     final edad = fechaActual.year - _fechaNacimiento!.year;
     final mesActual = fechaActual.month;
@@ -230,31 +229,54 @@ class _EditarDocenteScreenState extends State<EditarDocenteScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isTablet = context.isTablet || context.isDesktop;
+    
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Editar Docente'),
+        title: Text(
+          'Editar Docente',
+          style: TextStyle(
+            fontSize: context.responsiveFontSize(20),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         elevation: 0,
         backgroundColor: const Color(0xFF1565C0),
+        foregroundColor: Colors.white,
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Información
-            Card(
-              color: Colors.blue[50],
-              child: Padding(
-                padding: const EdgeInsets.all(16),
+      body: ResponsiveHelper.centerConstrainedBox(
+        context: context,
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: ResponsiveHelper.getContentPadding(context),
+            children: [
+              ResponsiveHelper.verticalSpace(context),
+              
+              // Información
+              Container(
+                padding: EdgeInsets.all(context.responsivePadding),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(
+                    ResponsiveHelper.getBorderRadius(context),
+                  ),
+                  border: Border.all(color: Colors.blue[200]!, width: 1),
+                ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.blue[700]),
-                    const SizedBox(width: 12),
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.blue[700],
+                      size: context.responsiveIconSize(24),
+                    ),
+                    SizedBox(width: context.responsiveSpacing),
                     Expanded(
                       child: Text(
                         'Actualiza la información del docente.',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: context.responsiveFontSize(13),
                           color: Colors.blue[900],
                         ),
                       ),
@@ -262,173 +284,404 @@ class _EditarDocenteScreenState extends State<EditarDocenteScreen> {
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
+              
+              ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
 
-            // Nombre
-            TextFormField(
-              controller: _nombreController,
-              decoration: InputDecoration(
-                labelText: 'Nombre Completo',
-                prefixIcon: const Icon(Icons.person),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              validator: (value) => _validarRequerido(value, 'El nombre'),
-            ),
-            const SizedBox(height: 16),
-
-            // Cédula
-            TextFormField(
-              controller: _cedulaController,
-              keyboardType: TextInputType.number,
-              maxLength: 10,
-              decoration: InputDecoration(
-                labelText: 'Cédula',
-                prefixIcon: const Icon(Icons.badge),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              validator: _validarCedula,
-            ),
-            const SizedBox(height: 16),
-
-            // Email institucional (solo lectura)
-            TextFormField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              enabled: false,
-              decoration: InputDecoration(
-                labelText: 'Correo Institucional',
-                prefixIcon: const Icon(Icons.email),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                helperText: 'No se puede modificar el email institucional',
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Email alternativo
-            TextFormField(
-              controller: _emailAlternativoController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: 'Correo Alternativo',
-                prefixIcon: const Icon(Icons.alternate_email),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              validator: _validarEmail,
-            ),
-            const SizedBox(height: 16),
-
-            // Celular
-            TextFormField(
-              controller: _celularController,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                labelText: 'Celular',
-                prefixIcon: const Icon(Icons.phone),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              validator: _validarTelefono,
-            ),
-            const SizedBox(height: 16),
-
-            // Oficina
-            TextFormField(
-              controller: _oficinaController,
-              decoration: InputDecoration(
-                labelText: 'Oficina',
-                prefixIcon: const Icon(Icons.meeting_room),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              validator: (value) => _validarRequerido(value, 'La oficina'),
-            ),
-            const SizedBox(height: 16),
-
-            // Fecha de nacimiento
-            InkWell(
-              onTap: () => _seleccionarFecha(context, true),
-              child: InputDecorator(
-                decoration: InputDecoration(
-                  labelText: 'Fecha de Nacimiento',
-                  prefixIcon: const Icon(Icons.calendar_today),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  _fechaNacimiento == null
-                      ? 'Seleccionar fecha'
-                      : '${_fechaNacimiento!.day}/${_fechaNacimiento!.month}/${_fechaNacimiento!.year}',
-                  style: TextStyle(
-                    color: _fechaNacimiento == null ? Colors.grey : Colors.black,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Fecha de ingreso
-            InkWell(
-              onTap: () => _seleccionarFecha(context, false),
-              child: InputDecorator(
-                decoration: InputDecoration(
-                  labelText: 'Fecha de Ingreso',
-                  prefixIcon: const Icon(Icons.calendar_today),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  _fechaIngreso == null
-                      ? 'Seleccionar fecha'
-                      : '${_fechaIngreso!.day}/${_fechaIngreso!.month}/${_fechaIngreso!.year}',
-                  style: TextStyle(
-                    color: _fechaIngreso == null ? Colors.grey : Colors.black,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Botón actualizar
-            SizedBox(
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _actualizarDocente,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1565C0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        'Actualizar Docente',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+              // Layout responsive: 2 columnas en tablet/desktop
+              if (isTablet) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _nombreController,
+                        label: 'Nombre Completo',
+                        icon: Icons.person,
+                        validator: (value) => _validarRequerido(value, 'El nombre'),
                       ),
+                    ),
+                    SizedBox(width: context.responsiveSpacing),
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _cedulaController,
+                        label: 'Cédula',
+                        icon: Icons.badge,
+                        keyboardType: TextInputType.number,
+                        maxLength: 10,
+                        validator: _validarCedula,
+                      ),
+                    ),
+                  ],
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _emailController,
+                        label: 'Correo Institucional',
+                        icon: Icons.email,
+                        enabled: false,
+                        helperText: 'No se puede modificar el email institucional',
+                      ),
+                    ),
+                    SizedBox(width: context.responsiveSpacing),
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _emailAlternativoController,
+                        label: 'Correo Alternativo',
+                        icon: Icons.alternate_email,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: _validarEmail,
+                      ),
+                    ),
+                  ],
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _celularController,
+                        label: 'Celular',
+                        icon: Icons.phone,
+                        keyboardType: TextInputType.phone,
+                        validator: _validarTelefono,
+                      ),
+                    ),
+                    SizedBox(width: context.responsiveSpacing),
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _oficinaController,
+                        label: 'Oficina',
+                        icon: Icons.meeting_room,
+                        validator: (value) => _validarRequerido(value, 'La oficina'),
+                      ),
+                    ),
+                  ],
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _buildDateField(
+                        label: 'Fecha de Nacimiento',
+                        icon: Icons.calendar_today,
+                        fecha: _fechaNacimiento,
+                        onTap: () => _seleccionarFecha(context, true),
+                      ),
+                    ),
+                    SizedBox(width: context.responsiveSpacing),
+                    Expanded(
+                      child: _buildDateField(
+                        label: 'Fecha de Ingreso',
+                        icon: Icons.calendar_today,
+                        fecha: _fechaIngreso,
+                        onTap: () => _seleccionarFecha(context, false),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                // Layout móvil: vertical
+                _buildTextField(
+                  controller: _nombreController,
+                  label: 'Nombre Completo',
+                  icon: Icons.person,
+                  validator: (value) => _validarRequerido(value, 'El nombre'),
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                _buildTextField(
+                  controller: _cedulaController,
+                  label: 'Cédula',
+                  icon: Icons.badge,
+                  keyboardType: TextInputType.number,
+                  maxLength: 10,
+                  validator: _validarCedula,
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                _buildTextField(
+                  controller: _emailController,
+                  label: 'Correo Institucional',
+                  icon: Icons.email,
+                  enabled: false,
+                  helperText: 'No se puede modificar el email institucional',
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                _buildTextField(
+                  controller: _emailAlternativoController,
+                  label: 'Correo Alternativo',
+                  icon: Icons.alternate_email,
+                  keyboardType: TextInputType.emailAddress,
+                  validator: _validarEmail,
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                _buildTextField(
+                  controller: _celularController,
+                  label: 'Celular',
+                  icon: Icons.phone,
+                  keyboardType: TextInputType.phone,
+                  validator: _validarTelefono,
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                _buildTextField(
+                  controller: _oficinaController,
+                  label: 'Oficina',
+                  icon: Icons.meeting_room,
+                  validator: (value) => _validarRequerido(value, 'La oficina'),
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                _buildDateField(
+                  label: 'Fecha de Nacimiento',
+                  icon: Icons.calendar_today,
+                  fecha: _fechaNacimiento,
+                  onTap: () => _seleccionarFecha(context, true),
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                _buildDateField(
+                  label: 'Fecha de Ingreso',
+                  icon: Icons.calendar_today,
+                  fecha: _fechaIngreso,
+                  onTap: () => _seleccionarFecha(context, false),
+                ),
+              ],
+              
+              ResponsiveHelper.verticalSpace(context, multiplier: 2),
+
+              // Botón actualizar
+              Container(
+                height: ResponsiveHelper.getButtonHeight(context),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(
+                    ResponsiveHelper.getBorderRadius(context),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF1565C0).withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _actualizarDocente,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1565C0),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        ResponsiveHelper.getBorderRadius(context),
+                      ),
+                    ),
+                    disabledBackgroundColor: Colors.grey[300],
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.save, 
+                              size: context.responsiveIconSize(22)),
+                            SizedBox(width: context.responsiveSpacing),
+                            Text(
+                              'Actualizar Docente',
+                              style: TextStyle(
+                                fontSize: context.responsiveFontSize(16),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
               ),
+              ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType? keyboardType,
+    int? maxLength,
+    bool enabled = true,
+    String? helperText,
+    String? Function(String?)? validator,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(
+          ResponsiveHelper.getBorderRadius(context),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        maxLength: maxLength,
+        enabled: enabled,
+        decoration: InputDecoration(
+          labelText: label,
+          helperText: helperText,
+          labelStyle: TextStyle(
+            fontSize: context.responsiveFontSize(14),
+          ),
+          helperStyle: TextStyle(
+            fontSize: context.responsiveFontSize(12),
+          ),
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1565C0).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, 
+              size: context.responsiveIconSize(20), 
+              color: const Color(0xFF1565C0)),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
+          ),
+          disabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 1),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 2),
+          ),
+          filled: true,
+          fillColor: enabled ? Colors.white : Colors.grey[100],
+          counterText: '',
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: context.responsivePadding,
+            vertical: 18,
+          ),
+        ),
+        style: TextStyle(fontSize: context.responsiveFontSize(14)),
+        validator: validator,
+      ),
+    );
+  }
+
+  Widget _buildDateField({
+    required String label,
+    required IconData icon,
+    required DateTime? fecha,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(
+        ResponsiveHelper.getBorderRadius(context),
+      ),
+      child: Container(
+        padding: EdgeInsets.all(context.responsivePadding),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(
+            ResponsiveHelper.getBorderRadius(context),
+          ),
+          border: Border.all(color: Colors.grey[200]!, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1565C0).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, 
+                size: context.responsiveIconSize(20), 
+                color: const Color(0xFF1565C0)),
+            ),
+            SizedBox(width: context.responsiveSpacing),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: context.responsiveFontSize(12),
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    fecha == null
+                        ? 'Seleccionar fecha'
+                        : '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}',
+                    style: TextStyle(
+                      fontSize: context.responsiveFontSize(16),
+                      color: fecha == null ? Colors.grey[400] : Colors.black87,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.calendar_month,
+              color: Colors.grey[400],
+              size: context.responsiveIconSize(22),
             ),
           ],
         ),

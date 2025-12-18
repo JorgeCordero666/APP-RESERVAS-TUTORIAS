@@ -1,6 +1,6 @@
-// lib/pantallas/admin/editar_estudiante_screen.dart
 import 'package:flutter/material.dart';
 import '../../servicios/estudiante_service.dart';
+import '../../config/responsive_helper.dart';
 
 class EditarEstudianteScreen extends StatefulWidget {
   final Map<String, dynamic> estudiante;
@@ -122,31 +122,54 @@ class _EditarEstudianteScreenState extends State<EditarEstudianteScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isTablet = context.isTablet || context.isDesktop;
+    
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Editar Estudiante'),
+        title: Text(
+          'Editar Estudiante',
+          style: TextStyle(
+            fontSize: context.responsiveFontSize(20),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         elevation: 0,
         backgroundColor: const Color(0xFF1565C0),
+        foregroundColor: Colors.white,
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Información
-            Card(
-              color: Colors.blue[50],
-              child: Padding(
-                padding: const EdgeInsets.all(16),
+      body: ResponsiveHelper.centerConstrainedBox(
+        context: context,
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: ResponsiveHelper.getContentPadding(context),
+            children: [
+              ResponsiveHelper.verticalSpace(context),
+              
+              // Información
+              Container(
+                padding: EdgeInsets.all(context.responsivePadding),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(
+                    ResponsiveHelper.getBorderRadius(context),
+                  ),
+                  border: Border.all(color: Colors.blue[200]!, width: 1),
+                ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.blue[700]),
-                    const SizedBox(width: 12),
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.blue[700],
+                      size: context.responsiveIconSize(24),
+                    ),
+                    SizedBox(width: context.responsiveSpacing),
                     Expanded(
                       child: Text(
                         'Actualiza la información del estudiante.',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: context.responsiveFontSize(13),
                           color: Colors.blue[900],
                         ),
                       ),
@@ -154,84 +177,208 @@ class _EditarEstudianteScreenState extends State<EditarEstudianteScreen> {
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
+              
+              ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
 
-            // Nombre
-            TextFormField(
-              controller: _nombreController,
-              decoration: InputDecoration(
-                labelText: 'Nombre Completo',
-                prefixIcon: const Icon(Icons.person),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              validator: (value) => _validarRequerido(value, 'El nombre'),
-            ),
-            const SizedBox(height: 16),
-
-            // Email
-            TextFormField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: 'Correo Electrónico',
-                prefixIcon: const Icon(Icons.email),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              validator: _validarEmail,
-            ),
-            const SizedBox(height: 16),
-
-            // Teléfono
-            TextFormField(
-              controller: _telefonoController,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                labelText: 'Teléfono (Opcional)',
-                prefixIcon: const Icon(Icons.phone),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              validator: _validarTelefono,
-            ),
-            const SizedBox(height: 32),
-
-            // Botón actualizar
-            SizedBox(
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _actualizarEstudiante,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1565C0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        'Actualizar Estudiante',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+              // Layout responsive
+              if (isTablet) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _nombreController,
+                        label: 'Nombre Completo',
+                        icon: Icons.person,
+                        validator: (value) => _validarRequerido(value, 'El nombre'),
                       ),
+                    ),
+                    SizedBox(width: context.responsiveSpacing),
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _emailController,
+                        label: 'Correo Electrónico',
+                        icon: Icons.email,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: _validarEmail,
+                      ),
+                    ),
+                  ],
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                _buildTextField(
+                  controller: _telefonoController,
+                  label: 'Teléfono (Opcional)',
+                  icon: Icons.phone,
+                  keyboardType: TextInputType.phone,
+                  validator: _validarTelefono,
+                ),
+              ] else ...[
+                _buildTextField(
+                  controller: _nombreController,
+                  label: 'Nombre Completo',
+                  icon: Icons.person,
+                  validator: (value) => _validarRequerido(value, 'El nombre'),
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                _buildTextField(
+                  controller: _emailController,
+                  label: 'Correo Electrónico',
+                  icon: Icons.email,
+                  keyboardType: TextInputType.emailAddress,
+                  validator: _validarEmail,
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                _buildTextField(
+                  controller: _telefonoController,
+                  label: 'Teléfono (Opcional)',
+                  icon: Icons.phone,
+                  keyboardType: TextInputType.phone,
+                  validator: _validarTelefono,
+                ),
+              ],
+              
+              ResponsiveHelper.verticalSpace(context, multiplier: 2),
+
+              // Botón actualizar
+              Container(
+                height: ResponsiveHelper.getButtonHeight(context),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(
+                    ResponsiveHelper.getBorderRadius(context),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF1565C0).withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _actualizarEstudiante,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1565C0),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        ResponsiveHelper.getBorderRadius(context),
+                      ),
+                    ),
+                    disabledBackgroundColor: Colors.grey[300],
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.save, 
+                              size: context.responsiveIconSize(22)),
+                            SizedBox(width: context.responsiveSpacing),
+                            Text(
+                              'Actualizar Estudiante',
+                              style: TextStyle(
+                                fontSize: context.responsiveFontSize(16),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
               ),
-            ),
-          ],
+              ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(
+          ResponsiveHelper.getBorderRadius(context),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(fontSize: context.responsiveFontSize(14)),
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1565C0).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, 
+              size: context.responsiveIconSize(20), 
+              color: const Color(0xFF1565C0)),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 1),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: context.responsivePadding,
+            vertical: 18,
+          ),
+        ),
+        style: TextStyle(fontSize: context.responsiveFontSize(14)),
+        validator: validator,
       ),
     );
   }

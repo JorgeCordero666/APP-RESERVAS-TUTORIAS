@@ -1,7 +1,7 @@
-// app_tesis/lib/pantallas/admin/crear_materia_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../servicios/materia_service.dart';
+import '../../config/responsive_helper.dart';
 
 class CrearMateriaScreen extends StatefulWidget {
   const CrearMateriaScreen({super.key});
@@ -124,7 +124,9 @@ class _CrearMateriaScreenState extends State<CrearMateriaScreen> {
         ),
         backgroundColor: const Color(0xFFD32F2F),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         margin: const EdgeInsets.all(16),
       ),
     );
@@ -142,7 +144,9 @@ class _CrearMateriaScreenState extends State<CrearMateriaScreen> {
         ),
         backgroundColor: const Color(0xFF388E3C),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         margin: const EdgeInsets.all(16),
         duration: const Duration(seconds: 2),
       ),
@@ -151,417 +155,421 @@ class _CrearMateriaScreenState extends State<CrearMateriaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isTablet = context.isTablet || context.isDesktop;
+    
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Crear Materia',
           style: TextStyle(
             fontWeight: FontWeight.w600,
             letterSpacing: 0.5,
+            fontSize: context.responsiveFontSize(20),
           ),
         ),
         backgroundColor: const Color(0xFF1565C0),
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            // Información
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue[50]!, Colors.blue[100]!],
+      body: ResponsiveHelper.centerConstrainedBox(
+        context: context,
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: ResponsiveHelper.getContentPadding(context),
+            children: [
+              ResponsiveHelper.verticalSpace(context),
+              
+              // Información
+              Container(
+                padding: EdgeInsets.all(context.responsivePadding),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue[50]!, Colors.blue[100]!],
+                  ),
+                  borderRadius: BorderRadius.circular(
+                    ResponsiveHelper.getBorderRadius(context),
+                  ),
+                  border: Border.all(color: Colors.blue[200]!, width: 1),
                 ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.blue[200]!, width: 1),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.book, color: Colors.blue[700], size: 24),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      'Registra una nueva materia en el sistema',
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        color: Colors.blue[900],
-                        height: 1.4,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 28),
-
-            // Nombre
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TextFormField(
-                controller: _nombreController,
-                decoration: InputDecoration(
-                  labelText: 'Nombre de la Materia',
-                  hintText: 'Cálculo Diferencial',
-                  prefixIcon: Container(
-                    margin: const EdgeInsets.all(12),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1565C0).withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.book, size: 20, color: Color(0xFF1565C0)),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2),
-                  ),
-                  errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 1),
-                  ),
-                  focusedErrorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                ),
-                textCapitalization: TextCapitalization.words,
-                validator: (value) => _validarRequerido(value, 'El nombre'),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Código
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TextFormField(
-                controller: _codigoController,
-                decoration: InputDecoration(
-                  labelText: 'Código',
-                  hintText: 'MAT-101',
-                  helperText: 'Ej: MAT-101, FIS-201, etc.',
-                  prefixIcon: Container(
-                    margin: const EdgeInsets.all(12),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1565C0).withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.tag, size: 20, color: Color(0xFF1565C0)),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2),
-                  ),
-                  errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 1),
-                  ),
-                  focusedErrorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                ),
-                textCapitalization: TextCapitalization.characters,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9\-]')),
-                ],
-                validator: _validarCodigo,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Semestre
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: DropdownButtonFormField<String>(
-                initialValue: _semestreSeleccionado,
-                decoration: InputDecoration(
-                  labelText: 'Semestre',
-                  prefixIcon: Container(
-                    margin: const EdgeInsets.all(12),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1565C0).withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.school, size: 20, color: Color(0xFF1565C0)),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2),
-                  ),
-                  errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 1),
-                  ),
-                  focusedErrorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                ),
-                items: _semestres.map((semestre) {
-                  return DropdownMenuItem(
-                    value: semestre,
-                    child: Text(semestre),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() => _semestreSeleccionado = value);
-                },
-                validator: (value) {
-                  if (value == null) {
-                    return 'Selecciona un semestre';
-                  }
-                  return null;
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Créditos
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TextFormField(
-                controller: _creditosController,
-                decoration: InputDecoration(
-                  labelText: 'Créditos',
-                  hintText: '4',
-                  helperText: 'Entre 1 y 10',
-                  prefixIcon: Container(
-                    margin: const EdgeInsets.all(12),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1565C0).withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.stars, size: 20, color: Color(0xFF1565C0)),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2),
-                  ),
-                  errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 1),
-                  ),
-                  focusedErrorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                ),
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(2),
-                ],
-                validator: _validarCreditos,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Descripción
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TextFormField(
-                controller: _descripcionController,
-                decoration: InputDecoration(
-                  labelText: 'Descripción (Opcional)',
-                  hintText: 'Breve descripción de la materia',
-                  alignLabelWithHint: true,
-                  prefixIcon: Padding(
-                    padding: const EdgeInsets.only(bottom: 60),
-                    child: Container(
-                      margin: const EdgeInsets.all(12),
-                      padding: const EdgeInsets.all(8),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1565C0).withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.description, size: 20, color: Color(0xFF1565C0)),
+                      child: Icon(
+                        Icons.book,
+                        color: Colors.blue[700],
+                        size: context.responsiveIconSize(24),
+                      ),
                     ),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                ),
-                maxLines: 3,
-                maxLength: 200,
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Botón crear
-            Container(
-              height: 54,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF1565C0).withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _crearMateria,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1565C0),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  disabledBackgroundColor: Colors.grey[300],
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2.5,
+                    SizedBox(width: context.responsiveSpacing),
+                    Expanded(
+                      child: Text(
+                        'Registra una nueva materia en el sistema',
+                        style: TextStyle(
+                          fontSize: context.responsiveFontSize(13.5),
+                          color: Colors.blue[900],
+                          height: 1.4,
+                          fontWeight: FontWeight.w500,
                         ),
-                      )
-                    : const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.add_circle_outline, size: 22),
-                          SizedBox(width: 12),
-                          Text(
-                            'Crear Materia',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
                       ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-          ],
+              
+              ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
+
+              // Para tablets/desktop: layout de 2 columnas
+              if (isTablet) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _nombreController,
+                        label: 'Nombre de la Materia',
+                        icon: Icons.book,
+                        hint: 'Cálculo Diferencial',
+                        validator: (value) => _validarRequerido(value, 'El nombre'),
+                      ),
+                    ),
+                    SizedBox(width: context.responsiveSpacing),
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _codigoController,
+                        label: 'Código',
+                        icon: Icons.tag,
+                        hint: 'MAT-101',
+                        validator: _validarCodigo,
+                      ),
+                    ),
+                  ],
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _buildDropdown(),
+                    ),
+                    SizedBox(width: context.responsiveSpacing),
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _creditosController,
+                        label: 'Créditos',
+                        icon: Icons.stars,
+                        hint: '4',
+                        keyboardType: TextInputType.number,
+                        validator: _validarCreditos,
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                // Para móviles: layout vertical normal
+                _buildTextField(
+                  controller: _nombreController,
+                  label: 'Nombre de la Materia',
+                  icon: Icons.book,
+                  hint: 'Cálculo Diferencial',
+                  validator: (value) => _validarRequerido(value, 'El nombre'),
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                _buildTextField(
+                  controller: _codigoController,
+                  label: 'Código',
+                  icon: Icons.tag,
+                  hint: 'MAT-101',
+                  validator: _validarCodigo,
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                _buildDropdown(),
+                ResponsiveHelper.verticalSpace(context),
+                _buildTextField(
+                  controller: _creditosController,
+                  label: 'Créditos',
+                  icon: Icons.stars,
+                  hint: '4',
+                  keyboardType: TextInputType.number,
+                  validator: _validarCreditos,
+                ),
+              ],
+              
+              ResponsiveHelper.verticalSpace(context),
+
+              // Descripción (siempre full width)
+              _buildTextField(
+                controller: _descripcionController,
+                label: 'Descripción (Opcional)',
+                icon: Icons.description,
+                hint: 'Breve descripción de la materia',
+                maxLines: 3,
+              ),
+              
+              ResponsiveHelper.verticalSpace(context, multiplier: 2),
+
+              // Botón crear
+              Container(
+                height: ResponsiveHelper.getButtonHeight(context),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(
+                    ResponsiveHelper.getBorderRadius(context),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF1565C0).withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _crearMateria,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1565C0),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        ResponsiveHelper.getBorderRadius(context),
+                      ),
+                    ),
+                    disabledBackgroundColor: Colors.grey[300],
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_circle_outline,
+                                size: context.responsiveIconSize(22)),
+                            SizedBox(width: context.responsiveSpacing),
+                            Text(
+                              'Crear Materia',
+                              style: TextStyle(
+                                fontSize: context.responsiveFontSize(16),
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+              ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    String? hint,
+    TextInputType? keyboardType,
+    int? maxLines = 1,
+    String? Function(String?)? validator,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(
+          ResponsiveHelper.getBorderRadius(context),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        maxLength: maxLines != null && maxLines > 1 ? 200 : null,
+        textCapitalization: label.contains('Código') 
+            ? TextCapitalization.characters 
+            : TextCapitalization.words,
+        inputFormatters: label.contains('Código')
+            ? [FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9\-]'))]
+            : label.contains('Créditos')
+                ? [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(2),
+                  ]
+                : null,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          helperText: label.contains('Código')
+              ? 'Ej: MAT-101, FIS-201, etc.'
+              : label.contains('Créditos')
+                  ? 'Entre 1 y 10'
+                  : null,
+          labelStyle: TextStyle(fontSize: context.responsiveFontSize(14)),
+          hintStyle: TextStyle(fontSize: context.responsiveFontSize(14)),
+          helperStyle: TextStyle(fontSize: context.responsiveFontSize(12)),
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1565C0).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon,
+                size: context.responsiveIconSize(20),
+                color: const Color(0xFF1565C0)),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 1),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          counterText: maxLines != null && maxLines > 1 ? null : '',
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: context.responsivePadding,
+            vertical: 18,
+          ),
+          alignLabelWithHint: maxLines != null && maxLines > 1,
+        ),
+        style: TextStyle(fontSize: context.responsiveFontSize(14)),
+        validator: validator,
+      ),
+    );
+  }
+
+  Widget _buildDropdown() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(
+          ResponsiveHelper.getBorderRadius(context),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: DropdownButtonFormField<String>(
+        value: _semestreSeleccionado,
+        decoration: InputDecoration(
+          labelText: 'Semestre',
+          labelStyle: TextStyle(fontSize: context.responsiveFontSize(14)),
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1565C0).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.school,
+                size: context.responsiveIconSize(20),
+                color: const Color(0xFF1565C0)),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 1),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: context.responsivePadding,
+            vertical: 18,
+          ),
+        ),
+        style: TextStyle(
+          fontSize: context.responsiveFontSize(14),
+          color: Colors.black87,
+        ),
+        items: _semestres.map((semestre) {
+          return DropdownMenuItem(
+            value: semestre,
+            child: Text(semestre),
+          );
+        }).toList(),
+        onChanged: (value) {
+          setState(() => _semestreSeleccionado = value);
+        },
+        validator: (value) {
+          if (value == null) {
+            return 'Selecciona un semestre';
+          }
+          return null;
+        },
       ),
     );
   }

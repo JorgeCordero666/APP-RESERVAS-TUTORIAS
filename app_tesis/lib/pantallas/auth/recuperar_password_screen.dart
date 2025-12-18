@@ -1,8 +1,6 @@
-// ============================================
-// 4. RECUPERAR PASSWORD SCREEN - MEJORADA
-// ============================================
 import 'package:flutter/material.dart';
 import '../../servicios/auth_service.dart';
+import '../../config/responsive_helper.dart';
 
 class RecuperarPasswordScreen extends StatefulWidget {
   const RecuperarPasswordScreen({super.key});
@@ -76,12 +74,21 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final padding = context.responsivePadding;
+    final spacing = context.responsiveSpacing;
+    final buttonHeight = ResponsiveHelper.getButtonHeight(context);
+    final borderRadius = ResponsiveHelper.getBorderRadius(context);
+    final iconSize = context.responsiveIconSize(70);
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Recuperar Contraseña',
-          style: TextStyle(fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: context.responsiveFontSize(18),
+          ),
         ),
         centerTitle: true,
         backgroundColor: const Color(0xFF1565C0),
@@ -89,17 +96,20 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
         elevation: 0,
       ),
       body: SafeArea(
-        child: Center(
+        child: ResponsiveHelper.centerConstrainedBox(
+          context: context,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(padding),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  ResponsiveHelper.verticalSpace(context),
+                  
                   // Icono header
                   Container(
-                    padding: const EdgeInsets.all(26),
+                    padding: EdgeInsets.all(padding * 1.3),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
@@ -111,43 +121,43 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
                       ),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.lock_reset,
-                      size: 70,
-                      color: Color(0xFF1565C0),
+                      size: iconSize,
+                      color: const Color(0xFF1565C0),
                     ),
                   ),
-                  const SizedBox(height: 36),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 2.5),
                   
                   // Título y descripción
-                  const Text(
+                  Text(
                     '¿Olvidaste tu Contraseña?',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 26,
+                      fontSize: context.responsiveFontSize(26),
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1565C0),
+                      color: const Color(0xFF1565C0),
                       letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: spacing),
                   Text(
                     'No te preocupes. Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 14.5,
+                      fontSize: context.responsiveFontSize(14.5),
                       color: Colors.grey[600],
                       height: 1.5,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 36),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 2.5),
                   
                   // Campo email
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(borderRadius),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.05),
@@ -159,20 +169,29 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
                     child: TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      style: const TextStyle(fontSize: 15),
+                      style: TextStyle(fontSize: context.responsiveFontSize(15)),
                       decoration: InputDecoration(
                         labelText: 'Correo Electrónico',
-                        labelStyle: TextStyle(color: Colors.grey[700], fontSize: 14),
+                        labelStyle: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: context.responsiveFontSize(14),
+                        ),
                         hintText: 'ejemplo@epn.edu.ec',
                         hintStyle: TextStyle(color: Colors.grey[400]),
-                        prefixIcon: const Icon(Icons.email_outlined, size: 22),
+                        prefixIcon: Icon(
+                          Icons.email_outlined,
+                          size: context.responsiveIconSize(22),
+                        ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(borderRadius),
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: padding,
+                          vertical: spacing,
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -185,18 +204,18 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
                   
                   // Info box
                   Container(
-                    padding: const EdgeInsets.all(18),
+                    padding: EdgeInsets.all(spacing),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [Colors.blue[50]!, Colors.blue[100]!],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(borderRadius),
                       border: Border.all(color: Colors.blue[200]!, width: 1.5),
                       boxShadow: [
                         BoxShadow(
@@ -209,19 +228,23 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: EdgeInsets.all(spacing * 0.8),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Icon(Icons.mail_outline, color: Colors.blue[700], size: 24),
+                          child: Icon(
+                            Icons.mail_outline,
+                            color: Colors.blue[700],
+                            size: context.responsiveIconSize(24),
+                          ),
                         ),
-                        const SizedBox(width: 16),
+                        SizedBox(width: spacing),
                         Expanded(
                           child: Text(
                             'Recibirás un correo con un enlace que abrirá automáticamente la aplicación.',
                             style: TextStyle(
-                              fontSize: 13.5,
+                              fontSize: context.responsiveFontSize(13.5),
                               color: Colors.blue[900],
                               fontWeight: FontWeight.w500,
                               height: 1.4,
@@ -231,13 +254,13 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 36),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 2.5),
                   
                   // Botón enviar
                   Container(
-                    height: 56,
+                    height: buttonHeight,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(borderRadius),
                       gradient: const LinearGradient(
                         colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
                         begin: Alignment.centerLeft,
@@ -257,22 +280,22 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
                         backgroundColor: Colors.transparent,
                         shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(borderRadius),
                         ),
                       ),
                       child: _isLoading
-                          ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
+                          ? SizedBox(
+                              height: context.responsiveIconSize(24),
+                              width: context.responsiveIconSize(24),
+                              child: const CircularProgressIndicator(
                                 color: Colors.white,
                                 strokeWidth: 2.5,
                               ),
                             )
-                          : const Text(
+                          : Text(
                               'Enviar Enlace',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: context.responsiveFontSize(16),
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
                                 letterSpacing: 0.5,
@@ -280,19 +303,19 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
                             ),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 2),
                   
                   // Separador
                   Row(
                     children: [
                       Expanded(child: Divider(color: Colors.grey[300], thickness: 1)),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: EdgeInsets.symmetric(horizontal: spacing),
                         child: Text(
                           '¿No recibiste el enlace?',
                           style: TextStyle(
                             color: Colors.grey[600],
-                            fontSize: 13,
+                            fontSize: context.responsiveFontSize(13),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -300,44 +323,51 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
                       Expanded(child: Divider(color: Colors.grey[300], thickness: 1)),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
                   
                   // Botón código manual
                   Container(
-                    height: 50,
+                    height: buttonHeight * 0.9,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(borderRadius),
                       border: Border.all(color: const Color(0xFF1565C0), width: 1.5),
                       color: Colors.white,
                     ),
                     child: OutlinedButton.icon(
                       onPressed: () => Navigator.pushNamed(context, '/ingresar-codigo'),
-                      icon: const Icon(Icons.vpn_key, size: 20),
-                      label: const Text('Ingresar código manualmente'),
+                      icon: Icon(Icons.vpn_key, size: context.responsiveIconSize(20)),
+                      label: Text(
+                        'Ingresar código manualmente',
+                        style: TextStyle(fontSize: context.responsiveFontSize(15)),
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF1565C0),
                         side: BorderSide.none,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(vertical: spacing),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(borderRadius),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 1.2),
                   
                   // Volver al login
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF1565C0),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: EdgeInsets.symmetric(vertical: spacing),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Volver al inicio de sesión',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: context.responsiveFontSize(14),
+                      ),
                     ),
                   ),
+                  ResponsiveHelper.verticalSpace(context),
                 ],
               ),
             ),
@@ -347,4 +377,3 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
     );
   }
 }
-

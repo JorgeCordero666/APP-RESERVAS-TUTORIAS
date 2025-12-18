@@ -1,8 +1,6 @@
-// ============================================
-// 5. INGRESAR CÓDIGO SCREEN - MEJORADA
-// ============================================
 import 'package:flutter/material.dart';
 import '../../servicios/auth_service.dart';
+import '../../config/responsive_helper.dart';
 
 class IngresarCodigoScreen extends StatefulWidget {
   const IngresarCodigoScreen({super.key});
@@ -72,12 +70,21 @@ class _IngresarCodigoScreenState extends State<IngresarCodigoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final padding = context.responsivePadding;
+    final spacing = context.responsiveSpacing;
+    final buttonHeight = ResponsiveHelper.getButtonHeight(context);
+    final borderRadius = ResponsiveHelper.getBorderRadius(context);
+    final iconSize = context.responsiveIconSize(70);
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Ingresar Código',
-          style: TextStyle(fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: context.responsiveFontSize(18),
+          ),
         ),
         centerTitle: true,
         backgroundColor: const Color(0xFF1565C0),
@@ -85,18 +92,21 @@ class _IngresarCodigoScreenState extends State<IngresarCodigoScreen> {
         elevation: 0,
       ),
       body: SafeArea(
-        child: Center(
+        child: ResponsiveHelper.centerConstrainedBox(
+          context: context,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(padding),
             child: Form(
               key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  ResponsiveHelper.verticalSpace(context),
+                  
                   // Icono
                   Container(
-                    padding: const EdgeInsets.all(26),
+                    padding: EdgeInsets.all(padding * 1.3),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
@@ -108,45 +118,45 @@ class _IngresarCodigoScreenState extends State<IngresarCodigoScreen> {
                       ),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.vpn_key,
-                      size: 70,
-                      color: Color(0xFF1565C0),
+                      size: iconSize,
+                      color: const Color(0xFF1565C0),
                     ),
                   ),
-                  const SizedBox(height: 36),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 2.5),
 
                   // Título
-                  const Text(
+                  Text(
                     'Código de Recuperación',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 26,
+                      fontSize: context.responsiveFontSize(26),
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1565C0),
+                      color: const Color(0xFF1565C0),
                       letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: spacing),
 
                   // Instrucciones
                   Text(
                     'Ingresa el código que recibiste en tu correo electrónico.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 14.5,
+                      fontSize: context.responsiveFontSize(14.5),
                       color: Colors.grey[600],
                       fontWeight: FontWeight.w500,
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 36),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 2.5),
 
                   // Campo de código
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(borderRadius),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.05),
@@ -157,20 +167,32 @@ class _IngresarCodigoScreenState extends State<IngresarCodigoScreen> {
                     ),
                     child: TextFormField(
                       controller: _codigoController,
-                      style: const TextStyle(fontSize: 15, letterSpacing: 1),
+                      style: TextStyle(
+                        fontSize: context.responsiveFontSize(15),
+                        letterSpacing: 1,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Código de Recuperación',
-                        labelStyle: TextStyle(color: Colors.grey[700], fontSize: 14),
+                        labelStyle: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: context.responsiveFontSize(14),
+                        ),
                         hintText: 'Pega aquí el código',
                         hintStyle: TextStyle(color: Colors.grey[400]),
-                        prefixIcon: const Icon(Icons.lock_reset, size: 22),
+                        prefixIcon: Icon(
+                          Icons.lock_reset,
+                          size: context.responsiveIconSize(22),
+                        ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(borderRadius),
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: padding,
+                          vertical: spacing,
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -183,18 +205,18 @@ class _IngresarCodigoScreenState extends State<IngresarCodigoScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
 
                   // Info
                   Container(
-                    padding: const EdgeInsets.all(18),
+                    padding: EdgeInsets.all(spacing),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [Colors.blue[50]!, Colors.blue[100]!],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(borderRadius),
                       border: Border.all(color: Colors.blue[200]!, width: 1.5),
                       boxShadow: [
                         BoxShadow(
@@ -207,19 +229,23 @@ class _IngresarCodigoScreenState extends State<IngresarCodigoScreen> {
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: EdgeInsets.all(spacing * 0.8),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Icon(Icons.content_paste, color: Colors.blue[700], size: 24),
+                          child: Icon(
+                            Icons.content_paste,
+                            color: Colors.blue[700],
+                            size: context.responsiveIconSize(24),
+                          ),
                         ),
-                        const SizedBox(width: 16),
+                        SizedBox(width: spacing),
                         Expanded(
                           child: Text(
                             'Copia el código desde tu correo y pégalo aquí.',
                             style: TextStyle(
-                              fontSize: 13.5,
+                              fontSize: context.responsiveFontSize(13.5),
                               color: Colors.blue[900],
                               fontWeight: FontWeight.w500,
                               height: 1.4,
@@ -229,13 +255,13 @@ class _IngresarCodigoScreenState extends State<IngresarCodigoScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 36),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 2.5),
 
                   // Botón validar
                   Container(
-                    height: 56,
+                    height: buttonHeight,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(borderRadius),
                       gradient: const LinearGradient(
                         colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
                         begin: Alignment.centerLeft,
@@ -255,22 +281,22 @@ class _IngresarCodigoScreenState extends State<IngresarCodigoScreen> {
                         backgroundColor: Colors.transparent,
                         shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(borderRadius),
                         ),
                       ),
                       child: _isLoading
-                          ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
+                          ? SizedBox(
+                              height: context.responsiveIconSize(24),
+                              width: context.responsiveIconSize(24),
+                              child: const CircularProgressIndicator(
                                 color: Colors.white,
                                 strokeWidth: 2.5,
                               ),
                             )
-                          : const Text(
+                          : Text(
                               'Validar Código',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: context.responsiveFontSize(16),
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
                                 letterSpacing: 0.5,
@@ -278,20 +304,24 @@ class _IngresarCodigoScreenState extends State<IngresarCodigoScreen> {
                             ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 1.2),
 
                   // Volver
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF1565C0),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: EdgeInsets.symmetric(vertical: spacing),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Volver',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: context.responsiveFontSize(14),
+                      ),
                     ),
                   ),
+                  ResponsiveHelper.verticalSpace(context),
                 ],
               ),
             ),

@@ -1,8 +1,8 @@
-// lib/pantallas/admin/gestion_materias_screen.dart - VERSIÓN CORREGIDA
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../modelos/materia.dart';
 import '../../servicios/materia_service.dart';
+import '../../config/responsive_helper.dart';
 import 'crear_materia_screen.dart';
 import 'editar_materia_screen.dart';
 import 'detalle_materia_screen.dart';
@@ -49,7 +49,6 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
     super.dispose();
   }
 
-  // ✅ CORRECCIÓN: Cargar materias con logs detallados
   Future<void> _cargarMaterias() async {
     print('\n🔄 === CARGANDO MATERIAS ===');
     print('   Filtro estado: $_filtroEstado');
@@ -139,7 +138,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
     print('🔄 Cambiando filtro estado a: $nuevoFiltro');
     setState(() {
       _filtroEstado = nuevoFiltro;
-      _cargarMaterias(); // Recargar con filtro de estado
+      _cargarMaterias();
     });
   }
 
@@ -147,33 +146,47 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('¿Desactivar materia?'),
+        contentPadding: EdgeInsets.all(context.responsivePadding),
+        title: Text(
+          '¿Desactivar materia?',
+          style: TextStyle(fontSize: context.responsiveFontSize(18)),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               '¿Estás seguro de desactivar "${materia.nombre}"?',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: context.responsiveFontSize(14),
+              ),
             ),
-            const SizedBox(height: 16),
-            const Text(
+            ResponsiveHelper.verticalSpace(context),
+            Text(
               '⚠️ La materia quedará inactiva pero no se eliminará.',
-              style: TextStyle(color: Colors.orange),
+              style: TextStyle(
+                color: Colors.orange,
+                fontSize: context.responsiveFontSize(13),
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(fontSize: context.responsiveFontSize(14)),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text(
+              'Desactivar',
+              style: TextStyle(fontSize: context.responsiveFontSize(14)),
             ),
-            child: const Text('Desactivar'),
           ),
         ],
       ),
@@ -193,7 +206,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
       _mostrarError(resultado['error']);
     } else {
       _mostrarExito('Materia desactivada exitosamente');
-      await _cargarMaterias(); // ✅ Recargar después de desactivar
+      await _cargarMaterias();
     }
   }
 
@@ -220,13 +233,24 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final useGrid = context.isTablet || context.isDesktop;
+    
     return Scaffold(
       appBar: AppBar(
-        title: Text('Gestión de Materias (${_materiasFiltradas.length})'),
+        title: Text(
+          'Gestión de Materias (${_materiasFiltradas.length})',
+          style: TextStyle(
+            fontSize: context.responsiveFontSize(20),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         backgroundColor: const Color(0xFF1565C0),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(
+              Icons.refresh,
+              size: context.responsiveIconSize(24),
+            ),
             onPressed: () {
               print('🔄 Botón refresh presionado');
               _cargarMaterias();
@@ -244,45 +268,77 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
           children: [
             // Buscador
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(context.responsivePadding),
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'Buscar por nombre o código',
-                  prefixIcon: const Icon(Icons.search),
+                  hintStyle: TextStyle(
+                    fontSize: context.responsiveFontSize(14),
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    size: context.responsiveIconSize(24),
+                  ),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear),
+                          icon: Icon(
+                            Icons.clear,
+                            size: context.responsiveIconSize(20),
+                          ),
                           onPressed: () {
                             _searchController.clear();
                           },
                         )
                       : null,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(
+                      ResponsiveHelper.getBorderRadius(context),
+                    ),
+                  ),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: context.responsivePadding,
+                    vertical: 12,
                   ),
                 ),
+                style: TextStyle(fontSize: context.responsiveFontSize(14)),
               ),
             ),
 
             // Filtros por semestre
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.responsivePadding,
+              ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: _semestres.map((semestre) {
                     final isSelected = _filtroSemestre == semestre;
                     return Padding(
-                      padding: const EdgeInsets.only(right: 8),
+                      padding: EdgeInsets.only(
+                        right: context.responsiveSpacing * 0.5,
+                      ),
                       child: FilterChip(
-                        label: Text(semestre),
+                        label: Text(
+                          semestre,
+                          style: TextStyle(
+                            fontSize: context.responsiveFontSize(12),
+                          ),
+                        ),
                         selected: isSelected,
                         onSelected: (_) => _cambiarFiltroSemestre(semestre),
                         selectedColor: const Color(0xFF1565C0),
                         labelStyle: TextStyle(
                           color: isSelected ? Colors.white : Colors.black87,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: isSelected 
+                              ? FontWeight.bold 
+                              : FontWeight.normal,
+                          fontSize: context.responsiveFontSize(12),
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: context.responsiveSpacing * 0.8,
+                          vertical: context.responsiveSpacing * 0.5,
                         ),
                       ),
                     );
@@ -293,7 +349,10 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
 
             // Filtros por estado
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.responsivePadding,
+                vertical: context.responsiveSpacing * 0.5,
+              ),
               child: Row(
                 children: [
                   _FiltroChip(
@@ -302,14 +361,14 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
                     onTap: () => _cambiarFiltroEstado('Activas'),
                     color: Colors.green,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: context.responsiveSpacing * 0.5),
                   _FiltroChip(
                     label: 'Inactivas',
                     isSelected: _filtroEstado == 'Inactivas',
                     onTap: () => _cambiarFiltroEstado('Inactivas'),
                     color: Colors.grey,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: context.responsiveSpacing * 0.5),
                   _FiltroChip(
                     label: 'Todas',
                     isSelected: _filtroEstado == 'Todas',
@@ -334,43 +393,9 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
                     )
                   : _materiasFiltradas.isEmpty
                       ? _buildEstadoVacio()
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _materiasFiltradas.length,
-                          itemBuilder: (context, index) {
-                            final materia = _materiasFiltradas[index];
-                            return _MateriaCard(
-                              materia: materia,
-                              onDesactivar: () => _desactivarMateria(materia),
-                              onVerDetalle: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => DetalleMateriaScreen(
-                                      materiaId: materia.id,
-                                    ),
-                                  ),
-                                );
-                              },
-                              onEditar: () async {
-                                print('📝 Navegando a editar: ${materia.nombre}');
-                                final resultado = await Navigator.push<bool>(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => EditarMateriaScreen(
-                                      materia: materia,
-                                    ),
-                                  ),
-                                );
-
-                                if (resultado == true && mounted) {
-                                  print('✅ Editada, recargando...');
-                                  _cargarMaterias();
-                                }
-                              },
-                            );
-                          },
-                        ),
+                      : useGrid
+                          ? _buildGridView()
+                          : _buildListView(),
             ),
           ],
         ),
@@ -392,8 +417,95 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
           }
         },
         backgroundColor: const Color(0xFF1565C0),
-        child: const Icon(Icons.add),
+        child: Icon(
+          Icons.add,
+          size: context.responsiveIconSize(24),
+        ),
       ),
+    );
+  }
+
+  Widget _buildListView() {
+    return ListView.builder(
+      padding: EdgeInsets.all(context.responsivePadding),
+      itemCount: _materiasFiltradas.length,
+      itemBuilder: (context, index) {
+        final materia = _materiasFiltradas[index];
+        return _MateriaCard(
+          materia: materia,
+          onDesactivar: () => _desactivarMateria(materia),
+          onVerDetalle: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DetalleMateriaScreen(
+                  materiaId: materia.id,
+                ),
+              ),
+            );
+          },
+          onEditar: () async {
+            print('📝 Navegando a editar: ${materia.nombre}');
+            final resultado = await Navigator.push<bool>(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EditarMateriaScreen(
+                  materia: materia,
+                ),
+              ),
+            );
+
+            if (resultado == true && mounted) {
+              print('✅ Editada, recargando...');
+              _cargarMaterias();
+            }
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildGridView() {
+    return GridView.builder(
+      padding: EdgeInsets.all(context.responsivePadding),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: ResponsiveHelper.getGridColumns(context),
+        childAspectRatio: context.isDesktop ? 1.3 : 1.1,
+        crossAxisSpacing: context.responsiveSpacing,
+        mainAxisSpacing: context.responsiveSpacing,
+      ),
+      itemCount: _materiasFiltradas.length,
+      itemBuilder: (context, index) {
+        final materia = _materiasFiltradas[index];
+        return _MateriaGridCard(
+          materia: materia,
+          onDesactivar: () => _desactivarMateria(materia),
+          onVerDetalle: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DetalleMateriaScreen(
+                  materiaId: materia.id,
+                ),
+              ),
+            );
+          },
+          onEditar: () async {
+            final resultado = await Navigator.push<bool>(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EditarMateriaScreen(
+                  materia: materia,
+                ),
+              ),
+            );
+
+            if (resultado == true && mounted) {
+              _cargarMaterias();
+            }
+          },
+        );
+      },
     );
   }
 
@@ -403,16 +515,26 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.book_outlined, size: 80, color: Colors.grey[400]),
-            const SizedBox(height: 16),
+            Icon(
+              Icons.book_outlined,
+              size: context.responsiveIconSize(80),
+              color: Colors.grey[400],
+            ),
+            ResponsiveHelper.verticalSpace(context),
             Text(
               'No hay materias registradas',
-              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: context.responsiveFontSize(18),
+                color: Colors.grey[600],
+              ),
             ),
-            const SizedBox(height: 8),
+            ResponsiveHelper.verticalSpace(context, multiplier: 0.5),
             Text(
               'Presiona el botón + para crear una',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+              style: TextStyle(
+                fontSize: context.responsiveFontSize(14),
+                color: Colors.grey[500],
+              ),
             ),
           ],
         ),
@@ -422,16 +544,26 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search_off, size: 80, color: Colors.grey[400]),
-            const SizedBox(height: 16),
+            Icon(
+              Icons.search_off,
+              size: context.responsiveIconSize(80),
+              color: Colors.grey[400],
+            ),
+            ResponsiveHelper.verticalSpace(context),
             Text(
               'No se encontraron materias',
-              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: context.responsiveFontSize(18),
+                color: Colors.grey[600],
+              ),
             ),
-            const SizedBox(height: 8),
+            ResponsiveHelper.verticalSpace(context, multiplier: 0.5),
             Text(
               'Intenta con otro criterio',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+              style: TextStyle(
+                fontSize: context.responsiveFontSize(14),
+                color: Colors.grey[500],
+              ),
             ),
           ],
         ),
@@ -440,7 +572,7 @@ class _GestionMateriasScreenState extends State<GestionMateriasScreen> {
   }
 }
 
-// Widget para tarjeta de materia
+// Widget para tarjeta de materia (ListView)
 class _MateriaCard extends StatelessWidget {
   final Materia materia;
   final VoidCallback onDesactivar;
@@ -457,13 +589,16 @@ class _MateriaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: context.responsiveSpacing),
       elevation: 2,
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: context.responsivePadding,
+          vertical: context.responsiveSpacing * 0.5,
+        ),
         leading: Container(
-          width: 50,
-          height: 50,
+          width: context.isMobile ? 50 : 60,
+          height: context.isMobile ? 50 : 60,
           decoration: BoxDecoration(
             color: materia.activa 
                 ? const Color(0xFF1565C0).withOpacity(0.1)
@@ -475,7 +610,7 @@ class _MateriaCard extends StatelessWidget {
               materia.codigo,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 12,
+                fontSize: context.responsiveFontSize(12),
                 color: materia.activa 
                     ? const Color(0xFF1565C0)
                     : Colors.grey,
@@ -486,36 +621,41 @@ class _MateriaCard extends StatelessWidget {
         ),
         title: Text(
           materia.nombre,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 16,
+            fontSize: context.responsiveFontSize(16),
           ),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 4),
+            SizedBox(height: context.responsiveSpacing * 0.3),
             Text(
               materia.semestre,
-              style: const TextStyle(fontSize: 13),
+              style: TextStyle(fontSize: context.responsiveFontSize(13)),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: context.responsiveSpacing * 0.3),
             Row(
               children: [
                 Chip(
                   label: Text(
                     '${materia.creditos} crédito${materia.creditos != 1 ? "s" : ""}',
-                    style: const TextStyle(fontSize: 11),
+                    style: TextStyle(
+                      fontSize: context.responsiveFontSize(11),
+                    ),
                   ),
                   padding: EdgeInsets.zero,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   backgroundColor: Colors.blue[50],
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: context.responsiveSpacing * 0.5),
                 Chip(
                   label: Text(
                     materia.activa ? 'Activa' : 'Inactiva',
-                    style: const TextStyle(fontSize: 11, color: Colors.white),
+                    style: TextStyle(
+                      fontSize: context.responsiveFontSize(11),
+                      color: Colors.white,
+                    ),
                   ),
                   padding: EdgeInsets.zero,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -526,7 +666,10 @@ class _MateriaCard extends StatelessWidget {
           ],
         ),
         trailing: PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert),
+          icon: Icon(
+            Icons.more_vert,
+            size: context.responsiveIconSize(24),
+          ),
           onSelected: (value) {
             switch (value) {
               case 'detalle':
@@ -541,38 +684,220 @@ class _MateriaCard extends StatelessWidget {
             }
           },
           itemBuilder: (context) => [
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'detalle',
               child: Row(
                 children: [
-                  Icon(Icons.info, size: 20),
-                  SizedBox(width: 12),
-                  Text('Ver detalle'),
+                  Icon(Icons.info, size: context.responsiveIconSize(20)),
+                  SizedBox(width: context.responsiveSpacing),
+                  Text(
+                    'Ver detalle',
+                    style: TextStyle(
+                      fontSize: context.responsiveFontSize(14),
+                    ),
+                  ),
                 ],
               ),
             ),
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'editar',
               child: Row(
                 children: [
-                  Icon(Icons.edit, size: 20),
-                  SizedBox(width: 12),
-                  Text('Editar'),
+                  Icon(Icons.edit, size: context.responsiveIconSize(20)),
+                  SizedBox(width: context.responsiveSpacing),
+                  Text(
+                    'Editar',
+                    style: TextStyle(
+                      fontSize: context.responsiveFontSize(14),
+                    ),
+                  ),
                 ],
               ),
             ),
             if (materia.activa)
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'desactivar',
                 child: Row(
                   children: [
-                    Icon(Icons.block, size: 20, color: Colors.red),
-                    SizedBox(width: 12),
-                    Text('Desactivar', style: TextStyle(color: Colors.red)),
+                    Icon(
+                      Icons.block,
+                      size: context.responsiveIconSize(20),
+                      color: Colors.red,
+                    ),
+                    SizedBox(width: context.responsiveSpacing),
+                    Text(
+                      'Desactivar',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: context.responsiveFontSize(14),
+                      ),
+                    ),
                   ],
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// Widget para tarjeta de materia (GridView)
+class _MateriaGridCard extends StatelessWidget {
+  final Materia materia;
+  final VoidCallback onDesactivar;
+  final VoidCallback onVerDetalle;
+  final VoidCallback onEditar;
+
+  const _MateriaGridCard({
+    required this.materia,
+    required this.onDesactivar,
+    required this.onVerDetalle,
+    required this.onEditar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: InkWell(
+        onTap: onVerDetalle,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: EdgeInsets.all(context.responsivePadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.responsiveSpacing * 0.8,
+                      vertical: context.responsiveSpacing * 0.4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: materia.activa
+                          ? const Color(0xFF1565C0).withOpacity(0.1)
+                          : Colors.grey.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      materia.codigo,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: context.responsiveFontSize(12),
+                        color: materia.activa
+                            ? const Color(0xFF1565C0)
+                            : Colors.grey,
+                      ),
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    icon: Icon(
+                      Icons.more_vert,
+                      size: context.responsiveIconSize(20),
+                    ),
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'editar':
+                          onEditar();
+                          break;
+                        case 'desactivar':
+                          onDesactivar();
+                          break;
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'editar',
+                        child: Text(
+                          'Editar',
+                          style: TextStyle(
+                            fontSize: context.responsiveFontSize(13),
+                          ),
+                        ),
+                      ),
+                      if (materia.activa)
+                        PopupMenuItem(
+                          value: 'desactivar',
+                          child: Text(
+                            'Desactivar',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: context.responsiveFontSize(13),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+              ResponsiveHelper.verticalSpace(context, multiplier: 0.5),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      materia.nombre,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: context.responsiveFontSize(15),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    ResponsiveHelper.verticalSpace(context, multiplier: 0.3),
+                    Text(
+                      materia.semestre,
+                      style: TextStyle(
+                        fontSize: context.responsiveFontSize(12),
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ResponsiveHelper.verticalSpace(context, multiplier: 0.5),
+              Row(
+                children: [
+                  Icon(
+                    Icons.stars,
+                    size: context.responsiveIconSize(16),
+                    color: Colors.orange,
+                  ),
+                  SizedBox(width: context.responsiveSpacing * 0.3),
+                  Text(
+                    '${materia.creditos} créditos',
+                    style: TextStyle(
+                      fontSize: context.responsiveFontSize(12),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.responsiveSpacing * 0.6,
+                      vertical: context.responsiveSpacing * 0.2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: materia.activa ? Colors.green : Colors.grey,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      materia.activa ? 'Activa' : 'Inactiva',
+                      style: TextStyle(
+                        fontSize: context.responsiveFontSize(10),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -605,10 +930,14 @@ class _FiltroChip extends StatelessWidget {
           style: TextStyle(
             color: isSelected ? Colors.white : chipColor,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontSize: context.responsiveFontSize(12),
           ),
         ),
         backgroundColor: isSelected ? chipColor : chipColor.withOpacity(0.1),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.responsiveSpacing,
+          vertical: context.responsiveSpacing * 0.5,
+        ),
       ),
     );
   }

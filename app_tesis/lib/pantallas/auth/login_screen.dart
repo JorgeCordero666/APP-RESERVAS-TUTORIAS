@@ -1,10 +1,7 @@
-// ============================================
-// 2. LOGIN SCREEN - MEJORADA
-// ============================================
-// lib/pantallas/login_screen.dart
 import 'package:flutter/material.dart';
 import '../../servicios/auth_service.dart';
 import '../../config/routes.dart';
+import '../../config/responsive_helper.dart';
 import 'cambio_password_obligatorio_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -211,6 +208,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final padding = context.responsivePadding;
+    final spacing = context.responsiveSpacing;
+    final buttonHeight = ResponsiveHelper.getButtonHeight(context);
+    final borderRadius = ResponsiveHelper.getBorderRadius(context);
+    final iconSize = context.responsiveIconSize(70);
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -218,66 +221,78 @@ class _LoginScreenState extends State<LoginScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => AppRoutes.navigateToBienvenida(context),
         ),
-        title: const Text('Iniciar Sesión', style: TextStyle(fontWeight: FontWeight.w600)),
+        title: Text(
+          'Iniciar Sesión',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: context.responsiveFontSize(18),
+          ),
+        ),
         centerTitle: true,
         backgroundColor: const Color(0xFF1565C0),
         foregroundColor: Colors.white,
         elevation: 0,
       ),
       body: SafeArea(
-        child: Center(
+        child: ResponsiveHelper.centerConstrainedBox(
+          context: context,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: EdgeInsets.all(padding),
             child: Form(
               key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
+                  
                   // Logo/Icono
                   Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(padding),
                     decoration: BoxDecoration(
                       color: const Color(0xFF1565C0).withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.school,
-                      size: 70,
-                      color: Color(0xFF1565C0),
+                      size: iconSize,
+                      color: const Color(0xFF1565C0),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 2),
                   
                   // Título
-                  const Text(
+                  Text(
                     'Bienvenido',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 32,
+                      fontSize: context.responsiveFontSize(32),
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1565C0),
+                      color: const Color(0xFF1565C0),
                       letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: spacing * 0.5),
                   Text(
                     'Ingresa tus credenciales',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: context.responsiveFontSize(15),
                       color: Colors.grey[600],
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 2.5),
                   
                   // Selector de rol
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFF1565C0).withOpacity(0.3), width: 1.5),
+                      borderRadius: BorderRadius.circular(borderRadius),
+                      border: Border.all(
+                        color: const Color(0xFF1565C0).withOpacity(0.3),
+                        width: 1.5,
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.05),
@@ -286,21 +301,29 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding: EdgeInsets.symmetric(horizontal: padding, vertical: spacing * 0.5),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         isExpanded: true,
                         value: _rolSeleccionado,
                         icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF1565C0)),
-                        style: const TextStyle(fontSize: 15, color: Colors.black87, fontWeight: FontWeight.w500),
-                        items: const [
+                        style: TextStyle(
+                          fontSize: context.responsiveFontSize(15),
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        items: [
                           DropdownMenuItem(
                             value: 'Estudiante',
                             child: Row(
                               children: [
-                                Icon(Icons.person, color: Color(0xFF1565C0), size: 22),
-                                SizedBox(width: 14),
-                                Text('Estudiante'),
+                                Icon(
+                                  Icons.person,
+                                  color: const Color(0xFF1565C0),
+                                  size: context.responsiveIconSize(22),
+                                ),
+                                SizedBox(width: spacing),
+                                const Text('Estudiante'),
                               ],
                             ),
                           ),
@@ -308,9 +331,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             value: 'Docente',
                             child: Row(
                               children: [
-                                Icon(Icons.school, color: Color(0xFF1565C0), size: 22),
-                                SizedBox(width: 14),
-                                Text('Docente'),
+                                Icon(
+                                  Icons.school,
+                                  color: const Color(0xFF1565C0),
+                                  size: context.responsiveIconSize(22),
+                                ),
+                                SizedBox(width: spacing),
+                                const Text('Docente'),
                               ],
                             ),
                           ),
@@ -318,9 +345,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             value: 'Administrador',
                             child: Row(
                               children: [
-                                Icon(Icons.admin_panel_settings, color: Color(0xFF1565C0), size: 22),
-                                SizedBox(width: 14),
-                                Text('Administrador'),
+                                Icon(
+                                  Icons.admin_panel_settings,
+                                  color: const Color(0xFF1565C0),
+                                  size: context.responsiveIconSize(22),
+                                ),
+                                SizedBox(width: spacing),
+                                const Text('Administrador'),
                               ],
                             ),
                           ),
@@ -331,13 +362,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
                   
                   // Campo de email
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(borderRadius),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.05),
@@ -349,20 +380,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      style: const TextStyle(fontSize: 15),
+                      style: TextStyle(fontSize: context.responsiveFontSize(15)),
                       decoration: InputDecoration(
                         labelText: 'Correo electrónico',
-                        labelStyle: TextStyle(color: Colors.grey[700], fontSize: 14),
+                        labelStyle: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: context.responsiveFontSize(14),
+                        ),
                         hintText: 'ejemplo@epn.edu.ec',
                         hintStyle: TextStyle(color: Colors.grey[400]),
-                        prefixIcon: const Icon(Icons.email_outlined, size: 22),
+                        prefixIcon: Icon(Icons.email_outlined, size: context.responsiveIconSize(22)),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(borderRadius),
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: padding,
+                          vertical: spacing,
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -375,13 +412,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 1.2),
                   
                   // Campo de contraseña
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(borderRadius),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.05),
@@ -393,27 +430,33 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
-                      style: const TextStyle(fontSize: 15),
+                      style: TextStyle(fontSize: context.responsiveFontSize(15)),
                       decoration: InputDecoration(
                         labelText: 'Contraseña',
-                        labelStyle: TextStyle(color: Colors.grey[700], fontSize: 14),
-                        prefixIcon: const Icon(Icons.lock_outline, size: 22),
+                        labelStyle: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: context.responsiveFontSize(14),
+                        ),
+                        prefixIcon: Icon(Icons.lock_outline, size: context.responsiveIconSize(22)),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                            size: 22,
+                            size: context.responsiveIconSize(22),
                           ),
                           onPressed: () {
                             setState(() => _obscurePassword = !_obscurePassword);
                           },
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(borderRadius),
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: padding,
+                          vertical: spacing,
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -426,7 +469,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: spacing * 0.8),
                   
                   // ¿Olvidaste tu contraseña?
                   Align(
@@ -439,19 +482,22 @@ class _LoginScreenState extends State<LoginScreen> {
                         foregroundColor: const Color(0xFF1565C0),
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                       ),
-                      child: const Text(
+                      child: Text(
                         '¿Olvidaste tu contraseña?',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: context.responsiveFontSize(14),
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
                   
                   // Botón de iniciar sesión
                   Container(
-                    height: 56,
+                    height: buttonHeight,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(borderRadius),
                       gradient: const LinearGradient(
                         colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
                         begin: Alignment.centerLeft,
@@ -471,22 +517,22 @@ class _LoginScreenState extends State<LoginScreen> {
                         backgroundColor: Colors.transparent,
                         shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(borderRadius),
                         ),
                       ),
                       child: _isLoading
-                          ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
+                          ? SizedBox(
+                              height: context.responsiveIconSize(24),
+                              width: context.responsiveIconSize(24),
+                              child: const CircularProgressIndicator(
                                 color: Colors.white,
                                 strokeWidth: 2.5,
                               ),
                             )
-                          : const Text(
+                          : Text(
                               'Iniciar Sesión',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: context.responsiveFontSize(16),
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
                                 letterSpacing: 0.5,
@@ -494,19 +540,19 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 2),
 
                   // Separador
                   Row(
                     children: [
                       Expanded(child: Divider(color: Colors.grey[300], thickness: 1)),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: EdgeInsets.symmetric(horizontal: spacing),
                         child: Text(
                           '¿Problemas para acceder?',
                           style: TextStyle(
                             color: Colors.grey[600],
-                            fontSize: 13,
+                            fontSize: context.responsiveFontSize(13),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -514,13 +560,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       Expanded(child: Divider(color: Colors.grey[300], thickness: 1)),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
 
                   // Botón para activar cuenta
                   Container(
-                    height: 50,
+                    height: buttonHeight * 0.9,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(borderRadius),
                       border: Border.all(color: const Color(0xFF1565C0), width: 1.5),
                       color: Colors.white,
                     ),
@@ -528,30 +574,37 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: () {
                         Navigator.pushNamed(context, '/confirmar-codigo');
                       },
-                      icon: const Icon(Icons.verified_user, size: 20),
-                      label: const Text('Activar mi cuenta'),
+                      icon: Icon(Icons.verified_user, size: context.responsiveIconSize(20)),
+                      label: Text(
+                        'Activar mi cuenta',
+                        style: TextStyle(fontSize: context.responsiveFontSize(15)),
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF1565C0),
                         side: BorderSide.none,
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                        padding: EdgeInsets.symmetric(
+                          vertical: spacing,
+                          horizontal: padding,
+                        ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(borderRadius),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  ResponsiveHelper.verticalSpace(context),
 
                   // Texto informativo
                   Text(
                     '¿No recibiste el código? Revisa tu carpeta de spam',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 12.5,
+                      fontSize: context.responsiveFontSize(12.5),
                       color: Colors.grey[600],
                       fontWeight: FontWeight.w400,
                     ),
                   ),
+                  ResponsiveHelper.verticalSpace(context),
                 ],
               ),
             ),
@@ -561,4 +614,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-

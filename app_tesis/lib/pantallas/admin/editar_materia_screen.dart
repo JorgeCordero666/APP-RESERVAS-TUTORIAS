@@ -1,8 +1,8 @@
-// lib/pantallas/admin/editar_materia_screen.dart - SIN LISTA PREDEFINIDA
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../modelos/materia.dart';
 import '../../servicios/materia_service.dart';
+import '../../config/responsive_helper.dart';
 
 class EditarMateriaScreen extends StatefulWidget {
   final Materia materia;
@@ -24,7 +24,6 @@ class _EditarMateriaScreenState extends State<EditarMateriaScreen> {
   String? _semestreSeleccionado;
   bool _isLoading = false;
 
-  // ✅ Lista de semestres (opciones estándar del sistema)
   final List<String> _semestres = [
     'Nivelación',
     'Primer Semestre',
@@ -154,30 +153,54 @@ class _EditarMateriaScreenState extends State<EditarMateriaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isTablet = context.isTablet || context.isDesktop;
+    
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Editar Materia'),
+        title: Text(
+          'Editar Materia',
+          style: TextStyle(
+            fontSize: context.responsiveFontSize(20),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         backgroundColor: const Color(0xFF1565C0),
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Información
-            Card(
-              color: Colors.blue[50],
-              child: Padding(
-                padding: const EdgeInsets.all(16),
+      body: ResponsiveHelper.centerConstrainedBox(
+        context: context,
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: ResponsiveHelper.getContentPadding(context),
+            children: [
+              ResponsiveHelper.verticalSpace(context),
+              
+              // Información
+              Container(
+                padding: EdgeInsets.all(context.responsivePadding),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(
+                    ResponsiveHelper.getBorderRadius(context),
+                  ),
+                  border: Border.all(color: Colors.blue[200]!, width: 1),
+                ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.blue[700]),
-                    const SizedBox(width: 12),
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.blue[700],
+                      size: context.responsiveIconSize(24),
+                    ),
+                    SizedBox(width: context.responsiveSpacing),
                     Expanded(
                       child: Text(
                         'Actualiza la información de la materia',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: context.responsiveFontSize(13),
                           color: Colors.blue[900],
                         ),
                       ),
@@ -185,137 +208,343 @@ class _EditarMateriaScreenState extends State<EditarMateriaScreen> {
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
+              
+              ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
 
-            // Nombre
-            TextFormField(
-              controller: _nombreController,
-              decoration: InputDecoration(
-                labelText: 'Nombre de la Materia',
-                prefixIcon: const Icon(Icons.book),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              textCapitalization: TextCapitalization.words,
-              validator: (value) => _validarRequerido(value, 'El nombre'),
-            ),
-            const SizedBox(height: 16),
-
-            // Código
-            TextFormField(
-              controller: _codigoController,
-              decoration: InputDecoration(
-                labelText: 'Código',
-                prefixIcon: const Icon(Icons.tag),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                helperText: 'Ej: MAT-101, FIS-201, etc.',
-              ),
-              textCapitalization: TextCapitalization.characters,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9\-]')),
-              ],
-              validator: _validarCodigo,
-            ),
-            const SizedBox(height: 16),
-
-            // Semestre
-            DropdownButtonFormField<String>(
-              initialValue: _semestreSeleccionado,
-              decoration: InputDecoration(
-                labelText: 'Semestre',
-                prefixIcon: const Icon(Icons.school),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              items: _semestres.map((semestre) {
-                return DropdownMenuItem(
-                  value: semestre,
-                  child: Text(semestre),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() => _semestreSeleccionado = value);
-              },
-              validator: (value) {
-                if (value == null) {
-                  return 'Selecciona un semestre';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Créditos
-            TextFormField(
-              controller: _creditosController,
-              decoration: InputDecoration(
-                labelText: 'Créditos',
-                prefixIcon: const Icon(Icons.stars),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                helperText: 'Entre 1 y 10',
-              ),
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(2),
-              ],
-              validator: _validarCreditos,
-            ),
-            const SizedBox(height: 16),
-
-            // Descripción
-            TextFormField(
-              controller: _descripcionController,
-              decoration: InputDecoration(
-                labelText: 'Descripción (Opcional)',
-                prefixIcon: const Icon(Icons.description),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              maxLines: 3,
-              maxLength: 200,
-            ),
-            const SizedBox(height: 32),
-
-            // Botón actualizar
-            SizedBox(
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _actualizarMateria,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1565C0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        'Actualizar Materia',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+              // Layout responsive
+              if (isTablet) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _nombreController,
+                        label: 'Nombre de la Materia',
+                        icon: Icons.book,
+                        validator: (value) => _validarRequerido(value, 'El nombre'),
                       ),
+                    ),
+                    SizedBox(width: context.responsiveSpacing),
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _codigoController,
+                        label: 'Código',
+                        icon: Icons.tag,
+                        helperText: 'Ej: MAT-101, FIS-201, etc.',
+                        validator: _validarCodigo,
+                      ),
+                    ),
+                  ],
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _buildDropdown(),
+                    ),
+                    SizedBox(width: context.responsiveSpacing),
+                    Expanded(
+                      child: _buildTextField(
+                        controller: _creditosController,
+                        label: 'Créditos',
+                        icon: Icons.stars,
+                        helperText: 'Entre 1 y 10',
+                        keyboardType: TextInputType.number,
+                        validator: _validarCreditos,
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                _buildTextField(
+                  controller: _nombreController,
+                  label: 'Nombre de la Materia',
+                  icon: Icons.book,
+                  validator: (value) => _validarRequerido(value, 'El nombre'),
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                _buildTextField(
+                  controller: _codigoController,
+                  label: 'Código',
+                  icon: Icons.tag,
+                  helperText: 'Ej: MAT-101, FIS-201, etc.',
+                  validator: _validarCodigo,
+                ),
+                ResponsiveHelper.verticalSpace(context),
+                _buildDropdown(),
+                ResponsiveHelper.verticalSpace(context),
+                _buildTextField(
+                  controller: _creditosController,
+                  label: 'Créditos',
+                  icon: Icons.stars,
+                  helperText: 'Entre 1 y 10',
+                  keyboardType: TextInputType.number,
+                  validator: _validarCreditos,
+                ),
+              ],
+              
+              ResponsiveHelper.verticalSpace(context),
+
+              // Descripción (siempre full width)
+              _buildTextField(
+                controller: _descripcionController,
+                label: 'Descripción (Opcional)',
+                icon: Icons.description,
+                maxLines: 3,
               ),
-            ),
-          ],
+              
+              ResponsiveHelper.verticalSpace(context, multiplier: 2),
+
+              // Botón actualizar
+              Container(
+                height: ResponsiveHelper.getButtonHeight(context),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(
+                    ResponsiveHelper.getBorderRadius(context),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF1565C0).withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _actualizarMateria,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1565C0),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        ResponsiveHelper.getBorderRadius(context),
+                      ),
+                    ),
+                    disabledBackgroundColor: Colors.grey[300],
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.save, 
+                              size: context.responsiveIconSize(22)),
+                            SizedBox(width: context.responsiveSpacing),
+                            Text(
+                              'Actualizar Materia',
+                              style: TextStyle(
+                                fontSize: context.responsiveFontSize(16),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+              ResponsiveHelper.verticalSpace(context, multiplier: 1.5),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    String? helperText,
+    TextInputType? keyboardType,
+    int maxLines = 1,
+    String? Function(String?)? validator,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(
+          ResponsiveHelper.getBorderRadius(context),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        maxLength: maxLines > 1 ? 200 : null,
+        textCapitalization: label.contains('Código')
+            ? TextCapitalization.characters
+            : TextCapitalization.words,
+        inputFormatters: label.contains('Código')
+            ? [FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9\-]'))]
+            : label.contains('Créditos')
+                ? [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(2),
+                  ]
+                : null,
+        decoration: InputDecoration(
+          labelText: label,
+          helperText: helperText,
+          labelStyle: TextStyle(fontSize: context.responsiveFontSize(14)),
+          helperStyle: TextStyle(fontSize: context.responsiveFontSize(12)),
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1565C0).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon,
+                size: context.responsiveIconSize(20),
+                color: const Color(0xFF1565C0)),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 1),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          counterText: maxLines > 1 ? null : '',
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: context.responsivePadding,
+            vertical: 18,
+          ),
+          alignLabelWithHint: maxLines > 1,
+        ),
+        style: TextStyle(fontSize: context.responsiveFontSize(14)),
+        validator: validator,
+      ),
+    );
+  }
+
+  Widget _buildDropdown() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(
+          ResponsiveHelper.getBorderRadius(context),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: DropdownButtonFormField<String>(
+        value: _semestreSeleccionado,
+        decoration: InputDecoration(
+          labelText: 'Semestre',
+          labelStyle: TextStyle(fontSize: context.responsiveFontSize(14)),
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1565C0).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.school,
+                size: context.responsiveIconSize(20),
+                color: const Color(0xFF1565C0)),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 1),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(
+              ResponsiveHelper.getBorderRadius(context),
+            ),
+            borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: context.responsivePadding,
+            vertical: 18,
+          ),
+        ),
+        style: TextStyle(
+          fontSize: context.responsiveFontSize(14),
+          color: Colors.black87,
+        ),
+        items: _semestres.map((semestre) {
+          return DropdownMenuItem(
+            value: semestre,
+            child: Text(semestre),
+          );
+        }).toList(),
+        onChanged: (value) {
+          setState(() => _semestreSeleccionado = value);
+        },
+        validator: (value) {
+          if (value == null) {
+            return 'Selecciona un semestre';
+          }
+          return null;
+        },
       ),
     );
   }

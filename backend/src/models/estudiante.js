@@ -40,7 +40,7 @@
         },
         token: {
             type: String,
-            default: null,
+            //default: null,
         },
         confirmEmail: {
             type: Boolean,
