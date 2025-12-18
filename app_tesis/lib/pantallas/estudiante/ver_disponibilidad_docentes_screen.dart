@@ -1,8 +1,9 @@
-// lib/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart - ESTILOS MEJORADOS
+// lib/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart - FULLY RESPONSIVE
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/docente_service.dart';
 import '../../servicios/horario_service.dart';
+import '../../config/responsive_helper.dart';
 import 'seleccionar_turno_dialog.dart';
 
 class VerDisponibilidadDocentesScreen extends StatefulWidget {
@@ -310,15 +311,24 @@ class _VerDisponibilidadDocentesScreenState
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error_outline, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(child: Text(mensaje)),
+            Icon(
+              Icons.error_outline, 
+              color: Colors.white,
+              size: context.responsiveIconSize(20),
+            ),
+            SizedBox(width: context.responsiveSpacing),
+            Expanded(
+              child: Text(
+                mensaje,
+                style: TextStyle(fontSize: context.responsiveFontSize(14)),
+              ),
+            ),
           ],
         ),
         backgroundColor: Colors.red[700],
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        margin: EdgeInsets.all(context.responsivePadding),
       ),
     );
   }
@@ -328,15 +338,22 @@ class _VerDisponibilidadDocentesScreenState
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.info_outline, color: Colors.white),
-            const SizedBox(width: 12),
-            Text(mensaje),
+            Icon(
+              Icons.info_outline, 
+              color: Colors.white,
+              size: context.responsiveIconSize(20),
+            ),
+            SizedBox(width: context.responsiveSpacing),
+            Text(
+              mensaje,
+              style: TextStyle(fontSize: context.responsiveFontSize(14)),
+            ),
           ],
         ),
         backgroundColor: Colors.blue[700],
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        margin: EdgeInsets.all(context.responsivePadding),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -346,18 +363,19 @@ class _VerDisponibilidadDocentesScreenState
   Widget build(BuildContext context) {
     super.build(context);
     
-    final isLargeScreen = MediaQuery.of(context).size.width > 600;
-
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Agendar Tutoría',
-          style: TextStyle(fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: context.responsiveFontSize(20),
+          ),
         ),
         backgroundColor: const Color(0xFF1565C0),
         elevation: 0,
-        leading: (!isLargeScreen && !_mostrarListaDocentes)
+        leading: (!context.isDesktop && !_mostrarListaDocentes)
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () {
@@ -370,15 +388,15 @@ class _VerDisponibilidadDocentesScreenState
             : null,
         actions: _docenteSeleccionado != null ? [
           Container(
-            margin: const EdgeInsets.only(right: 8),
+            margin: EdgeInsets.only(right: context.isMobile ? 4 : 8),
             child: IconButton(
               icon: Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(context.isMobile ? 6 : 8),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.refresh, size: 20),
+                child: Icon(Icons.refresh, size: context.responsiveIconSize(20)),
               ),
               onPressed: _isLoadingDisponibilidad 
                   ? null 
@@ -388,7 +406,7 @@ class _VerDisponibilidadDocentesScreenState
           ),
         ] : null,
       ),
-      body: isLargeScreen ? _buildDesktopLayout() : _buildMobileLayout(),
+      body: context.isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
     );
   }
 
@@ -396,7 +414,7 @@ class _VerDisponibilidadDocentesScreenState
     return Row(
       children: [
         Container(
-          width: 320,
+          width: ResponsiveHelper.isMobile(context) ? 280 : 320,
           decoration: BoxDecoration(
             color: Colors.white,
             boxShadow: [
@@ -421,12 +439,15 @@ class _VerDisponibilidadDocentesScreenState
   }
 
   Widget _buildListaDocentes() {
+    final titleFontSize = context.isMobile ? 16.0 : 17.0;
+    final subtitleFontSize = context.isMobile ? 12.0 : 13.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(context.responsivePadding),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.blue[50]!, Colors.white],
@@ -440,35 +461,35 @@ class _VerDisponibilidadDocentesScreenState
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(context.isMobile ? 8 : 10),
                     decoration: BoxDecoration(
                       color: const Color(0xFF1565C0).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.person_search,
-                      color: Color(0xFF1565C0),
-                      size: 24,
+                      color: const Color(0xFF1565C0),
+                      size: context.responsiveIconSize(24),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const Expanded(
+                  SizedBox(width: context.responsiveSpacing),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Paso 1: Selecciona un Docente',
                           style: TextStyle(
-                            fontSize: 17,
+                            fontSize: context.responsiveFontSize(titleFontSize),
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF1565C0),
+                            color: const Color(0xFF1565C0),
                           ),
                         ),
-                        SizedBox(height: 4),
+                        SizedBox(height: context.responsiveSpacing * 0.3),
                         Text(
                           'Elige el docente con quien deseas agendar',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: context.responsiveFontSize(subtitleFontSize),
                             color: Colors.grey,
                           ),
                         ),
@@ -482,16 +503,26 @@ class _VerDisponibilidadDocentesScreenState
         ),
 
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(context.responsiveSpacing),
           child: TextField(
             controller: _searchController,
             decoration: InputDecoration(
               hintText: 'Buscar docente...',
-              hintStyle: TextStyle(color: Colors.grey[400]),
-              prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+              hintStyle: TextStyle(
+                color: Colors.grey[400],
+                fontSize: context.responsiveFontSize(14),
+              ),
+              prefixIcon: Icon(
+                Icons.search, 
+                color: Colors.grey[600],
+                size: context.responsiveIconSize(20),
+              ),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.clear, size: 20),
+                      icon: Icon(
+                        Icons.clear, 
+                        size: context.responsiveIconSize(20),
+                      ),
                       onPressed: () {
                         _searchController.clear();
                         _filtrarDocentes();
@@ -512,8 +543,11 @@ class _VerDisponibilidadDocentesScreenState
               ),
               filled: true,
               fillColor: Colors.grey[50],
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              contentPadding: EdgeInsets.symmetric(
+                vertical: context.isMobile ? 10 : 12,
+              ),
             ),
+            style: TextStyle(fontSize: context.responsiveFontSize(14)),
             onChanged: (_) => _filtrarDocentes(),
           ),
         ),
@@ -528,12 +562,16 @@ class _VerDisponibilidadDocentesScreenState
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
-                          const SizedBox(height: 16),
+                          Icon(
+                            Icons.search_off, 
+                            size: context.isMobile ? 48 : 64, 
+                            color: Colors.grey[400],
+                          ),
+                          SizedBox(height: context.responsiveSpacing),
                           Text(
                             'No se encontraron docentes',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: context.responsiveFontSize(16),
                               color: Colors.grey[600],
                             ),
                             textAlign: TextAlign.center,
@@ -543,14 +581,17 @@ class _VerDisponibilidadDocentesScreenState
                     )
                   : ListView.builder(
                       itemCount: _docentesFiltrados.length,
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: context.responsiveSpacing * 0.7,
+                        vertical: context.responsiveSpacing * 0.3,
+                      ),
                       itemBuilder: (context, index) {
                         final docente = _docentesFiltrados[index];
                         final isSelected =
                             _docenteSeleccionado?['_id'] == docente['_id'];
 
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
+                          padding: EdgeInsets.only(bottom: context.responsiveSpacing * 0.7),
                           child: Card(
                             elevation: isSelected ? 4 : 1,
                             shadowColor: isSelected
@@ -567,9 +608,9 @@ class _VerDisponibilidadDocentesScreenState
                             ),
                             child: ListTile(
                               onTap: () => _cargarDisponibilidad(docente),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: context.isMobile ? 10 : 12,
+                                vertical: context.isMobile ? 6 : 8,
                               ),
                               leading: Container(
                                 decoration: BoxDecoration(
@@ -590,14 +631,14 @@ class _VerDisponibilidadDocentesScreenState
                                     docente['avatarDocente'] ??
                                         'https://cdn-icons-png.flaticon.com/512/4715/4715329.png',
                                   ),
-                                  radius: 28,
+                                  radius: context.isMobile ? 24 : 28,
                                   backgroundColor: Colors.grey[200],
                                 ),
                               ),
                               title: Text(
                                 docente['nombreDocente'] ?? 'Sin nombre',
                                 style: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: context.responsiveFontSize(15),
                                   fontWeight: isSelected
                                       ? FontWeight.bold
                                       : FontWeight.w600,
@@ -611,14 +652,16 @@ class _VerDisponibilidadDocentesScreenState
                                   children: [
                                     Icon(
                                       Icons.location_on,
-                                      size: 14,
+                                      size: context.responsiveIconSize(14),
                                       color: Colors.grey[600],
                                     ),
                                     const SizedBox(width: 4),
                                     Expanded(
                                       child: Text(
                                         docente['oficinaDocente'] ?? 'Sin oficina',
-                                        style: const TextStyle(fontSize: 12),
+                                        style: TextStyle(
+                                          fontSize: context.responsiveFontSize(12),
+                                        ),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
@@ -626,7 +669,7 @@ class _VerDisponibilidadDocentesScreenState
                                 ),
                               ),
                               trailing: Container(
-                                padding: const EdgeInsets.all(8),
+                                padding: EdgeInsets.all(context.isMobile ? 6 : 8),
                                 decoration: BoxDecoration(
                                   color: isSelected
                                       ? const Color(0xFF1565C0).withOpacity(0.1)
@@ -640,7 +683,7 @@ class _VerDisponibilidadDocentesScreenState
                                   color: isSelected
                                       ? const Color(0xFF1565C0)
                                       : Colors.grey,
-                                  size: 24,
+                                  size: context.responsiveIconSize(24),
                                 ),
                               ),
                             ),
@@ -660,28 +703,32 @@ class _VerDisponibilidadDocentesScreenState
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(32),
+              padding: EdgeInsets.all(context.isMobile ? 24 : 32),
               decoration: BoxDecoration(
                 color: Colors.grey[100],
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.person_search, size: 80, color: Colors.grey[400]),
+              child: Icon(
+                Icons.person_search, 
+                size: context.isMobile ? 60 : 80, 
+                color: Colors.grey[400],
+              ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: context.responsiveSpacing * 2),
             Text(
               'Selecciona un docente',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: context.responsiveFontSize(18),
                 fontWeight: FontWeight.w600,
                 color: Colors.grey[700],
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: context.responsiveSpacing * 0.7),
             Text(
               'Podrás ver su disponibilidad\ny agendar una tutoría',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: context.responsiveFontSize(14),
                 color: Colors.grey[600],
               ),
             ),
@@ -696,18 +743,18 @@ class _VerDisponibilidadDocentesScreenState
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(context.responsivePadding),
               decoration: BoxDecoration(
                 color: Colors.blue[50],
                 shape: BoxShape.circle,
               ),
               child: const CircularProgressIndicator(strokeWidth: 3),
             ),
-            const SizedBox(height: 24),
-            const Text(
+            SizedBox(height: context.responsiveSpacing * 2),
+            Text(
               'Cargando disponibilidad...',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: context.responsiveFontSize(16),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -720,7 +767,7 @@ class _VerDisponibilidadDocentesScreenState
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(context.responsivePadding),
           decoration: BoxDecoration(
             color: Colors.white,
             boxShadow: [
@@ -737,35 +784,35 @@ class _VerDisponibilidadDocentesScreenState
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(context.isMobile ? 8 : 10),
                     decoration: BoxDecoration(
                       color: const Color(0xFF1565C0).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.event_available,
-                      color: Color(0xFF1565C0),
-                      size: 24,
+                      color: const Color(0xFF1565C0),
+                      size: context.responsiveIconSize(24),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const Expanded(
+                  SizedBox(width: context.responsiveSpacing),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Paso 2: Selecciona Horario',
                           style: TextStyle(
-                            fontSize: 17,
+                            fontSize: context.responsiveFontSize(17),
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF1565C0),
+                            color: const Color(0xFF1565C0),
                           ),
                         ),
-                        SizedBox(height: 4),
+                        SizedBox(height: context.responsiveSpacing * 0.3),
                         Text(
                           'Elige un día y horario disponible',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: context.responsiveFontSize(13),
                             color: Colors.grey,
                           ),
                         ),
@@ -774,7 +821,7 @@ class _VerDisponibilidadDocentesScreenState
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: context.responsiveSpacing),
               Container(
                 height: 1,
                 decoration: BoxDecoration(
@@ -787,7 +834,7 @@ class _VerDisponibilidadDocentesScreenState
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: context.responsiveSpacing),
               
               Row(
                 children: [
@@ -803,7 +850,7 @@ class _VerDisponibilidadDocentesScreenState
                       ],
                     ),
                     child: CircleAvatar(
-                      radius: 32,
+                      radius: context.isMobile ? 28 : 32,
                       backgroundColor: Colors.grey[200],
                       backgroundImage: NetworkImage(
                         _docenteSeleccionado!['avatarDocente'] ??
@@ -811,30 +858,34 @@ class _VerDisponibilidadDocentesScreenState
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: context.responsiveSpacing),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           _docenteSeleccionado!['nombreDocente'] ?? 'Sin nombre',
-                          style: const TextStyle(
-                            fontSize: 18,
+                          style: TextStyle(
+                            fontSize: context.responsiveFontSize(18),
                             fontWeight: FontWeight.bold,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 6),
+                        SizedBox(height: context.responsiveSpacing * 0.5),
                         Row(
                           children: [
-                            Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                            Icon(
+                              Icons.location_on, 
+                              size: context.responsiveIconSize(16), 
+                              color: Colors.grey[600],
+                            ),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
                                 _docenteSeleccionado!['oficinaDocente'] ?? 'Sin oficina',
                                 style: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: context.responsiveFontSize(14),
                                   color: Colors.grey[600],
                                 ),
                               ),
@@ -848,7 +899,7 @@ class _VerDisponibilidadDocentesScreenState
               ),
 
               if (_disponibilidad != null && _disponibilidad!.isNotEmpty) ...[
-                const SizedBox(height: 16),
+                SizedBox(height: context.responsiveSpacing),
                 Container(
                   height: 1,
                   decoration: BoxDecoration(
@@ -861,25 +912,32 @@ class _VerDisponibilidadDocentesScreenState
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: context.responsiveSpacing),
                 
                 Row(
                   children: [
-                    Icon(Icons.book, size: 20, color: Colors.blue[700]),
-                    const SizedBox(width: 8),
-                    const Text(
+                    Icon(
+                      Icons.book, 
+                      size: context.responsiveIconSize(20), 
+                      color: Colors.blue[700],
+                    ),
+                    SizedBox(width: context.responsiveSpacing * 0.7),
+                    Text(
                       'Materia:',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: context.responsiveFontSize(15),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: context.responsiveSpacing * 0.8),
                 
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.isMobile ? 10 : 12, 
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey[300]!),
                     borderRadius: BorderRadius.circular(12),
@@ -889,9 +947,13 @@ class _VerDisponibilidadDocentesScreenState
                     child: DropdownButton<String>(
                       value: _materiaSeleccionada,
                       isExpanded: true,
-                      icon: Icon(Icons.arrow_drop_down, color: Colors.blue[700]),
-                      style: const TextStyle(
-                        fontSize: 15,
+                      icon: Icon(
+                        Icons.arrow_drop_down, 
+                        color: Colors.blue[700],
+                        size: context.responsiveIconSize(24),
+                      ),
+                      style: TextStyle(
+                        fontSize: context.responsiveFontSize(15),
                         fontWeight: FontWeight.w500,
                         color: Colors.black87,
                       ),
@@ -921,28 +983,32 @@ class _VerDisponibilidadDocentesScreenState
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(32),
+                        padding: EdgeInsets.all(context.isMobile ? 24 : 32),
                         decoration: BoxDecoration(
                           color: Colors.orange[50],
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(Icons.event_busy, size: 80, color: Colors.orange[300]),
+                        child: Icon(
+                          Icons.event_busy, 
+                          size: context.isMobile ? 60 : 80, 
+                          color: Colors.orange[300],
+                        ),
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: context.responsiveSpacing * 2),
                       Text(
                         'Sin horarios disponibles',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: context.responsiveFontSize(18),
                           fontWeight: FontWeight.w600,
                           color: Colors.grey[700],
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: context.responsiveSpacing * 0.7),
                       Text(
                         'Este docente no tiene\nhorarios registrados',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: context.responsiveFontSize(14),
                           color: Colors.grey[600],
                         ),
                       ),
@@ -950,23 +1016,25 @@ class _VerDisponibilidadDocentesScreenState
                   ),
                 )
               : ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(context.responsivePadding),
                   children: _diasSemana.map((dia) {
                     final bloques = _obtenerBloquesPorDia(dia);
                     
                     return Card(
-                      margin: const EdgeInsets.only(bottom: 16),
+                      margin: EdgeInsets.only(bottom: context.responsiveSpacing),
                       elevation: 2,
                       shadowColor: Colors.black.withOpacity(0.1),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(
+                          ResponsiveHelper.getBorderRadius(context),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(context.responsivePadding),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: bloques.isNotEmpty
@@ -981,15 +1049,19 @@ class _VerDisponibilidadDocentesScreenState
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(16),
-                                topRight: Radius.circular(16),
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(
+                                  ResponsiveHelper.getBorderRadius(context),
+                                ),
+                                topRight: Radius.circular(
+                                  ResponsiveHelper.getBorderRadius(context),
+                                ),
                               ),
                             ),
                             child: Row(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.all(8),
+                                  padding: EdgeInsets.all(context.isMobile ? 6 : 8),
                                   decoration: BoxDecoration(
                                     color: bloques.isNotEmpty
                                         ? const Color(0xFF1565C0).withOpacity(0.2)
@@ -998,17 +1070,17 @@ class _VerDisponibilidadDocentesScreenState
                                   ),
                                   child: Icon(
                                     Icons.calendar_today,
-                                    size: 18,
+                                    size: context.responsiveIconSize(18),
                                     color: bloques.isNotEmpty
                                         ? const Color(0xFF1565C0)
                                         : Colors.grey[600],
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                                SizedBox(width: context.responsiveSpacing),
                                 Text(
                                   dia,
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: context.responsiveFontSize(16),
                                     fontWeight: FontWeight.bold,
                                     color: bloques.isNotEmpty
                                         ? const Color(0xFF1565C0)
@@ -1018,8 +1090,8 @@ class _VerDisponibilidadDocentesScreenState
                                 const Spacer(),
                                 if (bloques.isNotEmpty)
                                   Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: context.isMobile ? 8 : 10,
                                       vertical: 5,
                                     ),
                                     decoration: BoxDecoration(
@@ -1041,16 +1113,16 @@ class _VerDisponibilidadDocentesScreenState
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Icon(
+                                        Icon(
                                           Icons.check_circle,
-                                          size: 14,
+                                          size: context.responsiveIconSize(14),
                                           color: Colors.white,
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
                                           '${bloques.length} ${bloques.length == 1 ? "bloque" : "bloques"}',
-                                          style: const TextStyle(
-                                            fontSize: 11,
+                                          style: TextStyle(
+                                            fontSize: context.responsiveFontSize(11),
                                             color: Colors.white,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -1060,8 +1132,8 @@ class _VerDisponibilidadDocentesScreenState
                                   )
                                 else
                                   Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: context.isMobile ? 8 : 10,
                                       vertical: 5,
                                     ),
                                     decoration: BoxDecoration(
@@ -1073,14 +1145,14 @@ class _VerDisponibilidadDocentesScreenState
                                       children: [
                                         Icon(
                                           Icons.cancel,
-                                          size: 14,
+                                          size: context.responsiveIconSize(14),
                                           color: Colors.grey[600],
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
                                           'Sin horarios',
                                           style: TextStyle(
-                                            fontSize: 11,
+                                            fontSize: context.responsiveFontSize(11),
                                             color: Colors.grey[600],
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -1094,12 +1166,12 @@ class _VerDisponibilidadDocentesScreenState
                           
                           if (bloques.isEmpty)
                             Padding(
-                              padding: const EdgeInsets.all(20),
+                              padding: EdgeInsets.all(context.responsivePadding),
                               child: Center(
                                 child: Text(
                                   'No hay horarios disponibles este día',
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: context.responsiveFontSize(14),
                                     color: Colors.grey[600],
                                     fontStyle: FontStyle.italic,
                                   ),
@@ -1115,13 +1187,21 @@ class _VerDisponibilidadDocentesScreenState
                               return InkWell(
                                 onTap: () => _agendarTutoria(bloque, dia),
                                 borderRadius: BorderRadius.only(
-                                  bottomLeft: isLast ? const Radius.circular(16) : Radius.zero,
-                                  bottomRight: isLast ? const Radius.circular(16) : Radius.zero,
+                                  bottomLeft: isLast 
+                                    ? Radius.circular(
+                                        ResponsiveHelper.getBorderRadius(context),
+                                      ) 
+                                    : Radius.zero,
+                                  bottomRight: isLast 
+                                    ? Radius.circular(
+                                        ResponsiveHelper.getBorderRadius(context),
+                                      ) 
+                                    : Radius.zero,
                                 ),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 14,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: context.responsivePadding,
+                                    vertical: context.isMobile ? 12 : 14,
                                   ),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
@@ -1137,7 +1217,7 @@ class _VerDisponibilidadDocentesScreenState
                                   child: Row(
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.all(10),
+                                        padding: EdgeInsets.all(context.isMobile ? 8 : 10),
                                         decoration: BoxDecoration(
                                           gradient: LinearGradient(
                                             colors: [
@@ -1147,13 +1227,13 @@ class _VerDisponibilidadDocentesScreenState
                                           ),
                                           borderRadius: BorderRadius.circular(12),
                                         ),
-                                        child: const Icon(
+                                        child: Icon(
                                           Icons.schedule,
                                           color: Colors.green,
-                                          size: 24,
+                                          size: context.responsiveIconSize(24),
                                         ),
                                       ),
-                                      const SizedBox(width: 16),
+                                      SizedBox(width: context.responsiveSpacing),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1162,13 +1242,13 @@ class _VerDisponibilidadDocentesScreenState
                                               children: [
                                                 Text(
                                                   '${bloque['horaInicio']} - ${bloque['horaFin']}',
-                                                  style: const TextStyle(
+                                                  style: TextStyle(
                                                     fontWeight: FontWeight.bold,
-                                                    fontSize: 16,
+                                                    fontSize: context.responsiveFontSize(16),
                                                     color: Colors.black87,
                                                   ),
                                                 ),
-                                                const SizedBox(width: 8),
+                                                SizedBox(width: context.responsiveSpacing * 0.7),
                                                 Container(
                                                   padding: const EdgeInsets.symmetric(
                                                     horizontal: 6,
@@ -1181,7 +1261,7 @@ class _VerDisponibilidadDocentesScreenState
                                                   child: Text(
                                                     'Disponible',
                                                     style: TextStyle(
-                                                      fontSize: 10,
+                                                      fontSize: context.responsiveFontSize(10),
                                                       color: Colors.blue[700],
                                                       fontWeight: FontWeight.w600,
                                                     ),
@@ -1194,14 +1274,14 @@ class _VerDisponibilidadDocentesScreenState
                                               children: [
                                                 Icon(
                                                   Icons.touch_app,
-                                                  size: 12,
+                                                  size: context.responsiveIconSize(12),
                                                   color: Colors.grey[500],
                                                 ),
                                                 const SizedBox(width: 4),
                                                 Text(
                                                   'Toca para agendar tu tutoría',
                                                   style: TextStyle(
-                                                    fontSize: 12,
+                                                    fontSize: context.responsiveFontSize(12),
                                                     color: Colors.grey[600],
                                                   ),
                                                 ),
@@ -1210,17 +1290,17 @@ class _VerDisponibilidadDocentesScreenState
                                           ],
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
+                                      SizedBox(width: context.responsiveSpacing * 0.7),
                                       Container(
-                                        padding: const EdgeInsets.all(6),
+                                        padding: EdgeInsets.all(context.isMobile ? 4 : 6),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFF1565C0).withOpacity(0.1),
                                           borderRadius: BorderRadius.circular(8),
                                         ),
-                                        child: const Icon(
+                                        child: Icon(
                                           Icons.arrow_forward_ios,
-                                          size: 14,
-                                          color: Color(0xFF1565C0),
+                                          size: context.responsiveIconSize(14),
+                                          color: const Color(0xFF1565C0),
                                         ),
                                       ),
                                     ],

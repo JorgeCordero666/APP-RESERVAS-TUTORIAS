@@ -1,6 +1,6 @@
-// lib/pantallas/estudiante/seleccionar_turno_dialog.dart - ESTILOS MEJORADOS
 import 'package:flutter/material.dart';
 import '../../servicios/tutoria_service.dart';
+import '../../config/responsive_helper.dart';
 
 class SeleccionarTurnoDialog extends StatefulWidget {
   final String docenteId;
@@ -106,14 +106,23 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
                 color: Colors.green.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(Icons.check_circle, color: Colors.green[700], size: 28),
+              child: Icon(
+                Icons.check_circle,
+                color: Colors.green[700],
+                size: context.isMobile ? 24 : 28,
+              ),
             ),
             const SizedBox(width: 12),
-            const Text('Confirmar Turno'),
+            Flexible(
+              child: Text(
+                'Confirmar Turno',
+                style: TextStyle(fontSize: context.responsiveFontSize(18)),
+              ),
+            ),
           ],
         ),
         content: Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(context.responsivePadding),
           decoration: BoxDecoration(
             color: Colors.blue[50],
             borderRadius: BorderRadius.circular(12),
@@ -123,11 +132,11 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildInfoRow(Icons.person, 'Docente', widget.nombreDocente),
-              const SizedBox(height: 12),
+              SizedBox(height: context.responsiveSpacing),
               _buildInfoRow(Icons.calendar_today, 'Fecha', _formatearFecha(widget.fecha)),
-              const SizedBox(height: 12),
+              SizedBox(height: context.responsiveSpacing),
               _buildInfoRow(Icons.access_time, 'Turno', '$horaInicio - $horaFin'),
-              const SizedBox(height: 12),
+              SizedBox(height: context.responsiveSpacing),
               _buildInfoRow(Icons.timer, 'Duración', '20 minutos'),
             ],
           ),
@@ -136,7 +145,10 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.isMobile ? 16 : 20,
+                vertical: 12,
+              ),
             ),
             child: const Text('Cancelar'),
           ),
@@ -145,7 +157,10 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1565C0),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.isMobile ? 20 : 24,
+                vertical: 12,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -186,12 +201,19 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: Colors.blue[700]),
+        Icon(
+          icon,
+          size: context.responsiveIconSize(20),
+          color: Colors.blue[700],
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: RichText(
             text: TextSpan(
-              style: const TextStyle(fontSize: 14, color: Colors.black87),
+              style: TextStyle(
+                fontSize: context.responsiveFontSize(14),
+                color: Colors.black87,
+              ),
               children: [
                 TextSpan(
                   text: '$label: ',
@@ -228,16 +250,19 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
         child: Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 8,
-          child: const Padding(
-            padding: EdgeInsets.all(32),
+          child: Padding(
+            padding: EdgeInsets.all(context.isMobile ? 24 : 32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(strokeWidth: 3),
-                SizedBox(height: 20),
+                const CircularProgressIndicator(strokeWidth: 3),
+                SizedBox(height: context.isMobile ? 16 : 20),
                 Text(
                   'Agendando turno...',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    fontSize: context.responsiveFontSize(16),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -260,7 +285,7 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
         backgroundColor: Colors.red[700],
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        margin: EdgeInsets.all(context.responsivePadding),
       ),
     );
   }
@@ -278,33 +303,38 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
         backgroundColor: Colors.green[700],
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        margin: EdgeInsets.all(context.responsivePadding),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final maxWidth = context.isDesktop ? 500.0 : (context.isTablet ? 450.0 : double.infinity);
+    final maxHeight = context.isDesktop ? 700.0 : (context.isTablet ? 650.0 : double.infinity);
+    
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
+        ),
         elevation: 8,
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
+          constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: maxHeight),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
+                padding: EdgeInsets.all(context.responsivePadding),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
                     colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
                   ),
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
+                    topLeft: Radius.circular(ResponsiveHelper.getBorderRadius(context)),
+                    topRight: Radius.circular(ResponsiveHelper.getBorderRadius(context)),
                   ),
                 ),
                 child: Column(
@@ -318,25 +348,29 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.schedule,
                             color: Colors.white,
-                            size: 24,
+                            size: context.responsiveIconSize(24),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        const Expanded(
+                        SizedBox(width: context.responsiveSpacing),
+                        Expanded(
                           child: Text(
                             'Seleccionar Turno',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 20,
+                              fontSize: context.responsiveFontSize(20),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white),
+                          icon: Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: context.responsiveIconSize(24),
+                          ),
                           onPressed: () => Navigator.pop(context),
                         ),
                       ],
@@ -351,16 +385,20 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.timer, color: Colors.white, size: 14),
-                          SizedBox(width: 6),
+                          Icon(
+                            Icons.timer,
+                            color: Colors.white,
+                            size: context.responsiveIconSize(14),
+                          ),
+                          const SizedBox(width: 6),
                           Text(
                             'Turnos de 20 minutos',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 13,
+                              fontSize: context.responsiveFontSize(13),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -373,7 +411,7 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
 
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(context.responsivePadding),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Colors.blue[50]!, Colors.blue[100]!],
@@ -390,39 +428,51 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(Icons.person, size: 20, color: Colors.blue[700]),
+                          child: Icon(
+                            Icons.person,
+                            size: context.responsiveIconSize(20),
+                            color: Colors.blue[700],
+                          ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: context.responsiveSpacing),
                         Expanded(
                           child: Text(
                             widget.nombreDocente,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              fontSize: 15,
+                              fontSize: context.responsiveFontSize(15),
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: context.responsiveSpacing * 0.8),
                     Row(
                       children: [
-                        Icon(Icons.calendar_today, size: 16, color: Colors.blue[700]),
+                        Icon(
+                          Icons.calendar_today,
+                          size: context.responsiveIconSize(16),
+                          color: Colors.blue[700],
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           _formatearFecha(widget.fecha),
-                          style: const TextStyle(fontSize: 14),
+                          style: TextStyle(fontSize: context.responsiveFontSize(14)),
                         ),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Icon(Icons.access_time, size: 16, color: Colors.blue[700]),
+                        Icon(
+                          Icons.access_time,
+                          size: context.responsiveIconSize(16),
+                          color: Colors.blue[700],
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           '${widget.bloqueInicio} - ${widget.bloqueFin}',
-                          style: const TextStyle(fontSize: 14),
+                          style: TextStyle(fontSize: context.responsiveFontSize(14)),
                         ),
                       ],
                     ),
@@ -437,18 +487,18 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(16),
+                              padding: EdgeInsets.all(context.responsivePadding),
                               decoration: BoxDecoration(
                                 color: Colors.blue[50],
                                 shape: BoxShape.circle,
                               ),
                               child: const CircularProgressIndicator(strokeWidth: 3),
                             ),
-                            const SizedBox(height: 20),
-                            const Text(
+                            SizedBox(height: context.responsiveSpacing * 1.5),
+                            Text(
                               'Cargando turnos disponibles...',
                               style: TextStyle(
-                                fontSize: 15,
+                                fontSize: context.responsiveFontSize(15),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -464,7 +514,7 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
 
               if (!_isLoading && _turnosData != null)
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(context.responsivePadding),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     boxShadow: [
@@ -477,7 +527,7 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
                   ),
                   child: SizedBox(
                     width: double.infinity,
-                    height: 48,
+                    height: ResponsiveHelper.getButtonHeight(context),
                     child: ElevatedButton(
                       onPressed: _turnoSeleccionado != null ? _agendarTurno : null,
                       style: ElevatedButton.styleFrom(
@@ -496,15 +546,15 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
                             _turnoSeleccionado != null 
                                 ? Icons.check_circle_outline 
                                 : Icons.schedule,
-                            size: 22,
+                            size: context.responsiveIconSize(22),
                           ),
                           const SizedBox(width: 8),
                           Text(
                             _turnoSeleccionado != null
                                 ? 'Agendar Turno'
                                 : 'Selecciona un turno',
-                            style: const TextStyle(
-                              fontSize: 16,
+                            style: TextStyle(
+                              fontSize: context.responsiveFontSize(16),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -529,31 +579,35 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
     if (disponibles == 0) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: EdgeInsets.all(context.responsivePadding * 2),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(context.isMobile ? 20 : 24),
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.event_busy, size: 60, color: Colors.grey[400]),
+                child: Icon(
+                  Icons.event_busy,
+                  size: context.isMobile ? 48 : 60,
+                  color: Colors.grey[400],
+                ),
               ),
-              const SizedBox(height: 20),
-              const Text(
+              SizedBox(height: context.responsiveSpacing * 1.5),
+              Text(
                 'No hay turnos disponibles',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: context.responsiveFontSize(18),
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: context.responsiveSpacing * 0.6),
               Text(
                 'Todos los turnos ($total) están ocupados',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: context.responsiveFontSize(14),
                   color: Colors.grey[600],
                 ),
                 textAlign: TextAlign.center,
@@ -568,9 +622,11 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+          padding: EdgeInsets.all(context.responsivePadding),
+          child: Wrap(
+            spacing: context.isMobile ? 8 : 12,
+            runSpacing: context.isMobile ? 8 : 12,
+            alignment: WrapAlignment.spaceAround,
             children: [
               _buildStat(
                 'Disponibles',
@@ -596,7 +652,7 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
 
         Container(
           height: 1,
-          margin: const EdgeInsets.symmetric(horizontal: 16),
+          margin: EdgeInsets.symmetric(horizontal: context.responsivePadding),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.grey[300]!, Colors.grey[100]!, Colors.grey[300]!],
@@ -606,7 +662,7 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
 
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(context.responsivePadding),
             itemCount: lista.length,
             itemBuilder: (context, index) {
               final turno = lista[index];
@@ -616,7 +672,7 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
               final isSelected = _turnoSeleccionado == turnoKey;
 
               return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.only(bottom: context.responsiveSpacing),
                 child: InkWell(
                   onTap: () {
                     setState(() {
@@ -626,7 +682,7 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
                   borderRadius: BorderRadius.circular(16),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(context.responsivePadding),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? const Color(0xFF1565C0).withOpacity(0.15)
@@ -656,7 +712,7 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: EdgeInsets.all(context.isMobile ? 10 : 12),
                           decoration: BoxDecoration(
                             gradient: isSelected
                                 ? const LinearGradient(
@@ -683,10 +739,10 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
                           child: Icon(
                             isSelected ? Icons.check_circle : Icons.access_time,
                             color: Colors.white,
-                            size: 28,
+                            size: context.responsiveIconSize(28),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        SizedBox(width: context.responsiveSpacing),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -694,7 +750,7 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
                               Text(
                                 turnoKey,
                                 style: TextStyle(
-                                  fontSize: 18,
+                                  fontSize: context.responsiveFontSize(18),
                                   fontWeight: FontWeight.bold,
                                   color: isSelected
                                       ? const Color(0xFF1565C0)
@@ -706,14 +762,14 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
                                 children: [
                                   Icon(
                                     Icons.timer,
-                                    size: 14,
+                                    size: context.responsiveIconSize(14),
                                     color: Colors.grey[600],
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
                                     '20 minutos',
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: context.responsiveFontSize(13),
                                       color: Colors.grey[600],
                                     ),
                                   ),
@@ -723,10 +779,10 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
                           ),
                         ),
                         if (isSelected)
-                          const Icon(
+                          Icon(
                             Icons.arrow_forward_ios,
-                            color: Color(0xFF1565C0),
-                            size: 20,
+                            color: const Color(0xFF1565C0),
+                            size: context.responsiveIconSize(20),
                           ),
                       ],
                     ),
@@ -742,19 +798,23 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
 
   Widget _buildStat(String label, String value, Color color, IconData icon) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(context.isMobile ? 10 : 12),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 28),
+          Icon(
+            icon,
+            color: color,
+            size: context.responsiveIconSize(28),
+          ),
           const SizedBox(height: 6),
           Text(
             value,
             style: TextStyle(
-              fontSize: 22,
+              fontSize: context.responsiveFontSize(22),
               fontWeight: FontWeight.bold,
               color: color,
             ),
@@ -763,7 +823,7 @@ class _SeleccionarTurnoDialogState extends State<SeleccionarTurnoDialog>
           Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: context.responsiveFontSize(12),
               color: Colors.grey[700],
               fontWeight: FontWeight.w500,
             ),

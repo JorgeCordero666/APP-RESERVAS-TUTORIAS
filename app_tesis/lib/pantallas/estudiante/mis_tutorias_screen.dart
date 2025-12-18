@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/tutoria_service.dart';
+import '../../config/responsive_helper.dart';
 import 'reagendar_tutoria_dialog.dart';
 
 class MisTutoriasScreen extends StatefulWidget {
@@ -19,7 +20,6 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
   List<Map<String, dynamic>> _tutoriasFiltradas = [];
   bool _isLoading = true;
   late TabController _tabController;
-  late AnimationController _fabAnimationController;
   
   String? _filtroEstado;
   final List<String> _estadosDisponibles = [
@@ -62,7 +62,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
     setState(() => _isLoading = true);
     
     try {
-      print('🔄 Cargando tutorías - Tab: ${_tabs[_tabIndex]}');
+      print('📄 Cargando tutorías - Tab: ${_tabs[_tabIndex]}');
       
       List<Map<String, dynamic>> tutorias;
 
@@ -122,42 +122,56 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
     final motivo = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
+        ),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(context.isMobile ? 6 : 8),
               decoration: BoxDecoration(
                 color: Colors.red.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.cancel, color: Colors.red, size: 28),
+              child: Icon(
+                Icons.cancel, 
+                color: Colors.red, 
+                size: context.responsiveIconSize(28),
+              ),
             ),
-            const SizedBox(width: 12),
-            const Text('Cancelar Tutoría'),
+            SizedBox(width: context.responsiveSpacing),
+            Flexible(
+              child: Text(
+                'Cancelar Tutoría',
+                style: TextStyle(fontSize: context.responsiveFontSize(18)),
+              ),
+            ),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               '¿Estás seguro de cancelar esta tutoría?',
-              style: TextStyle(fontSize: 15),
+              style: TextStyle(fontSize: context.responsiveFontSize(15)),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: context.responsiveSpacing * 1.5),
             TextField(
               controller: motivoController,
               decoration: InputDecoration(
                 labelText: 'Motivo (opcional)',
+                labelStyle: TextStyle(fontSize: context.responsiveFontSize(14)),
                 hintText: 'Ej: Tengo un compromiso académico',
+                hintStyle: TextStyle(fontSize: context.responsiveFontSize(13)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                prefixIcon: const Icon(Icons.edit_note),
+                prefixIcon: Icon(Icons.edit_note, size: context.responsiveIconSize(20)),
                 filled: true,
                 fillColor: Colors.grey[50],
               ),
               maxLines: 3,
+              style: TextStyle(fontSize: context.responsiveFontSize(14)),
             ),
           ],
         ),
@@ -165,22 +179,34 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
           TextButton(
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.isMobile ? 16 : 20,
+                vertical: 12,
+              ),
             ),
-            child: const Text('No, mantener'),
+            child: Text(
+              'No, mantener',
+              style: TextStyle(fontSize: context.responsiveFontSize(14)),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, motivoController.text),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.isMobile ? 16 : 20,
+                vertical: 12,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               elevation: 0,
             ),
-            child: const Text('Sí, cancelar'),
+            child: Text(
+              'Sí, cancelar',
+              style: TextStyle(fontSize: context.responsiveFontSize(14)),
+            ),
           ),
         ],
       ),
@@ -228,18 +254,23 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
       barrierDismissible: false,
       builder: (context) => Center(
         child: Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
+          ),
           elevation: 8,
-          child: const Padding(
-            padding: EdgeInsets.all(32),
+          child: Padding(
+            padding: EdgeInsets.all(context.isMobile ? 24 : 32),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(strokeWidth: 3),
-                SizedBox(height: 20),
+                const CircularProgressIndicator(strokeWidth: 3),
+                SizedBox(height: context.responsiveSpacing * 1.5),
                 Text(
                   'Procesando...',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    fontSize: context.responsiveFontSize(16), 
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -254,15 +285,24 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error_outline, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(child: Text(mensaje)),
+            Icon(
+              Icons.error_outline, 
+              color: Colors.white,
+              size: context.responsiveIconSize(20),
+            ),
+            SizedBox(width: context.responsiveSpacing),
+            Expanded(
+              child: Text(
+                mensaje,
+                style: TextStyle(fontSize: context.responsiveFontSize(14)),
+              ),
+            ),
           ],
         ),
         backgroundColor: Colors.red[700],
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        margin: EdgeInsets.all(context.responsivePadding),
         duration: const Duration(seconds: 4),
       ),
     );
@@ -273,15 +313,24 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.check_circle_outline, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(child: Text(mensaje)),
+            Icon(
+              Icons.check_circle_outline, 
+              color: Colors.white,
+              size: context.responsiveIconSize(20),
+            ),
+            SizedBox(width: context.responsiveSpacing),
+            Expanded(
+              child: Text(
+                mensaje,
+                style: TextStyle(fontSize: context.responsiveFontSize(14)),
+              ),
+            ),
           ],
         ),
         backgroundColor: Colors.green[700],
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        margin: EdgeInsets.all(context.responsivePadding),
       ),
     );
   }
@@ -342,14 +391,17 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Mis Tutorías',
-          style: TextStyle(fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: context.responsiveFontSize(20),
+          ),
         ),
         backgroundColor: const Color(0xFF1565C0),
         elevation: 0,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
+          preferredSize: Size.fromHeight(context.isMobile ? 48 : 52),
           child: Container(
             color: const Color(0xFF1565C0),
             child: TabBar(
@@ -357,12 +409,12 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
               indicatorColor: Colors.white,
               indicatorWeight: 3,
               indicatorSize: TabBarIndicatorSize.label,
-              labelStyle: const TextStyle(
-                fontSize: 15,
+              labelStyle: TextStyle(
+                fontSize: context.responsiveFontSize(15),
                 fontWeight: FontWeight.w600,
               ),
-              unselectedLabelStyle: const TextStyle(
-                fontSize: 15,
+              unselectedLabelStyle: TextStyle(
+                fontSize: context.responsiveFontSize(15),
                 fontWeight: FontWeight.normal,
               ),
               tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
@@ -372,15 +424,18 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
         actions: [
           if (_tabIndex == 1)
             Container(
-              margin: const EdgeInsets.only(right: 8),
+              margin: EdgeInsets.only(right: context.isMobile ? 4 : 8),
               child: PopupMenuButton<String>(
                 icon: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(context.isMobile ? 6 : 8),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.filter_list, size: 20),
+                  child: Icon(
+                    Icons.filter_list, 
+                    size: context.responsiveIconSize(20),
+                  ),
                 ),
                 tooltip: 'Filtrar por estado',
                 shape: RoundedRectangleBorder(
@@ -406,10 +461,10 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                           children: [
                             Icon(
                               isSelected ? Icons.check_circle : Icons.circle_outlined,
-                              size: 20,
+                              size: context.responsiveIconSize(20),
                               color: isSelected ? const Color(0xFF1565C0) : Colors.grey[400],
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: context.responsiveSpacing),
                             Expanded(
                               child: Text(
                                 estado == 'Todos' 
@@ -417,7 +472,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                                   : _getEstadoTexto(estado),
                                 style: TextStyle(
                                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                                  fontSize: 14,
+                                  fontSize: context.responsiveFontSize(14),
                                 ),
                               ),
                             ),
@@ -431,17 +486,17 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
             ),
           IconButton(
             icon: Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(context.isMobile ? 6 : 8),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.refresh, size: 20),
+              child: Icon(Icons.refresh, size: context.responsiveIconSize(20)),
             ),
             onPressed: _cargarTutorias,
             tooltip: 'Recargar',
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: context.isMobile ? 4 : 8),
         ],
       ),
       body: Column(
@@ -449,7 +504,10 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
           if (_filtroEstado != null && _tabIndex == 1)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.responsivePadding, 
+                vertical: context.responsiveSpacing,
+              ),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Colors.blue[50]!, Colors.blue[100]!],
@@ -468,7 +526,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                     child: Chip(
                       avatar: Icon(
                         Icons.filter_list,
-                        size: 18,
+                        size: context.responsiveIconSize(18),
                         color: Colors.blue[700],
                       ),
                       label: Text(
@@ -476,6 +534,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           color: Colors.blue[900],
+                          fontSize: context.responsiveFontSize(13),
                         ),
                       ),
                       onDeleted: () {
@@ -486,7 +545,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                       },
                       deleteIcon: Icon(
                         Icons.close,
-                        size: 18,
+                        size: context.responsiveIconSize(18),
                         color: Colors.blue[700],
                       ),
                       backgroundColor: Colors.white,
@@ -494,10 +553,10 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                       shadowColor: Colors.blue.withOpacity(0.3),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: context.responsiveSpacing),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.isMobile ? 10 : 12,
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
@@ -513,7 +572,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                     child: Text(
                       '${_tutoriasFiltradas.length} de ${_todasTutorias.length}',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: context.responsiveFontSize(13),
                         fontWeight: FontWeight.w600,
                         color: Colors.blue[900],
                       ),
@@ -551,33 +610,33 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
     return Center(
       child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: EdgeInsets.all(context.isMobile ? 24 : 32),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(context.isMobile ? 20 : 24),
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.event_busy,
-                  size: 80,
+                  size: context.isMobile ? 60 : 80,
                   color: Colors.grey[400],
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: context.responsiveSpacing * 2),
               Text(
                 mensaje,
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: context.responsiveFontSize(18),
                   fontWeight: FontWeight.w500,
                   color: Colors.grey[700],
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: context.responsiveSpacing),
               Text(
                 _filtroEstado != null
                     ? 'Intenta con otro filtro'
@@ -585,13 +644,13 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                         ? 'Agenda una tutoría para comenzar'
                         : 'Tus tutorías aparecerán aquí'),
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: context.responsiveFontSize(14),
                   color: Colors.grey[600],
                 ),
                 textAlign: TextAlign.center,
               ),
               if (_filtroEstado != null) ...[
-                const SizedBox(height: 24),
+                SizedBox(height: context.responsiveSpacing * 2),
                 ElevatedButton.icon(
                   onPressed: () {
                     setState(() {
@@ -599,14 +658,20 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                       _aplicarFiltros();
                     });
                   },
-                  icon: const Icon(Icons.clear_all, size: 20),
-                  label: const Text('Limpiar filtro'),
+                  icon: Icon(
+                    Icons.clear_all, 
+                    size: context.responsiveIconSize(20),
+                  ),
+                  label: Text(
+                    'Limpiar filtro',
+                    style: TextStyle(fontSize: context.responsiveFontSize(15)),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[600],
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 14,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.isMobile ? 20 : 24,
+                      vertical: context.isMobile ? 12 : 14,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -616,17 +681,23 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                 ),
               ],
               if (_tabIndex == 0 && _filtroEstado == null) ...[
-                const SizedBox(height: 32),
+                SizedBox(height: context.responsiveSpacing * 2.5),
                 ElevatedButton.icon(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.add_circle_outline, size: 22),
-                  label: const Text('Agendar Tutoría'),
+                  icon: Icon(
+                    Icons.add_circle_outline, 
+                    size: context.responsiveIconSize(22),
+                  ),
+                  label: Text(
+                    'Agendar Tutoría',
+                    style: TextStyle(fontSize: context.responsiveFontSize(16)),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1565C0),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.isMobile ? 24 : 32,
+                      vertical: context.isMobile ? 14 : 16,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -644,7 +715,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
 
   Widget _buildListaTutorias() {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.responsivePadding),
       itemCount: _tutoriasFiltradas.length,
       itemBuilder: (context, index) {
         final tutoria = _tutoriasFiltradas[index];
@@ -664,15 +735,19 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
     final puedeReagendar = estado == 'pendiente' || estado == 'confirmada';
     final reagendada = tutoria['reagendadaPor'] != null;
 
+    final cardPadding = context.isMobile ? 14.0 : 16.0;
+    final avatarRadius = context.isMobile ? 24.0 : 28.0;
+    final iconSize = context.isMobile ? 16.0 : 18.0;
+
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: context.responsiveSpacing * 1.3),
       elevation: 2,
       shadowColor: Colors.black.withOpacity(0.1),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
         child: Container(
           decoration: BoxDecoration(
             border: Border(
@@ -683,7 +758,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(cardPadding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -701,7 +776,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                         ],
                       ),
                       child: CircleAvatar(
-                        radius: 28,
+                        radius: avatarRadius,
                         backgroundColor: Colors.grey[200],
                         backgroundImage: NetworkImage(
                           docente?['avatarDocente'] ??
@@ -709,25 +784,25 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: context.responsiveSpacing),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             docente?['nombreDocente'] ?? 'Sin nombre',
-                            style: const TextStyle(
-                              fontSize: 17,
+                            style: TextStyle(
+                              fontSize: context.responsiveFontSize(17),
                               fontWeight: FontWeight.bold,
                               letterSpacing: -0.3,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: context.responsiveSpacing * 0.3),
                           Row(
                             children: [
                               Icon(
                                 Icons.location_on,
-                                size: 14,
+                                size: context.responsiveIconSize(14),
                                 color: Colors.grey[600],
                               ),
                               const SizedBox(width: 4),
@@ -735,7 +810,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                                 child: Text(
                                   docente?['oficinaDocente'] ?? 'Sin oficina',
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: context.responsiveFontSize(13),
                                     color: Colors.grey[600],
                                   ),
                                 ),
@@ -746,8 +821,8 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: context.isMobile ? 10 : 12,
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
@@ -761,7 +836,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                       child: Text(
                         _getEstadoTexto(estado),
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: context.responsiveFontSize(11),
                           fontWeight: FontWeight.bold,
                           color: _getEstadoColor(estado),
                           letterSpacing: 0.5,
@@ -771,7 +846,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                   ],
                 ),
 
-                const SizedBox(height: 16),
+                SizedBox(height: context.responsiveSpacing * 1.3),
                 Container(
                   height: 1,
                   decoration: BoxDecoration(
@@ -784,10 +859,10 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: context.responsiveSpacing * 1.3),
 
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(context.isMobile ? 10 : 12),
                   decoration: BoxDecoration(
                     color: Colors.grey[50],
                     borderRadius: BorderRadius.circular(12),
@@ -797,55 +872,55 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(8),
+                            padding: EdgeInsets.all(context.isMobile ? 6 : 8),
                             decoration: BoxDecoration(
                               color: Colors.blue[50],
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Icon(
                               Icons.calendar_today,
-                              size: 18,
+                              size: iconSize,
                               color: Colors.blue[700],
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: context.responsiveSpacing),
                           Text(
                             _formatearFecha(tutoria['fecha']),
-                            style: const TextStyle(
-                              fontSize: 15,
+                            style: TextStyle(
+                              fontSize: context.responsiveFontSize(15),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: context.responsiveSpacing),
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(8),
+                            padding: EdgeInsets.all(context.isMobile ? 6 : 8),
                             decoration: BoxDecoration(
                               color: Colors.green[50],
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Icon(
                               Icons.access_time,
-                              size: 18,
+                              size: iconSize,
                               color: Colors.green[700],
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: context.responsiveSpacing),
                           Text(
                             '${tutoria['horaInicio']} - ${tutoria['horaFin']}',
-                            style: const TextStyle(
-                              fontSize: 15,
+                            style: TextStyle(
+                              fontSize: context.responsiveFontSize(15),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           if (reagendada) ...[
                             const Spacer(),
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: context.isMobile ? 8 : 10,
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
@@ -861,19 +936,19 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                                   ),
                                 ],
                               ),
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
                                     Icons.update,
-                                    size: 14,
+                                    size: context.responsiveIconSize(14),
                                     color: Colors.white,
                                   ),
-                                  SizedBox(width: 4),
+                                  const SizedBox(width: 4),
                                   Text(
                                     'Reagendada',
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: context.responsiveFontSize(11),
                                       color: Colors.white,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -889,7 +964,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                 ),
 
                 if (estado == 'rechazada' && tutoria['motivoRechazo'] != null) ...[
-                  const SizedBox(height: 12),
+                  SizedBox(height: context.responsiveSpacing),
                   _buildInfoBox(
                     icon: Icons.info_outline,
                     color: Colors.red,
@@ -901,7 +976,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                 if ((estado == 'cancelada_por_estudiante' || 
                      estado == 'cancelada_por_docente') && 
                      tutoria['motivoCancelacion'] != null) ...[
-                  const SizedBox(height: 12),
+                  SizedBox(height: context.responsiveSpacing),
                   _buildInfoBox(
                     icon: Icons.cancel_outlined,
                     color: Colors.orange,
@@ -911,7 +986,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                 ],
 
                 if (reagendada && tutoria['motivoReagendamiento'] != null) ...[
-                  const SizedBox(height: 12),
+                  SizedBox(height: context.responsiveSpacing),
                   _buildInfoBox(
                     icon: Icons.update,
                     color: Colors.blue,
@@ -921,20 +996,30 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                 ],
 
                 if (puedeCancelar || puedeReagendar) ...[
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.responsiveSpacing * 1.3),
                   Row(
                     children: [
                       if (puedeReagendar) ...[
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: () => _reagendarTutoria(tutoria),
-                            icon: const Icon(Icons.event_repeat, size: 18),
-                            label: const Text('Reagendar'),
+                            icon: Icon(
+                              Icons.event_repeat, 
+                              size: context.responsiveIconSize(18),
+                            ),
+                            label: Text(
+                              'Reagendar',
+                              style: TextStyle(
+                                fontSize: context.responsiveFontSize(14),
+                              ),
+                            ),
                             style: ElevatedButton.styleFrom(
                               foregroundColor: Colors.blue[700],
                               backgroundColor: Colors.blue[50],
                               elevation: 0,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              padding: EdgeInsets.symmetric(
+                                vertical: context.isMobile ? 10 : 12,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 side: BorderSide(color: Colors.blue[200]!, width: 1.5),
@@ -942,19 +1027,29 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: context.responsiveSpacing),
                       ],
                       if (puedeCancelar)
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: () => _cancelarTutoria(tutoria['_id']),
-                            icon: const Icon(Icons.cancel, size: 18),
-                            label: const Text('Cancelar'),
+                            icon: Icon(
+                              Icons.cancel, 
+                              size: context.responsiveIconSize(18),
+                            ),
+                            label: Text(
+                              'Cancelar',
+                              style: TextStyle(
+                                fontSize: context.responsiveFontSize(14),
+                              ),
+                            ),
                             style: ElevatedButton.styleFrom(
                               foregroundColor: Colors.red[700],
                               backgroundColor: Colors.red[50],
                               elevation: 0,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              padding: EdgeInsets.symmetric(
+                                vertical: context.isMobile ? 10 : 12,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 side: BorderSide(color: Colors.red[200]!, width: 1.5),
@@ -980,7 +1075,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
     required String content,
   }) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(context.isMobile ? 12 : 14),
       decoration: BoxDecoration(
         color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(12),
@@ -990,14 +1085,18 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(context.isMobile ? 6 : 8),
             decoration: BoxDecoration(
               color: color.withOpacity(0.15),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(
+              icon, 
+              color: color, 
+              size: context.responsiveIconSize(20),
+            ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: context.responsiveSpacing),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1005,7 +1104,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: context.responsiveFontSize(13),
                     fontWeight: FontWeight.bold,
                     color: color,
                     letterSpacing: 0.3,
@@ -1015,7 +1114,7 @@ class _MisTutoriasScreenState extends State<MisTutoriasScreen>
                 Text(
                   content,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: context.responsiveFontSize(14),
                     color: Colors.grey[800],
                     height: 1.4,
                   ),

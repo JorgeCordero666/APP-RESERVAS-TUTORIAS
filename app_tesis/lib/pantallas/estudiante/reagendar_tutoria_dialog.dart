@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../servicios/tutoria_service.dart';
 import '../../servicios/horario_service.dart';
+import '../../config/responsive_helper.dart';
 
 class ReagendarTutoriaDialog extends StatefulWidget {
   final Map<String, dynamic> tutoria;
@@ -16,7 +17,7 @@ class ReagendarTutoriaDialog extends StatefulWidget {
   State<ReagendarTutoriaDialog> createState() => _ReagendarTutoriaDialogState();
 }
 
-class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog> 
+class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
     with SingleTickerProviderStateMixin {
   DateTime? _fechaSeleccionada;
   String? _horaInicio;
@@ -30,9 +31,9 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
 
   Set<int> _diasDisponiblesDocente = {};
   bool _cargandoDias = true;
-  
+
   String? _materiaOriginal;
-  
+
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -44,12 +45,12 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    
+
     _fadeAnimation = CurvedAnimation(
       parent: _animationController,
       curve: Curves.easeInOut,
     );
-    
+
     _animationController.forward();
 
     DateTime fechaTutoria;
@@ -61,7 +62,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
 
     final ahora = DateTime.now();
     final hoy = DateTime(ahora.year, ahora.month, ahora.day);
-    
+
     if (fechaTutoria.isBefore(hoy)) {
       _fechaSeleccionada = null;
       print('⚠️ Tutoría pasada detectada. Se buscará próximo día disponible.');
@@ -85,16 +86,16 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
   DateTime _buscarProximoDiaDisponible() {
     final ahora = DateTime.now();
     final hoy = DateTime(ahora.year, ahora.month, ahora.day);
-    
+
     for (int i = 1; i <= 90; i++) {
       final fecha = hoy.add(Duration(days: i));
       final diaSemana = fecha.weekday;
-      
+
       if (_diasDisponiblesDocente.contains(diaSemana)) {
         return fecha;
       }
     }
-    
+
     return hoy.add(const Duration(days: 1));
   }
 
@@ -103,11 +104,11 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
   ) {
     if (widget.tutoria['bloqueDocenteId'] != null) {
       final bloqueId = widget.tutoria['bloqueDocenteId'];
-      
+
       for (var entrada in disponibilidad.entries) {
         final materia = entrada.key;
         final bloques = entrada.value;
-        
+
         for (var bloque in bloques) {
           if (bloque['_id'] == bloqueId) {
             print('✅ Materia encontrada por bloqueDocenteId: $materia');
@@ -116,43 +117,45 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
         }
       }
     }
-    
+
     final fechaOriginal = DateTime.parse(widget.tutoria['fecha']);
     final diaOriginal = _obtenerDiaSemana(fechaOriginal);
     final horaInicioOriginal = widget.tutoria['horaInicio'];
     final horaFinOriginal = widget.tutoria['horaFin'];
-    
+
     print('🔍 Buscando materia por horario:');
     print('   Día: $diaOriginal');
     print('   Hora: $horaInicioOriginal - $horaFinOriginal');
-    
+
     List<String> materiasCoincidentes = [];
-    
+
     for (var entrada in disponibilidad.entries) {
       final materia = entrada.key;
       final bloques = entrada.value;
-      
+
       for (var bloque in bloques) {
         if (bloque['dia'] == diaOriginal) {
           final bloqueInicio = _convertirAMinutos(bloque['horaInicio']);
           final bloqueFin = _convertirAMinutos(bloque['horaFin']);
           final tutoriaInicio = _convertirAMinutos(horaInicioOriginal);
           final tutoriaFin = _convertirAMinutos(horaFinOriginal);
-          
+
           if (tutoriaInicio >= bloqueInicio && tutoriaFin <= bloqueFin) {
             materiasCoincidentes.add(materia);
           }
         }
       }
     }
-    
+
     if (materiasCoincidentes.isEmpty) {
       print('❌ No se encontró ninguna materia coincidente');
       return null;
     }
-    
+
     if (materiasCoincidentes.length > 1) {
-      print('⚠️ Múltiples materias coincidentes: ${materiasCoincidentes.join(", ")}');
+      print(
+        '⚠️ Múltiples materias coincidentes: ${materiasCoincidentes.join(", ")}',
+      );
       if (widget.tutoria['materia'] != null) {
         final materiaTutoria = widget.tutoria['materia'];
         if (materiasCoincidentes.contains(materiaTutoria)) {
@@ -161,7 +164,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
         }
       }
     }
-    
+
     print('✅ Materia identificada: ${materiasCoincidentes.first}');
     return materiasCoincidentes.first;
   }
@@ -170,7 +173,31 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
     setState(() => _cargandoDias = true);
 
     try {
-      final docenteId = widget.tutoria['docente']['_id'];
+      // Comprobación nula del docente y recolección segura del id
+      final docenteObj = widget.tutoria['docente'];
+      String? docenteId;
+      if (docenteObj is Map &&
+          docenteObj['_id'] != null &&
+          docenteObj['_id'].toString().isNotEmpty) {
+        docenteId = docenteObj['_id'].toString();
+      } else {
+        // Soporte para distintos esquemas de objeto
+        docenteId =
+            widget.tutoria['docenteId'] ??
+            widget.tutoria['docente_id'] ??
+            widget.tutoria['docenteId'];
+      }
+
+      if (docenteId == null || docenteId.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _cargandoDias = false;
+            _error = 'No se pudo determinar el docente de esta tutoría';
+          });
+        }
+        return;
+      }
+
       print('📅 Cargando días disponibles del docente: $docenteId');
 
       final disponibilidad = await HorarioService.obtenerDisponibilidadCompleta(
@@ -195,8 +222,9 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
         if (mounted) {
           setState(() {
             _cargandoDias = false;
-            _error = 'No se pudo determinar la materia de esta tutoría. '
-                     'Por favor, contacta al docente para reagendar.';
+            _error =
+                'No se pudo determinar la materia de esta tutoría. '
+                'Por favor, contacta al docente para reagendar.';
           });
         }
         return;
@@ -205,12 +233,13 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
       print('✅ Materia original de la tutoría: $_materiaOriginal');
 
       final bloquesMateria = disponibilidad[_materiaOriginal] ?? [];
-      
+
       if (bloquesMateria.isEmpty) {
         if (mounted) {
           setState(() {
             _cargandoDias = false;
-            _error = 'El docente no tiene disponibilidad para la materia "$_materiaOriginal"';
+            _error =
+                'El docente no tiene disponibilidad para la materia "$_materiaOriginal"';
           });
         }
         return;
@@ -222,7 +251,9 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
         diasDisponibles.add(bloque['dia']);
       }
 
-      print('📅 Días disponibles para "$_materiaOriginal": ${diasDisponibles.join(", ")}');
+      print(
+        '📅 Días disponibles para "$_materiaOriginal": ${diasDisponibles.join(", ")}',
+      );
 
       final mapaDias = {
         'Lunes': 1,
@@ -247,7 +278,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
           _cargandoDias = false;
         });
 
-        if (_fechaSeleccionada == null || 
+        if (_fechaSeleccionada == null ||
             _fechaSeleccionada!.isBefore(DateTime.now()) ||
             !_diasDisponiblesDocente.contains(_fechaSeleccionada!.weekday)) {
           _fechaSeleccionada = _buscarProximoDiaDisponible();
@@ -281,7 +312,13 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
 
   String _obtenerDiaSemana(DateTime fecha) {
     const dias = [
-      'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado',
+      'Domingo',
     ];
     return dias[fecha.weekday - 1];
   }
@@ -296,14 +333,44 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
     });
 
     try {
-      final docenteId = widget.tutoria['docente']['_id'];
+      // Recolección segura del id del docente
+      final docenteObj = widget.tutoria['docente'];
+      String? docenteId;
+      if (docenteObj is Map &&
+          docenteObj['_id'] != null &&
+          docenteObj['_id'].toString().isNotEmpty) {
+        docenteId = docenteObj['_id'].toString();
+      } else {
+        docenteId =
+            widget.tutoria['docenteId'] ??
+            widget.tutoria['docente_id'] ??
+            widget.tutoria['docenteId'];
+      }
+
+      if (docenteId == null || docenteId.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _cargandoDisponibilidad = false;
+            _error = 'No se pudo determinar el docente de esta tutoría';
+          });
+        }
+        return;
+      }
 
       const dias = [
-        'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
+        'Lunes',
+        'Martes',
+        'Miércoles',
+        'Jueves',
+        'Viernes',
+        'Sábado',
+        'Domingo',
       ];
       final diaSemana = dias[_fechaSeleccionada!.weekday - 1];
 
-      print('🔍 Buscando disponibilidad para: $diaSemana en materia $_materiaOriginal');
+      print(
+        '🔍 Buscando disponibilidad para: $diaSemana en materia $_materiaOriginal',
+      );
 
       final disponibilidad = await HorarioService.obtenerDisponibilidadCompleta(
         docenteId: docenteId,
@@ -326,7 +393,9 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
         }
       }
 
-      print('📦 Bloques encontrados para $_materiaOriginal en $diaSemana: ${bloquesDelDia.length}');
+      print(
+        '📦 Bloques encontrados para $_materiaOriginal en $diaSemana: ${bloquesDelDia.length}',
+      );
 
       if (bloquesDelDia.isEmpty) {
         setState(() {
@@ -342,7 +411,12 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
       );
 
       final ocupadosEnFecha = bloquesOcupados.where((t) {
-        return t['docente']['_id'] == docenteId &&
+        final tDoc = t['docente'];
+        final tDocId = (tDoc is Map && tDoc['_id'] != null)
+            ? tDoc['_id']
+            : (t['docenteId'] ?? t['docente_id']);
+
+        return tDocId == docenteId &&
             t['fecha'] == fechaStr &&
             t['_id'] != widget.tutoria['_id'] &&
             (t['estado'] == 'pendiente' || t['estado'] == 'confirmada');
@@ -358,10 +432,8 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
 
         for (var turno in turnos) {
           final ocupado = ocupadosEnFecha.any((tutoria) {
-            return !(
-              turno['horaFin'] <= tutoria['horaInicio'] ||
-              turno['horaInicio'] >= tutoria['horaFin']
-            );
+            return !(turno['horaFin'] <= tutoria['horaInicio'] ||
+                turno['horaInicio'] >= tutoria['horaFin']);
           });
 
           if (!ocupado) {
@@ -374,8 +446,9 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
         _bloquesDisponibles = turnosDisponibles;
         _cargandoDisponibilidad = false;
 
-        final horarioActualDisponible = turnosDisponibles.any((t) =>
-            t['horaInicio'] == _horaInicio && t['horaFin'] == _horaFin);
+        final horarioActualDisponible = turnosDisponibles.any(
+          (t) => t['horaInicio'] == _horaInicio && t['horaFin'] == _horaFin,
+        );
 
         if (!horarioActualDisponible) {
           _horaInicio = null;
@@ -425,7 +498,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
   Future<void> _seleccionarFecha() async {
     final ahora = DateTime.now();
     final hoy = DateTime(ahora.year, ahora.month, ahora.day);
-    
+
     DateTime fechaInicial;
     if (_fechaSeleccionada != null && !_fechaSeleccionada!.isBefore(hoy)) {
       fechaInicial = _fechaSeleccionada!;
@@ -450,7 +523,8 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
               primary: Color(0xFF1565C0),
               onPrimary: Colors.white,
               surface: Colors.white,
-            ), dialogTheme: DialogThemeData(backgroundColor: Colors.white),
+            ),
+            dialogTheme: DialogThemeData(backgroundColor: Colors.white),
           ),
           child: child!,
         );
@@ -479,8 +553,9 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
       return;
     }
 
-    final turnoValido = _bloquesDisponibles.any((t) =>
-        t['horaInicio'] == _horaInicio && t['horaFin'] == _horaFin);
+    final turnoValido = _bloquesDisponibles.any(
+      (t) => t['horaInicio'] == _horaInicio && t['horaFin'] == _horaFin,
+    );
 
     if (!turnoValido) {
       _mostrarError('El turno seleccionado ya no está disponible');
@@ -547,7 +622,13 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
 
   String _formatearFecha(DateTime fecha) {
     const dias = [
-      'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado',
+      'Domingo',
     ];
     final dia = dias[fecha.weekday - 1];
     return '$dia ${fecha.day}/${fecha.month}/${fecha.year}';
@@ -555,28 +636,46 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
 
   @override
   Widget build(BuildContext context) {
+    // Responsiveness helpers
+    final isMobile = context.isMobile;
+    final isDesktop = context.isDesktop;
+    final contentPadding = context.responsivePadding;
+    final spacing = context.responsiveSpacing;
+    final dialogRadius = ResponsiveHelper.getBorderRadius(context);
+    final dialogWidth = isDesktop
+        ? 650.0
+        : (isMobile ? MediaQuery.of(context).size.width * 0.95 : 560.0);
+    final dialogMaxHeight = MediaQuery.of(context).size.height * 0.86;
+    final buttonHeight = ResponsiveHelper.getButtonHeight(context);
+
     if (_cargandoDias) {
       return Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(dialogRadius),
+        ),
         child: Container(
-          padding: const EdgeInsets.all(40),
+          padding: EdgeInsets.all(contentPadding * 1.25),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(contentPadding * 0.8),
                 decoration: BoxDecoration(
                   color: Colors.blue[50],
                   shape: BoxShape.circle,
                 ),
-                child: const CircularProgressIndicator(strokeWidth: 3),
+                child: SizedBox(
+                  height: context.responsiveIconSize(36),
+                  width: context.responsiveIconSize(36),
+                  child: const CircularProgressIndicator(strokeWidth: 3),
+                ),
               ),
-              const SizedBox(height: 24),
-              const Text(
+              SizedBox(height: spacing * 1.5),
+              Text(
                 'Verificando disponibilidad del docente...',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: context.responsiveFontSize(16),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -588,27 +687,36 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
 
     if (_error != null && _diasDisponiblesDocente.isEmpty) {
       return Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(dialogRadius),
+        ),
         child: Container(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(contentPadding * 1.1),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(contentPadding * 0.9),
                 decoration: BoxDecoration(
                   color: Colors.red[50],
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.error_outline, size: 60, color: Colors.red[700]),
+                child: Icon(
+                  Icons.error_outline,
+                  size: context.responsiveIconSize(48),
+                  color: Colors.red[700],
+                ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: spacing),
               Text(
                 _error!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16, height: 1.4),
+                style: TextStyle(
+                  fontSize: context.responsiveFontSize(15),
+                  height: 1.4,
+                ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: spacing * 1.5),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -616,13 +724,18 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red[600],
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: EdgeInsets.symmetric(
+                      vertical: contentPadding * 0.7,
+                    ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(dialogRadius * 0.5),
                     ),
                     elevation: 0,
                   ),
-                  child: const Text('Cerrar'),
+                  child: Text(
+                    'Cerrar',
+                    style: TextStyle(fontSize: context.responsiveFontSize(15)),
+                  ),
                 ),
               ),
             ],
@@ -634,52 +747,62 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(dialogRadius),
+        ),
         elevation: 8,
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
+          constraints: BoxConstraints(
+            maxWidth: dialogWidth,
+            maxHeight: dialogMaxHeight,
+          ),
           child: Column(
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
+                padding: EdgeInsets.all(contentPadding),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
                     colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
                   ),
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
+                    topLeft: Radius.circular(dialogRadius),
+                    topRight: Radius.circular(dialogRadius),
                   ),
                 ),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: EdgeInsets.all(contentPadding * 0.6),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(dialogRadius * 0.5),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.event_repeat,
                         color: Colors.white,
-                        size: 24,
+                        size: context.responsiveIconSize(24),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
+                    SizedBox(width: spacing),
+                    Expanded(
                       child: Text(
                         'Reagendar Tutoría',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: context.responsiveFontSize(20),
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
+                      icon: Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: context.responsiveIconSize(20),
+                      ),
                       onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.all(isMobile ? 8 : 12),
                     ),
                   ],
                 ),
@@ -687,19 +810,24 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
 
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(contentPadding),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(contentPadding),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [Colors.orange[50]!, Colors.orange[100]!],
                           ),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.orange[300]!, width: 1.5),
+                          borderRadius: BorderRadius.circular(
+                            dialogRadius * 0.6,
+                          ),
+                          border: Border.all(
+                            color: Colors.orange[300]!,
+                            width: 1.5,
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -707,108 +835,138 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                             Row(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.all(8),
+                                  padding: EdgeInsets.all(contentPadding * 0.4),
                                   decoration: BoxDecoration(
                                     color: Colors.orange,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(
+                                      dialogRadius * 0.4,
+                                    ),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.info_outline,
                                     color: Colors.white,
-                                    size: 20,
+                                    size: context.responsiveIconSize(18),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                                SizedBox(width: spacing),
                                 Text(
                                   'Horario Actual',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: Colors.orange[900],
-                                    fontSize: 16,
+                                    fontSize: context.responsiveFontSize(16),
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
-                            
+                            SizedBox(height: spacing),
                             if (_materiaOriginal != null) ...[
                               Container(
-                                padding: const EdgeInsets.all(10),
+                                padding: EdgeInsets.all(contentPadding * 0.75),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(
+                                    dialogRadius * 0.5,
+                                  ),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.book, size: 18, color: Colors.orange[700]),
-                                    const SizedBox(width: 8),
+                                    Icon(
+                                      Icons.book,
+                                      size: context.responsiveIconSize(18),
+                                      color: Colors.orange[700],
+                                    ),
+                                    SizedBox(width: spacing * 0.5),
                                     Expanded(
                                       child: Text(
                                         'Materia: $_materiaOriginal',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.w600,
-                                          fontSize: 14,
+                                          fontSize: context.responsiveFontSize(
+                                            14,
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              SizedBox(height: spacing * 0.6),
                             ],
-                            
+
                             Row(
                               children: [
-                                Icon(Icons.calendar_today, size: 16, color: Colors.orange[800]),
-                                const SizedBox(width: 8),
+                                Icon(
+                                  Icons.calendar_today,
+                                  size: context.responsiveIconSize(16),
+                                  color: Colors.orange[800],
+                                ),
+                                SizedBox(width: spacing * 0.5),
                                 Text(
-                                  widget.tutoria['fecha'] != null 
-                                    ? _formatearFecha(DateTime.parse(widget.tutoria['fecha'])) 
-                                    : 'Fecha no disponible',
+                                  widget.tutoria['fecha'] != null
+                                      ? _formatearFecha(
+                                          DateTime.parse(
+                                            widget.tutoria['fecha'],
+                                          ),
+                                        )
+                                      : 'Fecha no disponible',
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: context.responsiveFontSize(14),
                                     fontWeight: FontWeight.w500,
                                     color: Colors.grey[800],
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 6),
+                            SizedBox(height: spacing * 0.5),
                             Row(
                               children: [
-                                Icon(Icons.access_time, size: 16, color: Colors.orange[800]),
-                                const SizedBox(width: 8),
+                                Icon(
+                                  Icons.access_time,
+                                  size: context.responsiveIconSize(16),
+                                  color: Colors.orange[800],
+                                ),
+                                SizedBox(width: spacing * 0.5),
                                 Text(
                                   '${widget.tutoria['horaInicio'] ?? '--:--'} - ${widget.tutoria['horaFin'] ?? '--:--'}',
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: context.responsiveFontSize(14),
                                     fontWeight: FontWeight.w500,
                                     color: Colors.grey[800],
                                   ),
                                 ),
                               ],
                             ),
-                            
+
                             if (widget.tutoria['fecha'] != null &&
-                                DateTime.parse(widget.tutoria['fecha'])
-                                    .isBefore(DateTime.now())) ...[
-                              const SizedBox(height: 12),
+                                DateTime.parse(
+                                  widget.tutoria['fecha'],
+                                ).isBefore(DateTime.now())) ...[
+                              SizedBox(height: spacing),
                               Container(
-                                padding: const EdgeInsets.all(10),
+                                padding: EdgeInsets.all(contentPadding * 0.6),
                                 decoration: BoxDecoration(
                                   color: Colors.red[100],
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(
+                                    dialogRadius * 0.5,
+                                  ),
                                   border: Border.all(color: Colors.red[300]!),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.warning, color: Colors.red[700], size: 18),
-                                    const SizedBox(width: 8),
+                                    Icon(
+                                      Icons.warning,
+                                      color: Colors.red[700],
+                                      size: context.responsiveIconSize(16),
+                                    ),
+                                    SizedBox(width: spacing * 0.5),
                                     Expanded(
                                       child: Text(
                                         'Esta fecha ya pasó. Selecciona una fecha futura.',
                                         style: TextStyle(
-                                          fontSize: 12,
+                                          fontSize: context.responsiveFontSize(
+                                            12,
+                                          ),
                                           color: Colors.red[900],
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -822,59 +980,67 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                         ),
                       ),
 
-                      const SizedBox(height: 24),
+                      SizedBox(height: spacing * 1.5),
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(8),
+                            padding: EdgeInsets.all(contentPadding * 0.5),
                             decoration: BoxDecoration(
                               color: const Color(0xFF1565C0).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(
+                                dialogRadius * 0.4,
+                              ),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.edit_calendar,
-                              size: 20,
-                              color: Color(0xFF1565C0),
+                              size: context.responsiveIconSize(20),
+                              color: const Color(0xFF1565C0),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          const Text(
+                          SizedBox(width: spacing),
+                          Text(
                             'Nuevo Horario',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: context.responsiveFontSize(18),
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF1565C0),
+                              color: const Color(0xFF1565C0),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: spacing),
 
                       InkWell(
                         onTap: _seleccionarFecha,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(dialogRadius * 0.5),
                         child: Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(contentPadding),
                           decoration: BoxDecoration(
                             color: Colors.grey[50],
                             border: Border.all(color: Colors.grey[300]!),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              dialogRadius * 0.5,
+                            ),
                           ),
                           child: Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(10),
+                                padding: EdgeInsets.all(contentPadding * 0.6),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1565C0).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: const Color(
+                                    0xFF1565C0,
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(
+                                    dialogRadius * 0.4,
+                                  ),
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.calendar_today,
-                                  color: Color(0xFF1565C0),
-                                  size: 20,
+                                  color: const Color(0xFF1565C0),
+                                  size: context.responsiveIconSize(20),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              SizedBox(width: spacing),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -882,18 +1048,22 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                                     Text(
                                       'Fecha',
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: context.responsiveFontSize(
+                                          12,
+                                        ),
                                         color: Colors.grey[600],
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
+                                    SizedBox(height: spacing * 0.2),
                                     Text(
                                       _fechaSeleccionada != null
                                           ? _formatearFecha(_fechaSeleccionada!)
                                           : 'Seleccionar fecha',
-                                      style: const TextStyle(
-                                        fontSize: 16,
+                                      style: TextStyle(
+                                        fontSize: context.responsiveFontSize(
+                                          16,
+                                        ),
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -902,7 +1072,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                               ),
                               Icon(
                                 Icons.arrow_forward_ios,
-                                size: 16,
+                                size: context.responsiveIconSize(16),
                                 color: Colors.grey[600],
                               ),
                             ],
@@ -910,25 +1080,33 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                         ),
                       ),
 
-                      const SizedBox(height: 16),
+                      SizedBox(height: spacing),
 
                       if (_cargandoDisponibilidad)
                         Container(
-                          padding: const EdgeInsets.all(32),
+                          padding: EdgeInsets.all(contentPadding * 1.2),
                           decoration: BoxDecoration(
                             color: Colors.blue[50],
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              dialogRadius * 0.5,
+                            ),
                           ),
-                          child: const Center(
+                          child: Center(
                             child: Column(
                               children: [
-                                CircularProgressIndicator(strokeWidth: 3),
-                                SizedBox(height: 16),
+                                SizedBox(
+                                  height: context.responsiveIconSize(32),
+                                  width: context.responsiveIconSize(32),
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 3,
+                                  ),
+                                ),
+                                SizedBox(height: spacing),
                                 Text(
                                   'Cargando turnos...',
                                   style: TextStyle(
                                     fontWeight: FontWeight.w500,
-                                    fontSize: 14,
+                                    fontSize: context.responsiveFontSize(14),
                                   ),
                                 ),
                               ],
@@ -937,20 +1115,29 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                         )
                       else if (_error != null)
                         Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(contentPadding * 0.9),
                           decoration: BoxDecoration(
                             color: Colors.red[50],
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              dialogRadius * 0.5,
+                            ),
                             border: Border.all(color: Colors.red[300]!),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.error_outline, color: Colors.red[700]),
-                              const SizedBox(width: 12),
+                              Icon(
+                                Icons.error_outline,
+                                color: Colors.red[700],
+                                size: context.responsiveIconSize(18),
+                              ),
+                              SizedBox(width: spacing),
                               Expanded(
                                 child: Text(
                                   _error!,
-                                  style: TextStyle(color: Colors.red[900]),
+                                  style: TextStyle(
+                                    color: Colors.red[900],
+                                    fontSize: context.responsiveFontSize(14),
+                                  ),
                                 ),
                               ),
                             ],
@@ -958,46 +1145,64 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                         )
                       else if (_bloquesDisponibles.isEmpty)
                         Container(
-                          padding: const EdgeInsets.all(20),
+                          padding: EdgeInsets.all(contentPadding),
                           decoration: BoxDecoration(
                             color: Colors.orange[50],
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              dialogRadius * 0.5,
+                            ),
                             border: Border.all(color: Colors.orange[300]!),
                           ),
                           child: Column(
                             children: [
-                              Icon(Icons.warning_amber, color: Colors.orange[700], size: 48),
-                              const SizedBox(height: 16),
+                              Icon(
+                                Icons.warning_amber,
+                                color: Colors.orange[700],
+                                size: context.responsiveIconSize(48),
+                              ),
+                              SizedBox(height: spacing),
                               Text(
                                 'No hay turnos disponibles para ${_formatearFecha(_fechaSeleccionada!)}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                                  fontSize: context.responsiveFontSize(15),
                                 ),
                                 textAlign: TextAlign.center,
                               ),
-                              const SizedBox(height: 8),
+                              SizedBox(height: spacing * 0.5),
                               Text(
                                 'El docente no tiene horarios libres en este día para la materia "$_materiaOriginal".',
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: context.responsiveFontSize(13),
                                   color: Colors.grey[700],
                                 ),
                                 textAlign: TextAlign.center,
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: spacing),
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton.icon(
                                   onPressed: _seleccionarFecha,
-                                  icon: const Icon(Icons.calendar_today, size: 18),
-                                  label: const Text('Elegir otro día'),
+                                  icon: Icon(
+                                    Icons.calendar_today,
+                                    size: context.responsiveIconSize(18),
+                                  ),
+                                  label: Text(
+                                    'Elegir otro día',
+                                    style: TextStyle(
+                                      fontSize: context.responsiveFontSize(15),
+                                    ),
+                                  ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.orange[600],
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    minimumSize: Size.fromHeight(
+                                      buttonHeight * 0.85,
+                                    ),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(
+                                        dialogRadius * 0.45,
+                                      ),
                                     ),
                                     elevation: 0,
                                   ),
@@ -1011,51 +1216,63 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(12),
+                              padding: EdgeInsets.all(contentPadding * 0.8),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [Colors.blue[50]!, Colors.blue[100]!],
                                 ),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(
+                                  dialogRadius * 0.5,
+                                ),
                               ),
                               child: Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.all(6),
+                                    padding: EdgeInsets.all(
+                                      contentPadding * 0.4,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
-                                      borderRadius: BorderRadius.circular(8),
+                                      borderRadius: BorderRadius.circular(
+                                        dialogRadius * 0.4,
+                                      ),
                                     ),
                                     child: Icon(
                                       Icons.schedule,
-                                      size: 18,
+                                      size: context.responsiveIconSize(18),
                                       color: Colors.blue[700],
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
+                                  SizedBox(width: spacing * 0.8),
                                   Expanded(
                                     child: Text(
                                       'Turnos Disponibles (${_bloquesDisponibles.length})',
                                       style: TextStyle(
-                                        fontSize: 14,
+                                        fontSize: context.responsiveFontSize(
+                                          14,
+                                        ),
                                         fontWeight: FontWeight.bold,
                                         color: Colors.blue[900],
                                       ),
                                     ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 5,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: contentPadding * 0.6,
+                                      vertical: contentPadding * 0.25,
                                     ),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF1565C0),
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(
+                                        dialogRadius * 0.4,
+                                      ),
                                     ),
                                     child: Text(
                                       _materiaOriginal ?? 'Materia',
-                                      style: const TextStyle(
-                                        fontSize: 11,
+                                      style: TextStyle(
+                                        fontSize: context.responsiveFontSize(
+                                          11,
+                                        ),
                                         fontWeight: FontWeight.w600,
                                         color: Colors.white,
                                       ),
@@ -1064,13 +1281,14 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: spacing),
                             ..._bloquesDisponibles.map((turno) {
-                              final isSelected = _horaInicio == turno['horaInicio'] &&
+                              final isSelected =
+                                  _horaInicio == turno['horaInicio'] &&
                                   _horaFin == turno['horaFin'];
 
                               return Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
+                                padding: EdgeInsets.only(bottom: spacing * 0.6),
                                 child: InkWell(
                                   onTap: () {
                                     setState(() {
@@ -1078,13 +1296,19 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                                       _horaFin = turno['horaFin'];
                                     });
                                   },
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(
+                                    dialogRadius * 0.45,
+                                  ),
                                   child: AnimatedContainer(
                                     duration: const Duration(milliseconds: 200),
-                                    padding: const EdgeInsets.all(14),
+                                    padding: EdgeInsets.all(
+                                      contentPadding * 0.6,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: isSelected
-                                          ? const Color(0xFF1565C0).withOpacity(0.15)
+                                          ? const Color(
+                                              0xFF1565C0,
+                                            ).withOpacity(0.15)
                                           : Colors.grey[50],
                                       border: Border.all(
                                         color: isSelected
@@ -1092,12 +1316,15 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                                             : Colors.grey[300]!,
                                         width: isSelected ? 2 : 1,
                                       ),
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(
+                                        dialogRadius * 0.45,
+                                      ),
                                       boxShadow: isSelected
                                           ? [
                                               BoxShadow(
-                                                color: const Color(0xFF1565C0)
-                                                    .withOpacity(0.2),
+                                                color: const Color(
+                                                  0xFF1565C0,
+                                                ).withOpacity(0.2),
                                                 blurRadius: 8,
                                                 spreadRadius: 1,
                                               ),
@@ -1107,12 +1334,16 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                                     child: Row(
                                       children: [
                                         Container(
-                                          padding: const EdgeInsets.all(8),
+                                          padding: EdgeInsets.all(
+                                            contentPadding * 0.4,
+                                          ),
                                           decoration: BoxDecoration(
                                             color: isSelected
                                                 ? const Color(0xFF1565C0)
                                                 : Colors.green.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(
+                                              dialogRadius * 0.35,
+                                            ),
                                           ),
                                           child: Icon(
                                             isSelected
@@ -1121,10 +1352,12 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                                             color: isSelected
                                                 ? Colors.white
                                                 : Colors.green[700],
-                                            size: 20,
+                                            size: context.responsiveIconSize(
+                                              20,
+                                            ),
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
+                                        SizedBox(width: spacing),
                                         Expanded(
                                           child: Text(
                                             '${turno['horaInicio']} - ${turno['horaFin']}',
@@ -1135,15 +1368,18 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                                               color: isSelected
                                                   ? const Color(0xFF1565C0)
                                                   : Colors.black87,
-                                              fontSize: 15,
+                                              fontSize: context
+                                                  .responsiveFontSize(15),
                                             ),
                                           ),
                                         ),
                                         if (isSelected)
-                                          const Icon(
+                                          Icon(
                                             Icons.arrow_forward_ios,
-                                            size: 16,
-                                            color: Color(0xFF1565C0),
+                                            size: context.responsiveIconSize(
+                                              16,
+                                            ),
+                                            color: const Color(0xFF1565C0),
                                           ),
                                       ],
                                     ),
@@ -1154,19 +1390,26 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                           ],
                         ),
 
-                      const SizedBox(height: 16),
+                      SizedBox(height: spacing),
 
                       TextField(
                         controller: _motivoController,
                         decoration: InputDecoration(
                           labelText: 'Motivo (opcional)',
                           hintText: 'Ejemplo: Tengo un compromiso académico',
-                          prefixIcon: Icon(Icons.comment, color: Colors.blue[700]),
+                          prefixIcon: Icon(
+                            Icons.comment,
+                            color: Colors.blue[700],
+                          ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              dialogRadius * 0.45,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              dialogRadius * 0.45,
+                            ),
                             borderSide: const BorderSide(
                               color: Color(0xFF1565C0),
                               width: 2,
@@ -1183,7 +1426,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
               ),
 
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(contentPadding),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   boxShadow: [
@@ -1196,9 +1439,12 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                 ),
                 child: SizedBox(
                   width: double.infinity,
-                  height: 50,
+                  height: buttonHeight,
                   child: ElevatedButton(
-                    onPressed: (_isLoading || _cargandoDisponibilidad || _horaInicio == null)
+                    onPressed:
+                        (_isLoading ||
+                            _cargandoDisponibilidad ||
+                            _horaInicio == null)
                         ? null
                         : _reagendar,
                     style: ElevatedButton.styleFrom(
@@ -1206,34 +1452,59 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                       disabledBackgroundColor: Colors.grey[300],
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(dialogRadius * 0.5),
                       ),
                       elevation: 0,
                     ),
                     child: _isLoading
-                        ? const SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(
+                        ? SizedBox(
+                            height: context.responsiveIconSize(20),
+                            width: context.responsiveIconSize(20),
+                            child: const CircularProgressIndicator(
                               color: Colors.white,
                               strokeWidth: 2,
                             ),
                           )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.check_circle_outline, size: 22),
-                              const SizedBox(width: 8),
-                              Text(
-                                _horaInicio == null
-                                    ? 'Selecciona un horario'
-                                    : 'Confirmar Reagendamiento',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
+                        : LayoutBuilder(
+                            builder: (context, constraints) {
+                              // Usamos Wrap para que el icono y el texto puedan ajustarse sin causar overflow
+                              return ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: constraints.maxWidth,
                                 ),
-                              ),
-                            ],
+                                child: Wrap(
+                                  alignment: WrapAlignment.center,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: spacing * 0.6,
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle_outline,
+                                      size: context.responsiveIconSize(20),
+                                    ),
+                                    SizedBox(
+                                      // Reservamos parte del ancho para el texto y permitimos truncamiento si es necesario
+                                      width:
+                                          constraints.maxWidth *
+                                          (isMobile ? 0.65 : 0.6),
+                                      child: Text(
+                                        _horaInicio == null
+                                            ? 'Selecciona un horario'
+                                            : 'Confirmar Reagendamiento',
+                                        textAlign: TextAlign.center,
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                        style: TextStyle(
+                                          fontSize: context.responsiveFontSize(
+                                            16,
+                                          ),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
                   ),
                 ),
