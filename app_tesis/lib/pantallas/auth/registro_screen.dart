@@ -2,7 +2,6 @@
 // 3. REGISTRO SCREEN - MEJORADA
 // ============================================
 import 'package:flutter/material.dart';
-import 'package:app_tesis/config/theme.dart';
 import 'package:app_tesis/servicios/auth_service.dart';
 import 'package:app_tesis/config/routes.dart';
 

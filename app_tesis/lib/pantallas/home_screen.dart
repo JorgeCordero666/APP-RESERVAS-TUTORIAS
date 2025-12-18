@@ -1,10 +1,11 @@
-// lib/pantallas/home_screen.dart - DISEÑO PROFESIONAL UNIVERSITARIO
+// lib/pantallas/home_screen.dart - DISEÑO PROFESIONAL UNIVERSITARIO RESPONSIVE
 import 'package:app_tesis/pantallas/docente/solicitudes_tutorias_screen.dart';
 import 'package:app_tesis/pantallas/estudiante/mis_tutorias_screen.dart';
 import 'package:flutter/material.dart';
 import '../modelos/usuario.dart';
 import '../servicios/auth_service.dart';
 import '../config/routes.dart';
+import '../config/responsive_helper.dart';
 import 'admin/gestion_usuarios_screen.dart';
 import 'admin/gestion_estudiantes_screen.dart';
 import 'admin/gestion_materias_screen.dart' as AdminMaterias;
@@ -76,67 +77,69 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   List<BottomNavigationBarItem> _buildNavItems() {
+    final iconSize = context.isMobile ? 24.0 : 28.0;
+    
     if (_usuario.esAdministrador) {
-      return const [
+      return [
         BottomNavigationBarItem(
-          icon: Icon(Icons.dashboard_outlined),
-          activeIcon: Icon(Icons.dashboard_rounded),
+          icon: Icon(Icons.dashboard_outlined, size: iconSize),
+          activeIcon: Icon(Icons.dashboard_rounded, size: iconSize),
           label: 'Inicio',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.people_outline_rounded),
-          activeIcon: Icon(Icons.people_rounded),
+          icon: Icon(Icons.people_outline_rounded, size: iconSize),
+          activeIcon: Icon(Icons.people_rounded, size: iconSize),
           label: 'Docentes',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.school_outlined),
-          activeIcon: Icon(Icons.school_rounded),
+          icon: Icon(Icons.school_outlined, size: iconSize),
+          activeIcon: Icon(Icons.school_rounded, size: iconSize),
           label: 'Estudiantes',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline_rounded),
-          activeIcon: Icon(Icons.person_rounded),
+          icon: Icon(Icons.person_outline_rounded, size: iconSize),
+          activeIcon: Icon(Icons.person_rounded, size: iconSize),
           label: 'Perfil',
         ),
       ];
     } else if (_usuario.esDocente) {
-      return const [
+      return [
         BottomNavigationBarItem(
-          icon: Icon(Icons.dashboard_outlined),
-          activeIcon: Icon(Icons.dashboard_rounded),
+          icon: Icon(Icons.dashboard_outlined, size: iconSize),
+          activeIcon: Icon(Icons.dashboard_rounded, size: iconSize),
           label: 'Inicio',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.book_outlined),
-          activeIcon: Icon(Icons.book_rounded),
+          icon: Icon(Icons.book_outlined, size: iconSize),
+          activeIcon: Icon(Icons.book_rounded, size: iconSize),
           label: 'Materias',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.schedule_outlined),
-          activeIcon: Icon(Icons.schedule),
+          icon: Icon(Icons.schedule_outlined, size: iconSize),
+          activeIcon: Icon(Icons.schedule, size: iconSize),
           label: 'Horarios',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline_rounded),
-          activeIcon: Icon(Icons.person_rounded),
+          icon: Icon(Icons.person_outline_rounded, size: iconSize),
+          activeIcon: Icon(Icons.person_rounded, size: iconSize),
           label: 'Perfil',
         ),
       ];
     } else {
-      return const [
+      return [
         BottomNavigationBarItem(
-          icon: Icon(Icons.dashboard_outlined),
-          activeIcon: Icon(Icons.dashboard_rounded),
+          icon: Icon(Icons.dashboard_outlined, size: iconSize),
+          activeIcon: Icon(Icons.dashboard_rounded, size: iconSize),
           label: 'Inicio',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.calendar_today_outlined),
-          activeIcon: Icon(Icons.calendar_today_rounded),
+          icon: Icon(Icons.calendar_today_outlined, size: iconSize),
+          activeIcon: Icon(Icons.calendar_today_rounded, size: iconSize),
           label: 'Disponibilidad',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline_rounded),
-          activeIcon: Icon(Icons.person_rounded),
+          icon: Icon(Icons.person_outline_rounded, size: iconSize),
+          activeIcon: Icon(Icons.person_rounded, size: iconSize),
           label: 'Perfil',
         ),
       ];
@@ -152,96 +155,99 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _buildSliverAppBar('Panel Administrativo'),
           
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildWelcomeCard(),
-                  const SizedBox(height: 28),
-                  
-                  _buildSectionTitle('Gestión del Sistema', Icons.settings_rounded),
-                  const SizedBox(height: 16),
-                  
-                  _buildActionCard(
-                    title: 'Gestión de Docentes',
-                    subtitle: 'Administrar docentes del sistema',
-                    icon: Icons.people_rounded,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+            child: ResponsiveHelper.centerConstrainedBox(
+              context: context,
+              child: Padding(
+                padding: EdgeInsets.all(context.responsivePadding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildWelcomeCard(),
+                    SizedBox(height: context.responsiveSpacing * 2),
+                    
+                    _buildSectionTitle('Gestión del Sistema', Icons.settings_rounded),
+                    SizedBox(height: context.responsiveSpacing),
+                    
+                    _buildActionCard(
+                      title: 'Gestión de Docentes',
+                      subtitle: 'Administrar docentes del sistema',
+                      icon: Icons.people_rounded,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+                      ),
+                      onTap: () => setState(() => _selectedIndex = 1),
                     ),
-                    onTap: () => setState(() => _selectedIndex = 1),
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  _buildActionCard(
-                    title: 'Gestión de Estudiantes',
-                    subtitle: 'Administrar estudiantes',
-                    icon: Icons.school_rounded,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+                    SizedBox(height: context.responsiveSpacing * 0.75),
+                    
+                    _buildActionCard(
+                      title: 'Gestión de Estudiantes',
+                      subtitle: 'Administrar estudiantes',
+                      icon: Icons.school_rounded,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+                      ),
+                      onTap: () => setState(() => _selectedIndex = 2),
                     ),
-                    onTap: () => setState(() => _selectedIndex = 2),
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  _buildActionCard(
-                    title: 'Gestión de Materias',
-                    subtitle: 'Administrar catálogo de materias',
-                    icon: Icons.menu_book_rounded,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF7B1FA2), Color(0xFF8E24AA)],
+                    SizedBox(height: context.responsiveSpacing * 0.75),
+                    
+                    _buildActionCard(
+                      title: 'Gestión de Materias',
+                      subtitle: 'Administrar catálogo de materias',
+                      icon: Icons.menu_book_rounded,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF7B1FA2), Color(0xFF8E24AA)],
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AdminMaterias.GestionMateriasScreen(usuario: _usuario),
+                          ),
+                        );
+                      },
                     ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AdminMaterias.GestionMateriasScreen(usuario: _usuario),
-                        ),
-                      );
-                    },
-                  ),
-                  
-                  const SizedBox(height: 28),
-                  _buildSectionTitle('Reportes y Análisis', Icons.analytics_rounded),
-                  const SizedBox(height: 16),
-                  
-                  _buildActionCard(
-                    title: 'Reportes Generales',
-                    subtitle: 'Ver estadísticas del sistema',
-                    icon: Icons.bar_chart_rounded,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFE65100), Color(0xFFF57C00)],
+                    
+                    SizedBox(height: context.responsiveSpacing * 2),
+                    _buildSectionTitle('Reportes y Análisis', Icons.analytics_rounded),
+                    SizedBox(height: context.responsiveSpacing),
+                    
+                    _buildActionCard(
+                      title: 'Reportes Generales',
+                      subtitle: 'Ver estadísticas del sistema',
+                      icon: Icons.bar_chart_rounded,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFE65100), Color(0xFFF57C00)],
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ReportesAdminScreen(usuario: _usuario),
+                          ),
+                        );
+                      },
                     ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ReportesAdminScreen(usuario: _usuario),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  _buildActionCard(
-                    title: 'Historial de Tutorías',
-                    subtitle: 'Ver todas las tutorías del sistema',
-                    icon: Icons.history_rounded,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF00695C), Color(0xFF00897B)],
+                    SizedBox(height: context.responsiveSpacing * 0.75),
+                    
+                    _buildActionCard(
+                      title: 'Historial de Tutorías',
+                      subtitle: 'Ver todas las tutorías del sistema',
+                      icon: Icons.history_rounded,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF00695C), Color(0xFF00897B)],
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => HistorialTutoriasAdminScreen(usuario: _usuario),
+                          ),
+                        );
+                      },
                     ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => HistorialTutoriasAdminScreen(usuario: _usuario),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                    SizedBox(height: context.responsiveSpacing * 1.5),
+                  ],
+                ),
               ),
             ),
           ),
@@ -250,7 +256,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildDashboardDocente() {
+Widget _buildDashboardDocente() {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFB),
       body: CustomScrollView(
@@ -259,78 +265,81 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _buildSliverAppBar('Panel Docente'),
           
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildWelcomeCard(),
-                  const SizedBox(height: 28),
-                  
-                  _buildSectionTitle('Configuración', Icons.tune_rounded),
-                  const SizedBox(height: 16),
-                  
-                  _buildActionCard(
-                    title: 'Mis Materias',
-                    subtitle: 'Gestionar materias asignadas',
-                    icon: Icons.book_rounded,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFE65100), Color(0xFFF57C00)],
+            child: ResponsiveHelper.centerConstrainedBox(
+              context: context,
+              child: Padding(
+                padding: EdgeInsets.all(context.responsivePadding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildWelcomeCard(),
+                    SizedBox(height: context.responsiveSpacing * 2),
+                    
+                    _buildSectionTitle('Configuración', Icons.tune_rounded),
+                    SizedBox(height: context.responsiveSpacing),
+                    
+                    _buildActionCard(
+                      title: 'Mis Materias',
+                      subtitle: 'Gestionar materias asignadas',
+                      icon: Icons.book_rounded,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFE65100), Color(0xFFF57C00)],
+                      ),
+                      onTap: () => setState(() => _selectedIndex = 1),
                     ),
-                    onTap: () => setState(() => _selectedIndex = 1),
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  _buildActionCard(
-                    title: 'Horarios de Atención',
-                    subtitle: 'Configurar disponibilidad',
-                    icon: Icons.schedule,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF7B1FA2), Color(0xFF8E24AA)],
+                    SizedBox(height: context.responsiveSpacing * 0.75),
+                    
+                    _buildActionCard(
+                      title: 'Horarios de Atención',
+                      subtitle: 'Configurar disponibilidad',
+                      icon: Icons.schedule,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF7B1FA2), Color(0xFF8E24AA)],
+                      ),
+                      onTap: () => setState(() => _selectedIndex = 2),
                     ),
-                    onTap: () => setState(() => _selectedIndex = 2),
-                  ),
-                  
-                  const SizedBox(height: 28),
-                  _buildSectionTitle('Tutorías', Icons.event_note_rounded),
-                  const SizedBox(height: 16),
-                  
-                  _buildActionCard(
-                    title: 'Solicitudes Pendientes',
-                    subtitle: 'Gestionar tutorías solicitadas',
-                    icon: Icons.notifications_active_rounded,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFC62828), Color(0xFFD32F2F)],
+                    
+                    SizedBox(height: context.responsiveSpacing * 2),
+                    _buildSectionTitle('Tutorías', Icons.event_note_rounded),
+                    SizedBox(height: context.responsiveSpacing),
+                    
+                    _buildActionCard(
+                      title: 'Solicitudes Pendientes',
+                      subtitle: 'Gestionar tutorías solicitadas',
+                      icon: Icons.notifications_active_rounded,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFC62828), Color(0xFFD32F2F)],
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SolicitudesTutoriasScreen(usuario: _usuario),
+                          ),
+                        );
+                      },
                     ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => SolicitudesTutoriasScreen(usuario: _usuario),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  _buildActionCard(
-                    title: 'Reportes de Tutorías',
-                    subtitle: 'Ver estadísticas por materia',
-                    icon: Icons.analytics_rounded,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+                    SizedBox(height: context.responsiveSpacing * 0.75),
+                    
+                    _buildActionCard(
+                      title: 'Reportes de Tutorías',
+                      subtitle: 'Ver estadísticas por materia',
+                      icon: Icons.analytics_rounded,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ReportesScreen(usuario: _usuario),
+                          ),
+                        );
+                      },
                     ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ReportesScreen(usuario: _usuario),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                    SizedBox(height: context.responsiveSpacing * 1.5),
+                  ],
+                ),
               ),
             ),
           ),
@@ -348,46 +357,49 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _buildSliverAppBar('Panel Estudiante'),
           
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildWelcomeCard(),
-                  const SizedBox(height: 28),
-                  
-                  _buildSectionTitle('Mis Tutorías', Icons.school_rounded),
-                  const SizedBox(height: 16),
-                  
-                  _buildActionCard(
-                    title: 'Agendar Tutoría',
-                    subtitle: 'Solicitar nueva tutoría con un docente',
-                    icon: Icons.add_circle_rounded,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+            child: ResponsiveHelper.centerConstrainedBox(
+              context: context,
+              child: Padding(
+                padding: EdgeInsets.all(context.responsivePadding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildWelcomeCard(),
+                    SizedBox(height: context.responsiveSpacing * 2),
+                    
+                    _buildSectionTitle('Mis Tutorías', Icons.school_rounded),
+                    SizedBox(height: context.responsiveSpacing),
+                    
+                    _buildActionCard(
+                      title: 'Agendar Tutoría',
+                      subtitle: 'Solicitar nueva tutoría con un docente',
+                      icon: Icons.add_circle_rounded,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+                      ),
+                      onTap: () => setState(() => _selectedIndex = 1),
                     ),
-                    onTap: () => setState(() => _selectedIndex = 1),
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  _buildActionCard(
-                    title: 'Mis Tutorías',
-                    subtitle: 'Ver tutorías agendadas',
-                    icon: Icons.event_note_rounded,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+                    SizedBox(height: context.responsiveSpacing * 0.75),
+                    
+                    _buildActionCard(
+                      title: 'Mis Tutorías',
+                      subtitle: 'Ver tutorías agendadas',
+                      icon: Icons.event_note_rounded,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => MisTutoriasScreen(usuario: _usuario),
+                          ),
+                        );
+                      },
                     ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => MisTutoriasScreen(usuario: _usuario),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                    SizedBox(height: context.responsiveSpacing * 1.5),
+                  ],
+                ),
               ),
             ),
           ),
@@ -397,19 +409,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildSliverAppBar(String title) {
+    final expandedHeight = context.isMobile ? 120.0 : 140.0;
+    
     return SliverAppBar(
-      expandedHeight: 140,
+      expandedHeight: expandedHeight,
       floating: false,
       pinned: true,
       elevation: 0,
       backgroundColor: const Color(0xFF1565C0),
       flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+        titlePadding: EdgeInsets.only(
+          left: context.responsivePadding,
+          bottom: 16,
+        ),
         title: Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w700,
-            fontSize: 22,
+            fontSize: context.responsiveFontSize(context.isMobile ? 20 : 22),
             letterSpacing: 0.3,
             color: Colors.white,
           ),
@@ -429,13 +446,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
-            // Decoración con círculos
+            // Decoración con círculos - ajustados para responsive
             Positioned(
               top: -30,
               right: -30,
               child: Container(
-                width: 120,
-                height: 120,
+                width: context.isMobile ? 100 : 120,
+                height: context.isMobile ? 100 : 120,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white.withOpacity(0.05),
@@ -446,8 +463,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               bottom: -20,
               left: -20,
               child: Container(
-                width: 100,
-                height: 100,
+                width: context.isMobile ? 80 : 100,
+                height: context.isMobile ? 80 : 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white.withOpacity(0.05),
@@ -466,7 +483,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
-              icon: const Icon(Icons.logout_rounded, color: Colors.white),
+              icon: Icon(
+                Icons.logout_rounded,
+                color: Colors.white,
+                size: context.responsiveIconSize(24),
+              ),
               onPressed: _logout,
               tooltip: 'Cerrar sesión',
             ),
@@ -478,7 +499,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildSectionTitle(String title, IconData icon) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.isMobile ? 14 : 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -486,7 +507,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             const Color(0xFF42A5F5).withOpacity(0.05),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
         border: Border.all(
           color: const Color(0xFF1565C0).withOpacity(0.1),
           width: 1,
@@ -503,16 +524,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Icon(
               icon,
               color: const Color(0xFF1565C0),
-              size: 20,
+              size: context.responsiveIconSize(20),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: context.responsiveSpacing * 0.75),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 18,
+            style: TextStyle(
+              fontSize: context.responsiveFontSize(context.isMobile ? 17 : 18),
               fontWeight: FontWeight.w700,
-              color: Color(0xFF1E3A5F),
+              color: const Color(0xFF1E3A5F),
               letterSpacing: 0.3,
             ),
           ),
@@ -522,8 +543,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildWelcomeCard() {
+    final avatarRadius = context.isMobile ? 35.0 : 40.0;
+    
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(context.isMobile ? 20 : 24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
@@ -534,7 +557,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF1565C0).withOpacity(0.3),
@@ -561,7 +584,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ],
                 ),
                 child: CircleAvatar(
-                  radius: 40,
+                  radius: avatarRadius,
                   backgroundImage: NetworkImage(_usuario.fotoPerfilUrl),
                   backgroundColor: Colors.white,
                 ),
@@ -570,22 +593,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 bottom: 0,
                 right: 0,
                 child: Container(
-                  padding: const EdgeInsets.all(6),
+                  padding: EdgeInsets.all(context.isMobile ? 5 : 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFF4CAF50),
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.check,
                     color: Colors.white,
-                    size: 12,
+                    size: context.isMobile ? 10 : 12,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(width: 20),
+          SizedBox(width: context.responsiveSpacing),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -594,7 +617,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   '¡Hola!',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.9),
-                    fontSize: 14,
+                    fontSize: context.responsiveFontSize(context.isMobile ? 13 : 14),
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.5,
                   ),
@@ -602,9 +625,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 const SizedBox(height: 6),
                 Text(
                   _usuario.nombre,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: context.responsiveFontSize(context.isMobile ? 18 : 20),
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.3,
                     height: 1.2,
@@ -614,9 +637,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.isMobile ? 12 : 14,
+                    vertical: context.isMobile ? 6 : 8,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.25),
@@ -632,14 +655,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       Icon(
                         _getRolIcon(),
                         color: Colors.white,
-                        size: 14,
+                        size: context.responsiveIconSize(14),
                       ),
                       const SizedBox(width: 6),
                       Text(
                         _usuario.rol,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: context.responsiveFontSize(12),
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.5,
                         ),
@@ -669,16 +692,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required VoidCallback onTap,
     String? badge,
   }) {
+    final cardPadding = context.isMobile ? 16.0 : 20.0;
+    final iconContainerSize = context.isMobile ? 14.0 : 16.0;
+    
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(cardPadding),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
             border: Border.all(
               color: Colors.grey.shade100,
               width: 1,
@@ -698,7 +724,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 clipBehavior: Clip.none,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(iconContainerSize),
                     decoration: BoxDecoration(
                       gradient: gradient,
                       borderRadius: BorderRadius.circular(16),
@@ -713,7 +739,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     child: Icon(
                       icon,
                       color: Colors.white,
-                      size: 28,
+                      size: context.responsiveIconSize(26),
                     ),
                   ),
                   if (badge != null)
@@ -739,17 +765,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                 ],
               ),
-              const SizedBox(width: 18),
+              SizedBox(width: context.responsiveSpacing),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: TextStyle(
+                        fontSize: context.responsiveFontSize(context.isMobile ? 15 : 16),
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF1E3A5F),
+                        color: const Color(0xFF1E3A5F),
                         letterSpacing: 0.2,
                       ),
                     ),
@@ -757,7 +783,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Text(
                       subtitle,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: context.responsiveFontSize(context.isMobile ? 12 : 13),
                         color: Colors.grey[600],
                         height: 1.3,
                         letterSpacing: 0.2,
@@ -768,7 +794,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: context.responsiveSpacing * 0.75),
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -778,7 +804,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: Icon(
                   Icons.arrow_forward_ios_rounded,
                   color: Colors.grey[400],
-                  size: 16,
+                  size: context.responsiveIconSize(14),
                 ),
               ),
             ],
@@ -793,7 +819,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
         ),
         title: Row(
           children: [
@@ -808,18 +834,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.logout_rounded,
                 color: Colors.white,
-                size: 24,
+                size: context.responsiveIconSize(24),
               ),
             ),
-            const SizedBox(width: 16),
-            const Expanded(
+            SizedBox(width: context.responsiveSpacing),
+            Expanded(
               child: Text(
                 'Cerrar sesión',
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: context.responsiveFontSize(context.isMobile ? 18 : 20),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -831,13 +857,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: Text(
             '¿Estás seguro de que deseas cerrar sesión?',
             style: TextStyle(
-              fontSize: 15,
+              fontSize: context.responsiveFontSize(15),
               color: Colors.grey[700],
               height: 1.5,
             ),
           ),
         ),
-        actionsPadding: const EdgeInsets.all(20),
+        actionsPadding: EdgeInsets.all(context.responsivePadding),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -852,7 +878,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               style: TextStyle(
                 color: Colors.grey[700],
                 fontWeight: FontWeight.w600,
-                fontSize: 15,
+                fontSize: context.responsiveFontSize(15),
               ),
             ),
           ),
@@ -880,12 +906,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
+              child: Text(
                 'Cerrar sesión',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
-                  fontSize: 15,
+                  fontSize: context.responsiveFontSize(15),
                 ),
               ),
             ),
@@ -926,8 +952,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           type: BottomNavigationBarType.fixed,
           selectedItemColor: const Color(0xFF1565C0),
           unselectedItemColor: Colors.grey[400],
-          selectedFontSize: 12,
-          unselectedFontSize: 11,
+          selectedFontSize: context.isMobile ? 11 : 12,
+          unselectedFontSize: context.isMobile ? 10 : 11,
           selectedLabelStyle: const TextStyle(
             fontWeight: FontWeight.w700,
             letterSpacing: 0.3,

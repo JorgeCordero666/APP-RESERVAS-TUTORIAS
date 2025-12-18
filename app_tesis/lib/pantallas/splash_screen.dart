@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../servicios/auth_service.dart';
 import '../config/routes.dart';
+import '../config/responsive_helper.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -65,78 +66,86 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       backgroundColor: const Color(0xFF1565C0),
       body: FadeTransition(
         opacity: _fadeAnimation,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.school,
-                  size: 80,
-                  color: Color(0xFF1565C0),
-                ),
-              ),
-              const SizedBox(height: 32),
-              
-              // Título
-              const Text(
-                'ESFOT Tutorías',
-                style: TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 12),
-              
-              // Subtítulo
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 40),
-                child: Text(
-                  'Escuela de Formación de Tecnólogos',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white70,
-                    height: 1.4,
+        child: ResponsiveHelper.centerConstrainedBox(
+          context: context,
+          maxWidth: 600,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: context.responsivePadding),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo - responsivo
+                Container(
+                  padding: EdgeInsets.all(context.isMobile ? 20 : 24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.school,
+                    size: context.responsiveIconSize(context.isMobile ? 70 : 80),
+                    color: const Color(0xFF1565C0),
                   ),
                 ),
-              ),
-              const SizedBox(height: 60),
-              
-              // Indicador de carga
-              const SizedBox(
-                width: 40,
-                height: 40,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 3,
+                SizedBox(height: context.isMobile ? 24 : 32),
+                
+                // Título - responsivo
+                Text(
+                  'ESFOT Tutorías',
+                  style: TextStyle(
+                    fontSize: context.responsiveFontSize(context.isMobile ? 32 : 36),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 1.2,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-              ),
-              const SizedBox(height: 16),
-              
-              const Text(
-                'Cargando...',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white70,
+                const SizedBox(height: 12),
+                
+                // Subtítulo - responsivo
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.isMobile ? 30 : 40,
+                  ),
+                  child: Text(
+                    'Escuela de Formación de Tecnólogos',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: context.responsiveFontSize(context.isMobile ? 14 : 16),
+                      color: Colors.white70,
+                      height: 1.4,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                SizedBox(height: context.isMobile ? 50 : 60),
+                
+                // Indicador de carga - tamaño responsivo
+                SizedBox(
+                  width: context.isMobile ? 36 : 40,
+                  height: context.isMobile ? 36 : 40,
+                  child: const CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                Text(
+                  'Cargando...',
+                  style: TextStyle(
+                    fontSize: context.responsiveFontSize(14),
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

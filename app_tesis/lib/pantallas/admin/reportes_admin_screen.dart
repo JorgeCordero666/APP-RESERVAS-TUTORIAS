@@ -476,7 +476,7 @@ class _ReportesAdminScreenState extends State<ReportesAdminScreen> {
               ],
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }

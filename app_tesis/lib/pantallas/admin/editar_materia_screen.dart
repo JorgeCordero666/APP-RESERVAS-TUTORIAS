@@ -224,7 +224,7 @@ class _EditarMateriaScreenState extends State<EditarMateriaScreen> {
 
             // Semestre
             DropdownButtonFormField<String>(
-              value: _semestreSeleccionado,
+              initialValue: _semestreSeleccionado,
               decoration: InputDecoration(
                 labelText: 'Semestre',
                 prefixIcon: const Icon(Icons.school),

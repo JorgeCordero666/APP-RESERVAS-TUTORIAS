@@ -51,7 +51,7 @@ class _GestionHorariosScreenState extends State<GestionHorariosScreen>
     '21:00',
   ];
 
-  Map<String, List<Map<String, dynamic>>> _horariosPorMateria = {};
+  final Map<String, List<Map<String, dynamic>>> _horariosPorMateria = {};
   String? _materiaSeleccionada;
   String _diaSeleccionado = 'Lunes';
   bool _isLoading = false;
@@ -1296,7 +1296,7 @@ class _DialogAgregarBloqueState extends State<_DialogAgregarBloque> {
                 border: Border.all(color: Colors.grey[200]!),
               ),
               child: DropdownButtonFormField<String>(
-                value: _diaSeleccionado,
+                initialValue: _diaSeleccionado,
                 decoration: InputDecoration(
                   labelText: 'Día',
                   labelStyle: TextStyle(
@@ -1329,7 +1329,7 @@ class _DialogAgregarBloqueState extends State<_DialogAgregarBloque> {
                 border: Border.all(color: Colors.grey[200]!),
               ),
               child: DropdownButtonFormField<String>(
-                value: _horaInicio,
+                initialValue: _horaInicio,
                 decoration: InputDecoration(
                   labelText: 'Hora inicio',
                   labelStyle: TextStyle(
@@ -1362,7 +1362,7 @@ class _DialogAgregarBloqueState extends State<_DialogAgregarBloque> {
                 border: Border.all(color: Colors.grey[200]!),
               ),
               child: DropdownButtonFormField<String>(
-                value: _horaFin,
+                initialValue: _horaFin,
                 decoration: InputDecoration(
                   labelText: 'Hora fin',
                   labelStyle: TextStyle(

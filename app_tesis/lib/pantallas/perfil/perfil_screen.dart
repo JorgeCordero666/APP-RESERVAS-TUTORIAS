@@ -1,7 +1,8 @@
-// lib/pantallas/perfil/perfil_screen.dart
+// lib/pantallas/perfil/perfil_screen.dart - RESPONSIVE
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/auth_service.dart';
+import '../../config/responsive_helper.dart';
 import 'editar_perfil_screen.dart';
 import '../auth/cambiar_password_screen.dart';
 
@@ -61,11 +62,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFB),
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Mi Perfil',
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            fontSize: 20,
+            fontSize: context.responsiveFontSize(20),
           ),
         ),
         centerTitle: true,
@@ -83,18 +84,21 @@ class _PerfilScreenState extends State<PerfilScreen> {
               _buildHeader(),
               
               // Contenido principal
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    // Información del perfil
-                    _buildInfoSection(),
-                    const SizedBox(height: 20),
-                    
-                    // Botones de acción
-                    _buildActionButtons(),
-                    const SizedBox(height: 20),
-                  ],
+              ResponsiveHelper.centerConstrainedBox(
+                context: context,
+                child: Padding(
+                  padding: EdgeInsets.all(context.responsivePadding),
+                  child: Column(
+                    children: [
+                      // Información del perfil
+                      _buildInfoSection(),
+                      SizedBox(height: context.responsiveSpacing * 1.5),
+                      
+                      // Botones de acción
+                      _buildActionButtons(),
+                      SizedBox(height: context.responsiveSpacing * 1.5),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -105,21 +109,23 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   Widget _buildHeader() {
+    final avatarRadius = context.isMobile ? 55.0 : 60.0;
+    
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF1565C0),
-            const Color(0xFF1976D2),
-            const Color(0xFF42A5F5),
+            Color(0xFF1565C0),
+            Color(0xFF1976D2),
+            Color(0xFF42A5F5),
           ],
         ),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(40),
-          bottomRight: Radius.circular(40),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(context.isMobile ? 30 : 40),
+          bottomRight: Radius.circular(context.isMobile ? 30 : 40),
         ),
       ),
       child: Stack(
@@ -129,8 +135,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
             top: -50,
             right: -30,
             child: Container(
-              width: 150,
-              height: 150,
+              width: context.isMobile ? 120 : 150,
+              height: context.isMobile ? 120 : 150,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withOpacity(0.05),
@@ -141,8 +147,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
             bottom: -30,
             left: -20,
             child: Container(
-              width: 120,
-              height: 120,
+              width: context.isMobile ? 100 : 120,
+              height: context.isMobile ? 100 : 120,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withOpacity(0.05),
@@ -151,7 +157,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
           ),
           
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 30, 20, 50),
+            padding: EdgeInsets.fromLTRB(
+              context.responsivePadding,
+              context.responsivePadding * 1.5,
+              context.responsivePadding,
+              context.responsivePadding * 2.5,
+            ),
             child: Column(
               children: [
                 // Foto de perfil
@@ -171,12 +182,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       ),
                       child: Container(
                         padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           shape: BoxShape.circle,
                           color: Colors.white,
                         ),
                         child: CircleAvatar(
-                          radius: 60,
+                          radius: avatarRadius,
                           backgroundImage: NetworkImage(_usuario.fotoPerfilUrl),
                           backgroundColor: Colors.grey[200],
                         ),
@@ -191,7 +202,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           onTap: _navegarAEditar,
                           borderRadius: BorderRadius.circular(25),
                           child: Container(
-                            padding: const EdgeInsets.all(12),
+                            padding: EdgeInsets.all(context.isMobile ? 10 : 12),
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
@@ -209,10 +220,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                                 ),
                               ],
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.camera_alt_rounded,
                               color: Colors.white,
-                              size: 18,
+                              size: context.responsiveIconSize(16),
                             ),
                           ),
                         ),
@@ -220,26 +231,26 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: context.responsiveSpacing * 1.5),
 
                 // Nombre
                 Text(
                   _usuario.nombre,
-                  style: const TextStyle(
-                    fontSize: 24,
+                  style: TextStyle(
+                    fontSize: context.responsiveFontSize(context.isMobile ? 22 : 24),
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                     letterSpacing: 0.3,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: context.responsiveSpacing * 0.75),
 
                 // Rol
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 10,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.isMobile ? 20 : 24,
+                    vertical: context.isMobile ? 8 : 10,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
@@ -255,14 +266,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       Icon(
                         _usuario.esDocente ? Icons.school_rounded : Icons.person_rounded,
                         color: Colors.white,
-                        size: 18,
+                        size: context.responsiveIconSize(16),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         _usuario.rol,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 14,
+                          fontSize: context.responsiveFontSize(14),
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.5,
                         ),
@@ -282,12 +293,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
       ),
       color: Colors.white,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -298,7 +309,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(context.isMobile ? 20 : 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -315,25 +326,25 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.info_outline_rounded,
-                      color: Color(0xFF1565C0),
-                      size: 22,
+                      color: const Color(0xFF1565C0),
+                      size: context.responsiveIconSize(22),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const Text(
+                  SizedBox(width: context.responsiveSpacing * 0.75),
+                  Text(
                     'Información Personal',
                     style: TextStyle(
-                      fontSize: 19,
+                      fontSize: context.responsiveFontSize(context.isMobile ? 18 : 19),
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF1565C0),
+                      color: const Color(0xFF1565C0),
                       letterSpacing: 0.2,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: context.responsiveSpacing * 1.5),
 
               // Email
               _buildInfoItem(
@@ -344,25 +355,25 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
               // Campos específicos por rol
               if (_usuario.esDocente) ...[
-                const SizedBox(height: 16),
+                SizedBox(height: context.responsiveSpacing),
                 _buildInfoItem(
                   icon: Icons.badge_rounded,
                   label: 'Cédula',
                   value: _usuario.cedula ?? 'No especificado',
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: context.responsiveSpacing),
                 _buildInfoItem(
                   icon: Icons.phone_android_rounded,
                   label: 'Celular',
                   value: _usuario.celular ?? 'No especificado',
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: context.responsiveSpacing),
                 _buildInfoItem(
                   icon: Icons.business_rounded,
                   label: 'Oficina',
                   value: _usuario.oficina ?? 'No especificado',
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: context.responsiveSpacing),
                 _buildInfoItem(
                   icon: Icons.alternate_email_rounded,
                   label: 'Email alternativo',
@@ -370,12 +381,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 ),
                 if (_usuario.asignaturas != null &&
                     _usuario.asignaturas!.isNotEmpty) ...[
-                  const SizedBox(height: 20),
+                  SizedBox(height: context.responsiveSpacing * 1.25),
                   _buildAsignaturasItem(),
                 ],
               ] else if (_usuario.esEstudiante) ...[
                 if (_usuario.telefono != null) ...[
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.responsiveSpacing),
                   _buildInfoItem(
                     icon: Icons.phone_rounded,
                     label: 'Teléfono',
@@ -396,10 +407,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
     required String value,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.isMobile ? 14 : 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
         border: Border.all(
           color: Colors.grey.shade100,
           width: 1,
@@ -428,10 +439,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
             child: Icon(
               icon,
               color: const Color(0xFF1565C0),
-              size: 22,
+              size: context.responsiveIconSize(22),
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: context.responsiveSpacing),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,7 +450,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: context.responsiveFontSize(12),
                     color: Colors.grey[600],
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.3,
@@ -448,8 +459,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 const SizedBox(height: 6),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 15,
+                  style: TextStyle(
+                    fontSize: context.responsiveFontSize(15),
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,
                     letterSpacing: 0.2,
@@ -465,10 +476,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
   Widget _buildAsignaturasItem() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.isMobile ? 14 : 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
         border: Border.all(
           color: Colors.grey.shade100,
           width: 1,
@@ -497,20 +508,20 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.menu_book_rounded,
-                  color: Color(0xFF1565C0),
-                  size: 22,
+                  color: const Color(0xFF1565C0),
+                  size: context.responsiveIconSize(22),
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: context.responsiveSpacing),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Materias',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: context.responsiveFontSize(12),
                       color: Colors.grey[600],
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.3,
@@ -519,25 +530,25 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   const SizedBox(height: 4),
                   Text(
                     '${_usuario.asignaturas!.length} asignatura(s)',
-                    style: const TextStyle(
-                      fontSize: 13,
+                    style: TextStyle(
+                      fontSize: context.responsiveFontSize(13),
                       fontWeight: FontWeight.w500,
-                      color: Color(0xFF1565C0),
+                      color: const Color(0xFF1565C0),
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: context.responsiveSpacing),
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: _usuario.asignaturas!
                 .map((materia) => Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: context.isMobile ? 14 : 16,
+                        vertical: context.isMobile ? 8 : 10,
                       ),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -563,9 +574,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           const SizedBox(width: 8),
                           Text(
                             materia,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF1565C0),
+                            style: TextStyle(
+                              fontSize: context.responsiveFontSize(13),
+                              color: const Color(0xFF1565C0),
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.2,
                             ),
@@ -581,6 +592,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   Widget _buildActionButtons() {
+    final buttonHeight = ResponsiveHelper.getButtonHeight(context);
+    
     return Column(
       children: [
         // Botón Editar Perfil
@@ -588,11 +601,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
           color: Colors.transparent,
           child: InkWell(
             onTap: _navegarAEditar,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
             child: Ink(
-              height: 58,
+              height: buttonHeight,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
                 gradient: const LinearGradient(
                   colors: [
                     Color(0xFF42A5F5),
@@ -622,17 +635,17 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.edit_rounded,
                         color: Colors.white,
-                        size: 20,
+                        size: context.responsiveIconSize(20),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Text(
+                    SizedBox(width: context.responsiveSpacing * 0.75),
+                    Text(
                       'Editar Perfil',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: context.responsiveFontSize(16),
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                         letterSpacing: 0.5,
@@ -644,18 +657,18 @@ class _PerfilScreenState extends State<PerfilScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: context.responsiveSpacing),
 
         // Botón Cambiar Contraseña
         Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: _navegarACambiarPassword,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
             child: Container(
-              height: 58,
+              height: buttonHeight,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(ResponsiveHelper.getBorderRadius(context)),
                 color: Colors.white,
                 border: Border.all(
                   color: const Color(0xFF1565C0),
@@ -678,19 +691,19 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       color: const Color(0xFF1565C0).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.lock_rounded,
-                      color: Color(0xFF1565C0),
-                      size: 20,
+                      color: const Color(0xFF1565C0),
+                      size: context.responsiveIconSize(20),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const Text(
+                  SizedBox(width: context.responsiveSpacing * 0.75),
+                  Text(
                     'Cambiar Contraseña',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: context.responsiveFontSize(16),
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF1565C0),
+                      color: const Color(0xFF1565C0),
                       letterSpacing: 0.5,
                     ),
                   ),

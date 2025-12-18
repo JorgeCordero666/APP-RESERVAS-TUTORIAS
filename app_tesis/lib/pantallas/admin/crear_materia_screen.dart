@@ -339,7 +339,7 @@ class _CrearMateriaScreenState extends State<CrearMateriaScreen> {
                 ],
               ),
               child: DropdownButtonFormField<String>(
-                value: _semestreSeleccionado,
+                initialValue: _semestreSeleccionado,
                 decoration: InputDecoration(
                   labelText: 'Semestre',
                   prefixIcon: Container(

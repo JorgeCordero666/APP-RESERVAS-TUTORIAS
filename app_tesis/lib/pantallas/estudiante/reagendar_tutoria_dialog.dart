@@ -393,16 +393,16 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
   }
 
   List<Map<String, dynamic>> _generarTurnos20Min(String inicio, String fin) {
-    final convertirAMinutos = (String hora) {
+    int convertirAMinutos(String hora) {
       final partes = hora.split(':');
       return int.parse(partes[0]) * 60 + int.parse(partes[1]);
-    };
+    }
 
-    final formatearHora = (int minutos) {
+    String formatearHora(int minutos) {
       final horas = minutos ~/ 60;
       final mins = minutos % 60;
       return '${horas.toString().padLeft(2, '0')}:${mins.toString().padLeft(2, '0')}';
-    };
+    }
 
     final minutosInicio = convertirAMinutos(inicio);
     final minutosFin = convertirAMinutos(fin);
@@ -450,8 +450,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
               primary: Color(0xFF1565C0),
               onPrimary: Colors.white,
               surface: Colors.white,
-            ),
-            dialogBackgroundColor: Colors.white,
+            ), dialogTheme: DialogThemeData(backgroundColor: Colors.white),
           ),
           child: child!,
         );
@@ -1151,7 +1150,7 @@ class _ReagendarTutoriaDialogState extends State<ReagendarTutoriaDialog>
                                   ),
                                 ),
                               );
-                            }).toList(),
+                            }),
                           ],
                         ),
 

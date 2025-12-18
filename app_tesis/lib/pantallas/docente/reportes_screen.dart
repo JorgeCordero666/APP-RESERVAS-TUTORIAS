@@ -925,7 +925,7 @@ class _ReportesScreenState extends State<ReportesScreen>
                 ),
               ),
             );
-          }).toList(),
+          }),
         ],
       ],
     );
