@@ -1,4 +1,3 @@
-// lib/pantallas/estudiante/ver_disponibilidad_docentes_screen.dart - FULLY RESPONSIVE
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/docente_service.dart';

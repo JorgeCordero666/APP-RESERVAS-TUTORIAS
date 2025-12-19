@@ -1,4 +1,3 @@
-// lib/pantallas/perfil/perfil_screen.dart - RESPONSIVE
 import 'package:flutter/material.dart';
 import '../../modelos/usuario.dart';
 import '../../servicios/auth_service.dart';

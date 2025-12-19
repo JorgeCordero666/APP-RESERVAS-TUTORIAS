@@ -1,4 +1,3 @@
-// lib/pantallas/home_screen.dart - DISEÑO PROFESIONAL UNIVERSITARIO RESPONSIVE
 import 'package:app_tesis/pantallas/docente/solicitudes_tutorias_screen.dart';
 import 'package:app_tesis/pantallas/estudiante/mis_tutorias_screen.dart';
 import 'package:flutter/material.dart';
