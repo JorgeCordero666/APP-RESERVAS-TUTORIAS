@@ -20,7 +20,7 @@ import verificarRol from "../middlewares/rol.js";
 
 // 🔹 Importar modelos necesarios
 import Docente from '../models/docente.js';
-import Materia from '../models/Materia.js';
+import Materia from '../models/materia.js';
 
 const routerDocente = Router();
 
