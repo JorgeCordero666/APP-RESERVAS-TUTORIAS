@@ -1,0 +1,234 @@
+# ============================================
+# .gitignore para Backend Node.js
+# Sistema de Gestión de Tutorías ESFOT
+# ============================================
+
+# ==========================================
+# 🔐 ARCHIVOS SENSIBLES (CRÍTICO)
+# ==========================================
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*.local
+*.env
+
+# ==========================================
+# 📦 Dependencias de Node.js
+# ==========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==========================================
+# 🗂️ Archivos de paquetes
+# ==========================================
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ==========================================
+# 📸 Archivos temporales de Cloudinary
+# ==========================================
+uploads/
+temp/
+tmp/
+*.tmp
+
+# ==========================================
+# 🗄️ Base de datos local
+# ==========================================
+*.sqlite
+*.sqlite3
+*.db
+data/
+db/
+
+# ==========================================
+# 📝 Logs
+# ==========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==========================================
+# 🔧 Configuraciones del IDE
+# ==========================================
+# VSCode
+.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains (WebStorm, IntelliJ, etc)
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ==========================================
+# 🖥️ Sistema Operativo
+# ==========================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
+
+# ==========================================
+# 🧪 Testing
+# ==========================================
+coverage/
+.nyc_output/
+*.lcov
+.coverage
+.pytest_cache/
+.tox/
+junit.xml
+test-results/
+
+# ==========================================
+# 🏗️ Build y Distribución
+# ==========================================
+dist/
+build/
+out/
+.next/
+.nuxt/
+.cache/
+.parcel-cache/
+
+# ==========================================
+# 📊 Reportes y Documentación Generada
+# ==========================================
+*.csv
+*.xlsx
+*.xls
+reportes/
+exports/
+
+# ==========================================
+# 🔑 Certificados y Claves
+# ==========================================
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+ssl/
+certificates/
+
+# ==========================================
+# 🚀 Deployment
+# ==========================================
+.vercel
+.netlify
+.firebase/
+.serverless/
+
+# ==========================================
+# 💾 Backups
+# ==========================================
+*.bak
+*.backup
+*.old
+backups/
+
+# ==========================================
+# 📦 Archivos comprimidos
+# ==========================================
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# ==========================================
+# 🔬 Debugging
+# ==========================================
+.vscode-test
+*.pid
+*.seed
+*.pid.lock
+
+# ==========================================
+# 📱 Mobile específico
+# ==========================================
+# React Native
+.expo/
+.expo-shared/
+
+# ==========================================
+# 🎯 Específico del proyecto
+# ==========================================
+# Scripts de migración ejecutados
+migrations_executed.json
+
+# Archivos de desarrollo
+TODO.md
+NOTES.md
+DEV_NOTES.md
+
+# Documentación temporal
+docs/temp/
+
